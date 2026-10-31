@@ -200,7 +200,7 @@ else:
         if user.get("is_admin"):
             st.divider()
             with st.expander("🛠️ Panneau d'Administration"):
-                admin_tab1, admin_tab2 = st.tabs(["📊 Connexions", "👥 Comptes"])
+                admin_tab1, admin_tab2 = st.tabs(["📊 Connexions", "👥 Gestion Comptes"])
                 
                 # --- SOUS-ONGLET 1 : SUIVI DES CONNEXIONS ---
                 with admin_tab1:
@@ -230,32 +230,45 @@ else:
                     else:
                         st.info("Aucun historique.")
 
-                # --- SOUS-ONGLET 2 : GESTION DES COMPTES ---
+                # --- SOUS-ONGLET 2 : GESTION & MODIFICATION DES COMPTES ---
                 with admin_tab2:
-                    st.write("**Membres inscrits :**")
+                    st.write("**Modifier les informations des membres :**")
                     all_profiles = supabase.table("profiles").select("*").execute().data
                     
                     if all_profiles:
                         for p in all_profiles:
                             st.markdown(f"👤 **{p['prenom']} {p['nom']}**<br>📞 `{p['phone']}` | 📌 *{p['groupe']}*", unsafe_allow_html=True)
                             
-                            # Formulaire miniature pour modifier le groupe ou réinitialiser le mot de passe
-                            with st.expander(f"Modifier {p['prenom']}"):
-                                new_group = st.selectbox("Nouveau groupe", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], index=["Femmes", "Hommes", "Filles", "Petits fils et filles"].index(p['groupe']) if p['groupe'] in ["Femmes", "Hommes", "Filles", "Petits fils et filles"] else 0, key=f"grp_{p['phone']}")
-                                new_pwd = st.text_input("Nouveau mot de passe", type="password", key=f"pwd_{p['phone']}")
+                            # Formulaire complet d'édition du profil
+                            with st.expander(f"Modifier {p['prenom']} {p['nom']}"):
+                                edit_prenom = st.text_input("Prénom", value=p['prenom'], key=f"edit_prenom_{p['phone']}")
+                                edit_nom = st.text_input("Nom", value=p['nom'], key=f"edit_nom_{p['phone']}")
+                                edit_phone = st.text_input("Téléphone", value=p['phone'], key=f"edit_phone_{p['phone']}")
                                 
-                                col_mod1, col_mod2 = st.columns(2)
-                                with col_mod1:
-                                    if st.button("💾 Enregistrer", key=f"save_{p['phone']}"):
-                                        update_data = {"groupe": new_group}
-                                        if new_pwd:
-                                            update_data["password"] = new_pwd
-                                        supabase.table("profiles").update(update_data).eq("phone", p['phone']).execute()
-                                        st.success("Modifié !")
+                                groupes_possibles = ["Femmes", "Hommes", "Filles", "Petits fils et filles"]
+                                current_idx = groupes_possibles.index(p['groupe']) if p['groupe'] in groupes_possibles else 0
+                                edit_groupe = st.selectbox("Salon / Groupe", groupes_possibles, index=current_idx, key=f"edit_grp_{p['phone']}")
+                                
+                                edit_pwd = st.text_input("Nouveau mot de passe (laisser vide pour ne pas changer)", type="password", key=f"edit_pwd_{p['phone']}")
+                                
+                                col_btn1, col_btn2 = st.columns(2)
+                                with col_btn1:
+                                    if st.button("💾 Sauvegarder", key=f"save_profile_{p['phone']}"):
+                                        update_payload = {
+                                            "prenom": edit_prenom.strip(),
+                                            "nom": edit_nom.strip(),
+                                            "phone": edit_phone.strip(),
+                                            "groupe": edit_groupe
+                                        }
+                                        if edit_pwd.strip():
+                                            update_payload["password"] = edit_pwd.strip()
+                                        
+                                        supabase.table("profiles").update(update_payload).eq("phone", p['phone']).execute()
+                                        st.success("Modifications enregistrées !")
                                         st.rerun()
-                                with col_mod2:
-                                    if p['prenom'].lower() != "eric": # Empêcher de supprimer Eric par erreur
-                                        if st.button("🗑️ Supprimer", key=f"del_{p['phone']}"):
+                                with col_btn2:
+                                    if p['prenom'].lower() != "eric":
+                                        if st.button("🗑️ Supprimer", key=f"del_profile_{p['phone']}"):
                                             supabase.table("profiles").delete().eq("phone", p['phone']).execute()
                                             st.warning("Compte supprimé.")
                                             st.rerun()
