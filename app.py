@@ -35,12 +35,12 @@ st.markdown(f"""
     .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
     .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
     
-    /* Cacher le pied de page et les badges Streamlit en bas */
+    /* Cacher le pied de page, les badges et le menu Streamlit */
     footer {{visibility: hidden;}}
-    .stDeployButton {{display:none;}}
+    .stDeployButton {{display: none;}}
     #MainMenu {{visibility: hidden;}}
     </style>
-""", unsafe_allow_html=True
+""", unsafe_allow_html=True)
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
