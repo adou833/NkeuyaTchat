@@ -196,6 +196,41 @@ else:
         if st.session_state.session_id:
             supabase.table("user_sessions").update({"salon": salon_choisi}).eq("id", st.session_state.session_id).execute()
 
+        # --- PANNEAU D'ADMINISTRATION DANS LA SIDEBAR (POUR ERIC) ---
+        if user.get("is_admin"):
+            st.divider()
+            with st.expander("🛠️ Panneau d'Administration"):
+                st.write("📊 **Suivi des connexions :**")
+                sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(15).execute().data
+                
+                if sessions_data:
+                    for s in sessions_data:
+                        try:
+                            login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
+                            login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
+                        except:
+                            login_str = s["login_at"]
+                        
+                        if s.get("logout_at"):
+                            try:
+                                logout_dt = datetime.fromisoformat(s["logout_at"].replace("Z", "+00:00"))
+                                logout_str = logout_dt.strftime("%d/%m/%Y à %H:%M")
+                                status = f"🔴 Inactif ({logout_str})"
+                            except:
+                                status = "🔴 Inactif"
+                        else:
+                            status = "🟢 En ligne"
+                            
+                        st.markdown(f"• **{s['prenom']} {s['nom']}**<br>📌 *{s['salon']}*<br>⏳ {login_str} | {status}", unsafe_allow_html=True)
+                        st.markdown("---")
+                else:
+                    st.info("Aucun historique.")
+                    
+                if st.button("⚙️ Réinit. Mot de passe", key="admin_pwd"):
+                    st.info("Module actif.")
+                if st.button("🚫 Modérer messages", key="admin_mod"):
+                    st.info("Module actif.")
+
         # --- MEMBRES DE LA FAMILLE ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
@@ -260,38 +295,3 @@ else:
                         "content": msg_text
                     }).execute()
                     st.rerun()
-
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("📊 **Suivi des connexions et activité des membres :**")
-            
-            sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(20).execute().data
-            
-            if sessions_data:
-                for s in sessions_data:
-                    try:
-                        login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
-                        login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
-                    except:
-                        login_str = s["login_at"]
-                    
-                    if s.get("logout_at"):
-                        try:
-                            logout_dt = datetime.fromisoformat(s["logout_at"].replace("Z", "+00:00"))
-                            logout_str = logout_dt.strftime("%d/%m/%Y à %H:%M")
-                            status = f"🔴 Inactif depuis {logout_str}"
-                        except:
-                            status = f"🔴 Inactif ({s['logout_at']})"
-                    else:
-                        status = "🟢 Actif en ce moment"
-                        
-                    st.markdown(f"• **{s['prenom']} {s['nom']}** — 📌 *{s['salon']}* <br>⏳ Connecté le : {login_str} | {status}", unsafe_allow_html=True)
-            else:
-                st.info("Aucun historique de connexion pour le moment.")
-                
-            st.divider()
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
