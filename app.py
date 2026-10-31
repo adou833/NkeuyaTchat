@@ -20,6 +20,8 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
+if "session_id" not in st.session_state:
+    st.session_state.session_id = None
 
 # --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
@@ -83,7 +85,7 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Champs de saisie agrandis et arrondis (message et recherche) */
+    /* Champs de saisie agrandis et arrondis */
     .stTextInput input {{
         border-radius: 22px !important;
         padding: 12px 16px !important;
@@ -115,13 +117,25 @@ if not st.session_state.user:
         prenom_login = st.text_input("Prénom *", key="login_prenom")
         pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
         if st.button("🚀 Se Connecter", key="btn_login"):
-            # Nettoyage automatique des espaces parasites du clavier mobile
             clean_prenom = prenom_login.strip() if prenom_login else ""
             
             res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
             if res.data:
-                st.session_state.user = res.data[0]
-                st.success(f"Bienvenue {st.session_state.user['prenom']} !")
+                user_data = res.data[0]
+                st.session_state.user = user_data
+                
+                # Enregistrement de la connexion dans la table des sessions
+                default_salon = "Salon : Général"
+                session_res = supabase.table("user_sessions").insert({
+                    "prenom": user_data["prenom"],
+                    "nom": user_data["nom"],
+                    "salon": default_salon
+                }).execute()
+                
+                if session_res.data:
+                    st.session_state.session_id = session_res.data[0]["id"]
+                
+                st.success(f"Bienvenue {user_data['prenom']} !")
                 st.rerun()
             else:
                 st.error("Prénom ou mot de passe incorrect.")
@@ -178,6 +192,10 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
+        # Mettre à jour le salon actif dans la session active en cours
+        if st.session_state.session_id:
+            supabase.table("user_sessions").update({"salon": salon_choisi}).eq("id", st.session_state.session_id).execute()
+
         # --- MEMBRES DE LA FAMILLE ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
@@ -187,7 +205,13 @@ else:
 
         st.divider()
         if st.button("🚪 Déconnexion Complète", key="btn_logout"):
+            # Enregistrer l'heure de déconnexion
+            if st.session_state.session_id:
+                now_utc = datetime.now(timezone.utc).isoformat()
+                supabase.table("user_sessions").update({"logout_at": now_utc}).eq("id", st.session_state.session_id).execute()
+            
             st.session_state.user = None
+            st.session_state.session_id = None
             st.rerun()
 
     # --- ESPACE DE CHAT ---
@@ -206,8 +230,7 @@ else:
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     
     messages = supabase.table("messages") \
-        .select("*") \
-        .eq("salon", salon_choisi) \
+        .select("*") \.eq("salon", salon_choisi) \
         .eq("is_blocked", False) \
         .gte("created_at", thirty_days_ago) \
         .execute().data
@@ -246,7 +269,35 @@ else:
     # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
     if user.get("is_admin"):
         with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familial :")
+            st.write("📊 **Suivi des connexions et activité des membres :**")
+            
+            # Récupérer l'historique des sessions depuis Supabase
+            sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(20).execute().data
+            
+            if sessions_data:
+                for s in sessions_data:
+                    # Formatage des dates/heures UTC en lisibles
+                    try:
+                        login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
+                        login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
+                    except:
+                        login_str = s["login_at"]
+                    
+                    if s.get("logout_at"):
+                        try:
+                            logout_dt = datetime.fromisoformat(s["logout_at"].replace("Z", "+00:00"))
+                            logout_str = logout_dt.strftime("%d/%m/%Y à %H:%M")
+                            status = f"🔴 Inactif depuis {logout_str}"
+                        except:
+                            status = f"🔴 Inactif ({s['logout_at']})"
+                    else:
+                        status = "🟢 Actif en ce moment"
+                        
+                    st.markdown(f"• **{s['prenom']} {s['nom']}** — 📌 *{s['salon']}* <br>⏳ Connecté le : {login_str} | {status}", unsafe_allow_html=True)
+            else:
+                st.info("Aucun historique de connexion pour le moment.")
+                
+            st.divider()
             if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
                 st.info("Module de réinitialisation actif.")
             if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
