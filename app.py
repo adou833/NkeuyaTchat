@@ -35,11 +35,10 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Conteneur principal englobant toute la page, avec des arrondis en haut ET en bas */
+    /* Conteneur principal avec arrondis en haut et en bas SANS bloquer le bas */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px !important;
-        overflow: hidden !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
         margin: 20px auto !important;
         max-width: 730px !important;
@@ -47,6 +46,7 @@ st.markdown(f"""
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 20px !important;
+        border-radius: 28px !important;
     }}
     
     /* En-tête décalé vers le bas et épuré style WhatsApp */
