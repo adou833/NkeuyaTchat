@@ -42,9 +42,9 @@ if not st.session_state.user:
 
     with tab1:
         st.subheader("Connexion")
-        prenom_login = st.text_input("Prénom *")
-        pwd_login = st.text_input("Mot de passe *", type="password")
-        if st.button("🚀 Se Connecter"):
+        prenom_login = st.text_input("Prénom *", key="login_prenom")
+        pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
+        if st.button("🚀 Se Connecter", key="btn_login"):
             res = supabase.table("profiles").select("*").eq("prenom", prenom_login).eq("password", pwd_login).execute()
             if res.data:
                 st.session_state.user = res.data[0]
@@ -55,16 +55,16 @@ if not st.session_state.user:
 
     with tab2:
         st.subheader("CREER SON COMPTE")
-        nom = st.text_input("Le Nom *")
-        prenom = st.text_input("Prénom *")
-        phone = st.text_input("Le Numéro de téléphone *")
-        groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"])
-        password = st.text_input("Créer un mot de passe fort *", type="password")
+        nom = st.text_input("Le Nom *", key="signup_nom")
+        prenom = st.text_input("Prénom *", key="signup_prenom")
+        phone = st.text_input("Le Numéro de téléphone *", key="signup_phone")
+        groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], key="signup_groupe")
+        password = st.text_input("Créer un mot de passe fort *", type="password", key="signup_pwd")
         
         # Eric est Administrateur automatique
         is_admin = True if prenom.strip().lower() == "eric" else False
 
-        if st.button("✨ S'inscrire"):
+        if st.button("✨ S'inscrire", key="btn_signup"):
             if nom and prenom and phone and password:
                 new_user = {
                     "nom": nom, "prenom": prenom, "phone": phone,
@@ -91,7 +91,7 @@ else:
         
         st.divider()
         st.subheader("🎨 Thème WhatsApp")
-        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Vert Sombre", "Bleu Nkeuya"])
+        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Vert Sombre", "Bleu Nkeuya"], key="theme_radio")
 
         st.divider()
         # Salons autorisés
@@ -105,10 +105,10 @@ else:
         elif user["groupe"] == "Petits fils et filles":
             salons_accessibles.append("Salon : Petits fils et filles")
             
-        salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles)
+        salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
         st.divider()
-        if st.button("🚪 Déconnexion Complète"):
+        if st.button("🚪 Déconnexion Complète", key="btn_logout"):
             st.session_state.user = None
             st.rerun()
 
@@ -133,15 +133,15 @@ else:
     # Zone de saisie
     if can_post:
         st.divider()
-        msg_text = st.text_input("💬 Écris ton message ici...")
-        uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"])
+        msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+        uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
         
         col1, col2 = st.columns([1, 4])
         with col1:
-            if st.button("🎙️ Voice"):
+            if st.button("🎙️ Voice", key="btn_voice"):
                 st.toast("Fonction vocale bientôt active !")
         with col2:
-            if st.button("📤 Envoyer"):
+            if st.button("📤 Envoyer", key="btn_send"):
                 if msg_text or uploaded_file:
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
@@ -155,7 +155,7 @@ else:
     if user.get("is_admin"):
         with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
             st.write("Contrôle total de l'application familial :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre"):
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
                 st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables"):
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
                 st.info("Module de modération actif.")
