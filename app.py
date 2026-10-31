@@ -28,17 +28,20 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
-
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #ECE5DD; }}
     .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
     .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
     
-    /* Cacher le pied de page, les badges et le menu Streamlit */
-    footer {{visibility: hidden;}}
-    .stDeployButton {{display: none;}}
-    #MainMenu {{visibility: hidden;}}
+    /* Masquer complètement les éléments Streamlit en bas et le menu hamburger */
+    footer {{visibility: hidden; display: none;}}
+    .stDeployButton {{visibility: hidden; display: none;}}
+    #MainMenu {{visibility: hidden; display: none;}}
+    header {{visibility: hidden; display: none;}}
+    
+    /* Cacher la barre supérieure flottante de Streamlit sur mobile */
+    [data-testid="stHeader"] {{visibility: hidden; display: none;}}
     </style>
 """, unsafe_allow_html=True)
 
