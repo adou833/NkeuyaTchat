@@ -19,11 +19,11 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION COULEURS WHATSAPP (CORRIGÉ) ---
+# --- PERSONNALISATION COULEURS WHATSAPP (ORDRE CORRIGÉ) ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
-    "Bleu Nkeuya": "#0084FF",   # Mis au milieu
-    "Vert Sombre": "#128C7E"    # Mis en bas
+    "Bleu Nkeuya": "#0084FF",   # Milieu
+    "Vert Sombre": "#128C7E"    # Bas
 }
 primary_color = theme_colors[st.session_state.theme_color]
 
@@ -91,7 +91,8 @@ else:
         
         st.divider()
         st.subheader("🎨 Thème WhatsApp")
-        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Vert Sombre", "Bleu Nkeuya"], key="theme_radio")
+        # Ordre du menu : WhatsApp Classic, puis Bleu Nkeuya, puis Vert Sombre
+        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
         st.divider()
         # Salons autorisés
