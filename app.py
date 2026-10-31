@@ -200,36 +200,68 @@ else:
         if user.get("is_admin"):
             st.divider()
             with st.expander("🛠️ Panneau d'Administration"):
-                st.write("📊 **Suivi des connexions :**")
-                sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(15).execute().data
+                admin_tab1, admin_tab2 = st.tabs(["📊 Connexions", "👥 Comptes"])
                 
-                if sessions_data:
-                    for s in sessions_data:
-                        try:
-                            login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
-                            login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
-                        except:
-                            login_str = s["login_at"]
-                        
-                        if s.get("logout_at"):
-                            try:
-                                logout_dt = datetime.fromisoformat(s["logout_at"].replace("Z", "+00:00"))
-                                logout_str = logout_dt.strftime("%d/%m/%Y à %H:%M")
-                                status = f"🔴 Inactif ({logout_str})"
-                            except:
-                                status = "🔴 Inactif"
-                        else:
-                            status = "🟢 En ligne"
-                            
-                        st.markdown(f"• **{s['prenom']} {s['nom']}**<br>📌 *{s['salon']}*<br>⏳ {login_str} | {status}", unsafe_allow_html=True)
-                        st.markdown("---")
-                else:
-                    st.info("Aucun historique.")
+                # --- SOUS-ONGLET 1 : SUIVI DES CONNEXIONS ---
+                with admin_tab1:
+                    st.write("**Activité récente :**")
+                    sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(10).execute().data
                     
-                if st.button("⚙️ Réinit. Mot de passe", key="admin_pwd"):
-                    st.info("Module actif.")
-                if st.button("🚫 Modérer messages", key="admin_mod"):
-                    st.info("Module actif.")
+                    if sessions_data:
+                        for s in sessions_data:
+                            try:
+                                login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
+                                login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
+                            except:
+                                login_str = s["login_at"]
+                            
+                            if s.get("logout_at"):
+                                try:
+                                    logout_dt = datetime.fromisoformat(s["logout_at"].replace("Z", "+00:00"))
+                                    logout_str = logout_dt.strftime("%d/%m/%Y à %H:%M")
+                                    status = f"🔴 Inactif ({logout_str})"
+                                except:
+                                    status = "🔴 Inactif"
+                            else:
+                                status = "🟢 En ligne"
+                                
+                            st.markdown(f"• **{s['prenom']} {s['nom']}**<br>📌 *{s['salon']}*<br>⏳ {login_str} | {status}", unsafe_allow_html=True)
+                            st.markdown("---")
+                    else:
+                        st.info("Aucun historique.")
+
+                # --- SOUS-ONGLET 2 : GESTION DES COMPTES ---
+                with admin_tab2:
+                    st.write("**Membres inscrits :**")
+                    all_profiles = supabase.table("profiles").select("*").execute().data
+                    
+                    if all_profiles:
+                        for p in all_profiles:
+                            st.markdown(f"👤 **{p['prenom']} {p['nom']}**<br>📞 `{p['phone']}` | 📌 *{p['groupe']}*", unsafe_allow_html=True)
+                            
+                            # Formulaire miniature pour modifier le groupe ou réinitialiser le mot de passe
+                            with st.expander(f"Modifier {p['prenom']}"):
+                                new_group = st.selectbox("Nouveau groupe", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], index=["Femmes", "Hommes", "Filles", "Petits fils et filles"].index(p['groupe']) if p['groupe'] in ["Femmes", "Hommes", "Filles", "Petits fils et filles"] else 0, key=f"grp_{p['phone']}")
+                                new_pwd = st.text_input("Nouveau mot de passe", type="password", key=f"pwd_{p['phone']}")
+                                
+                                col_mod1, col_mod2 = st.columns(2)
+                                with col_mod1:
+                                    if st.button("💾 Enregistrer", key=f"save_{p['phone']}"):
+                                        update_data = {"groupe": new_group}
+                                        if new_pwd:
+                                            update_data["password"] = new_pwd
+                                        supabase.table("profiles").update(update_data).eq("phone", p['phone']).execute()
+                                        st.success("Modifié !")
+                                        st.rerun()
+                                with col_mod2:
+                                    if p['prenom'].lower() != "eric": # Empêcher de supprimer Eric par erreur
+                                        if st.button("🗑️ Supprimer", key=f"del_{p['phone']}"):
+                                            supabase.table("profiles").delete().eq("phone", p['phone']).execute()
+                                            st.warning("Compte supprimé.")
+                                            st.rerun()
+                            st.markdown("---")
+                    else:
+                        st.info("Aucun membre trouvé.")
 
         # --- MEMBRES DE LA FAMILLE ---
         st.divider()
