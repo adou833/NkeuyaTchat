@@ -20,7 +20,7 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION COULEURS WHATSAPP ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -53,7 +53,7 @@ st.markdown(f"""
         padding: 0 !important;
     }}
 
-    /* Boutons arrondis style application mobile */
+    /* Boutons arrondis propres et harmonisés */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -67,10 +67,9 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Champs de saisie arrondis */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div {{
+    /* Champs de saisie aux bordures parfaitement alignées */
+    .stTextInput input, .stSelectbox select {{
         border-radius: 18px !important;
-        border: 1px solid #ccc !important;
     }}
 
     /* Bulles de messages et conteneurs arrondis */
@@ -93,7 +92,10 @@ if not st.session_state.user:
         prenom_login = st.text_input("Prénom *", key="login_prenom")
         pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
         if st.button("🚀 Se Connecter", key="btn_login"):
-            res = supabase.table("profiles").select("*").eq("prenom", prenom_login).eq("password", pwd_login).execute()
+            # Nettoyage automatique des espaces parasites ajoutés par les téléphones
+            clean_prenom = prenom_login.strip() if prenom_login else ""
+            
+            res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
             if res.data:
                 st.session_state.user = res.data[0]
                 st.success(f"Bienvenue {st.session_state.user['prenom']} !")
@@ -114,7 +116,7 @@ if not st.session_state.user:
         if st.button("✨ S'inscrire", key="btn_signup"):
             if nom and prenom and phone and password:
                 new_user = {
-                    "nom": nom, "prenom": prenom, "phone": phone,
+                    "nom": nom.strip(), "prenom": prenom.strip(), "phone": phone.strip(),
                     "groupe": groupe, "password": password, "is_admin": is_admin
                 }
                 try:
