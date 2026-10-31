@@ -19,13 +19,17 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION COULEURS WHATSAPP (ORDRE CORRIGÉ) ---
+# --- CORRECTION EXACTE DES COULEURS ---
+# WhatsApp Classic = Vert WhatsApp (#075E54)
+# Bleu Nkeuya = Bleu (#0084FF)
+# Vert Sombre = Vert foncé (#128C7E)
 theme_colors = {
     "WhatsApp Classic": "#075E54",
-    "Bleu Nkeuya": "#0084FF",   # Milieu
-    "Vert Sombre": "#128C7E"    # Bas
+    "Bleu Nkeuya": "#0084FF",
+    "Vert Sombre": "#128C7E"
 }
-primary_color = theme_colors[st.session_state.theme_color]
+
+primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
@@ -61,7 +65,6 @@ if not st.session_state.user:
         groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], key="signup_groupe")
         password = st.text_input("Créer un mot de passe fort *", type="password", key="signup_pwd")
         
-        # Eric est Administrateur automatique
         is_admin = True if prenom.strip().lower() == "eric" else False
 
         if st.button("✨ S'inscrire", key="btn_signup"):
@@ -91,11 +94,9 @@ else:
         
         st.divider()
         st.subheader("🎨 Thème WhatsApp")
-        # Ordre du menu : WhatsApp Classic, puis Bleu Nkeuya, puis Vert Sombre
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
         st.divider()
-        # Salons autorisés
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         if user["groupe"] == "Femmes":
             salons_accessibles.append("Salon : Femmes")
@@ -116,14 +117,12 @@ else:
     # --- ESPACE DE CHAT ---
     st.subheader(f"🗣️ {salon_choisi}")
 
-    # Mode Lecture Seule pour le salon Photo si non admin
     is_photo_salon = "Photos" in salon_choisi
     can_post = True
     if is_photo_salon and not user.get("is_admin"):
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages
     messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).execute().data
     for msg in messages:
         with st.chat_message("user" if msg["sender_prenom"] != user["prenom"] else "assistant"):
@@ -131,7 +130,6 @@ else:
             if msg.get("file_url"):
                 st.image(msg["file_url"])
 
-    # Zone de saisie
     if can_post:
         st.divider()
         msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
@@ -152,7 +150,6 @@ else:
                     }).execute()
                     st.rerun()
 
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
     if user.get("is_admin"):
         with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
             st.write("Contrôle total de l'application familial :")
