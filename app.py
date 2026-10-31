@@ -128,16 +128,21 @@ if not st.session_state.user:
         prenom_login = st.text_input("Prénom *", key="login_prenom")
         pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
         if st.button("🚀 Se Connecter", key="btn_login"):
-            clean_prenom = prenom_login.strip() if prenom_login else ""
+            clean_prenom = prenom_login.strip().lower() if prenom_login else ""
             
-            # Récupérer l'utilisateur par son prénom
-            res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).execute()
-            
+            # Récupération de tous les profils pour un matching souple (insensible aux majuscules)
+            res = supabase.table("profiles").select("*").execute()
+            user_data = None
             if res.data:
-                user_data = res.data[0]
+                for p in res.data:
+                    if p.get("prenom", "").strip().lower() == clean_prenom:
+                        user_data = p
+                        break
+            
+            if user_data:
                 stored_password = user_data["password"]
                 
-                # Vérification sécurisée du mot de passe (gère aussi l'ancienne version en clair si besoin)
+                # Vérification : gère à la fois le mot de passe haché et l'ancien mot de passe en clair
                 is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
                 
                 if is_valid:
@@ -157,9 +162,9 @@ if not st.session_state.user:
                     st.success(f"Bienvenue {user_data['prenom']} !")
                     st.rerun()
                 else:
-                    st.error("Prénom ou mot de passe incorrect.")
+                    st.error("Mot de passe incorrect.")
             else:
-                st.error("Prénom ou mot de passe incorrect.")
+                st.error("Prénom introuvable. Vérifiez l'orthographe.")
 
     with tab2:
         st.subheader("CREER SON COMPTE")
@@ -173,7 +178,6 @@ if not st.session_state.user:
 
         if st.button("✨ S'inscrire", key="btn_signup"):
             if nom and prenom and phone and password:
-                # Hachage sécurisé du mot de passe avant l'enregistrement
                 hashed_pwd = hash_password(password)
                 
                 new_user = {
@@ -230,7 +234,6 @@ else:
             with st.expander("🛠️ Panneau d'Administration"):
                 admin_tab1, admin_tab2 = st.tabs(["📊 Connexions", "👥 Gestion Comptes"])
                 
-                # --- SOUS-ONGLET 1 : SUIVI DES CONNEXIONS ---
                 with admin_tab1:
                     st.write("**Activité récente :**")
                     sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(10).execute().data
@@ -258,7 +261,6 @@ else:
                     else:
                         st.info("Aucun historique.")
 
-                # --- SOUS-ONGLET 2 : GESTION, RECHERCHE & MODIFICATION DES COMPTES ---
                 with admin_tab2:
                     st.write("**Gérer les membres :**")
                     admin_search = st.text_input("🔍 Rechercher un membre", placeholder="Tapez un prénom ou nom...", key="admin_search_member")
@@ -292,7 +294,6 @@ else:
                                             "phone": edit_phone.strip(),
                                             "groupe": edit_groupe
                                         }
-                                        # Si Eric entre un nouveau mot de passe, on le hache !
                                         if edit_pwd.strip():
                                             update_payload["password"] = hash_password(edit_pwd.strip())
                                         
