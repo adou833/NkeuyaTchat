@@ -28,7 +28,6 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
-
 st.markdown(f"""
     <style>
     /* Fond général de la page */
@@ -36,14 +35,14 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Conteneur principal avec arrondis complets haut et bas (effet carte) */
-    [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
+    /* Forcer l'arrondi sur TOUTES les extrémités (haut et bas) du conteneur principal */
+    [data-testid="stMainBlockContainer"], [data-testid="block-container"], .main .block-container {{
         background-color: #FFFFFF !important;
-        border-radius: 24px !important;
+        border-radius: 30px !important;
         padding: 20px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-        margin-top: 25px !important;
-        margin-bottom: 25px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
     }}
     
     /* En-tête décalé vers le bas et épuré style WhatsApp */
@@ -51,11 +50,11 @@ st.markdown(f"""
         background-color: {primary_color};
         color: white;
         padding: 10px 14px;
-        border-radius: 14px;
+        border-radius: 16px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: 10px;
+        margin-top: 15px;
         margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
@@ -64,7 +63,7 @@ st.markdown(f"""
         padding: 0 !important;
     }}
 
-    /* Boutons arrondis propres et harmonisés */
+    /* Boutons arrondis */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -78,7 +77,7 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Champs de saisie aux bordures parfaitement alignées */
+    /* Champs de saisie arrondis */
     .stTextInput input, .stSelectbox select {{
         border-radius: 18px !important;
     }}
