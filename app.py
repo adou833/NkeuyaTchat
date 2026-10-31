@@ -36,25 +36,26 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Forcer l'arrondi et le style carte sur le conteneur principal */
+    /* Conteneur principal avec arrondis complets haut et bas (effet carte) */
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         background-color: #FFFFFF !important;
         border-radius: 24px !important;
-        padding: 1.5rem !important;
+        padding: 20px !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-        margin-top: 15px !important;
-        margin-bottom: 15px !important;
+        margin-top: 25px !important;
+        margin-bottom: 25px !important;
     }}
     
-    /* En-tête aminci et épuré style WhatsApp */
+    /* En-tête décalé vers le bas et épuré style WhatsApp */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 8px 12px;
-        border-radius: 12px;
+        padding: 10px 14px;
+        border-radius: 14px;
         text-align: center;
         font-weight: bold;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        margin-top: 10px;
         margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
@@ -84,13 +85,14 @@ st.markdown(f"""
 
     /* Bulles de messages et conteneurs arrondis */
     .stChatMessage {{
-        border-radius: 12px !important;
-        padding: 8px;
-        margin-bottom: 6px;
+        border-radius: 14px !important;
+        padding: 10px;
+        margin-bottom: 8px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }}
     </style>
 """, unsafe_allow_html=True)
+
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
@@ -101,9 +103,7 @@ if not st.session_state.user:
         prenom_login = st.text_input("Prénom *", key="login_prenom")
         pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
         if st.button("🚀 Se Connecter", key="btn_login"):
-            # Nettoyage automatique des espaces parasites ajoutés par les téléphones
             clean_prenom = prenom_login.strip() if prenom_login else ""
-            
             res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
             if res.data:
                 st.session_state.user = res.data[0]
@@ -179,14 +179,21 @@ else:
     # --- ESPACE DE CHAT ---
     st.subheader(f"🗣️ {salon_choisi}")
 
+    # Barre de recherche style WhatsApp
+    search_query = st.text_input("🔍 Rechercher dans les messages", placeholder="Tapez un mot-clé...", key="whatsapp_search")
+
     is_photo_salon = "Photos" in salon_choisi
     can_post = True
     if is_photo_salon and not user.get("is_admin"):
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages
+    # Récupération et filtrage des messages
     messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).execute().data
+    
+    if search_query:
+        messages = [m for m in messages if search_query.lower() in m["content"].lower()]
+
     for msg in messages:
         with st.chat_message("user" if msg["sender_prenom"] != user["prenom"] else "assistant"):
             st.write(f"**{msg['sender_prenom']}** : {msg['content']}")
