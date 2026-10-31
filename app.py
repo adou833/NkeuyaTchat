@@ -19,8 +19,6 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
-if "msg_content" not in st.session_state:
-    st.session_state.msg_content = ""
 
 # --- PERSONNALISATION COULEURS WHATSAPP ---
 theme_colors = {
@@ -138,29 +136,11 @@ else:
             if msg.get("file_url"):
                 st.image(msg["file_url"])
 
-    # Zone de saisie et Emojis
+    # Zone de saisie des messages
     if can_post:
         st.divider()
         
-        # Gestion de l'ajout d'émojis via les boutons
-        def add_emoji(emoji):
-            st.session_state.msg_content += " " + emoji
-
-        # Champ de texte lié à st.session_state.msg_content
-        msg_text = st.text_input("💬 Écris ton message ici...", key="msg_content")
-
-        # --- EMOJIS RAPIDES ---
-        st.caption("Ajouter un emoji rapide :")
-        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
-        if c1.button("😀", key="em_1"): add_emoji("😀"); st.rerun()
-        if c2.button("❤️", key="em_2"): add_emoji("❤️"); st.rerun()
-        if c3.button("👍", key="em_3"): add_emoji("👍"); st.rerun()
-        if c4.button("😂", key="em_4"): add_emoji("😂"); st.rerun()
-        if c5.button("🙏", key="em_5"): add_emoji("🙏"); st.rerun()
-        if c6.button("🔥", key="em_6"): add_emoji("🔥"); st.rerun()
-        if c7.button("🎉", key="em_7"): add_emoji("🎉"); st.rerun()
-        if c8.button("👏", key="em_8"): add_emoji("👏"); st.rerun()
-
+        msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
         uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
         
         col1, col2 = st.columns([1, 4])
@@ -176,7 +156,6 @@ else:
                         "salon": salon_choisi,
                         "content": msg_text
                     }).execute()
-                    st.session_state.msg_content = ""  # Réinitialiser après envoi
                     st.rerun()
 
     # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
