@@ -5,4 +5,4 @@ secondaryBackgroundColor = "#FFFFFF"
 textColor = "#000000"
 
 [client]
-toolbarMode = "minimal"
+toolbarMode = "auto"
