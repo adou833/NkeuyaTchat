@@ -25,7 +25,6 @@ theme_colors = {
     "Vert Sombre": "#128C7E",  # Vert sombre
     "Bleu Nkeuya": "#0084FF"   # Bleu
 }
-}
 primary_color = theme_colors[st.session_state.theme_color]
 
 st.markdown(f"""
