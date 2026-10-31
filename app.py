@@ -230,10 +230,17 @@ else:
                     else:
                         st.info("Aucun historique.")
 
-                # --- SOUS-ONGLET 2 : GESTION & MODIFICATION DES COMPTES ---
+                # --- SOUS-ONGLET 2 : GESTION, RECHERCHE & MODIFICATION DES COMPTES ---
                 with admin_tab2:
-                    st.write("**Modifier les informations des membres :**")
+                    st.write("**Gérer les membres :**")
+                    
+                    # Barre de recherche de membre
+                    admin_search = st.text_input("🔍 Rechercher un membre", placeholder="Tapez un prénom ou nom...", key="admin_search_member")
+                    
                     all_profiles = supabase.table("profiles").select("*").execute().data
+                    
+                    if admin_search:
+                        all_profiles = [p for p in all_profiles if admin_search.lower() in p['prenom'].lower() or admin_search.lower() in p['nom'].lower()]
                     
                     if all_profiles:
                         for p in all_profiles:
