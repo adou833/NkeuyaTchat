@@ -19,11 +19,12 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION COULEURS WHATSAPP ---
+# --- PERSONNALISATION COULEURS WHATSAPP (CORRIGÉ) ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
-    "Vert Sombre": "#128C7E",
-    "Bleu Nkeuya": "#0084FF"
+    "Vert Sombre": "#128C7E",  # Vert sombre
+    "Bleu Nkeuya": "#0084FF"   # Bleu
+}
 }
 primary_color = theme_colors[st.session_state.theme_color]
 
