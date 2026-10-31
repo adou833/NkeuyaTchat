@@ -36,14 +36,14 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Arrondir les angles de toute l'interface principale (haut et bas) */
-    .main .block-container {{
-        background-color: #FFFFFF;
-        border-radius: 20px;
-        padding: 1.5rem 1rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-top: 15px;
-        margin-bottom: 15px;
+    /* Forcer l'arrondi et le style carte sur le conteneur principal */
+    [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
+        background-color: #FFFFFF !important;
+        border-radius: 24px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+        margin-top: 15px !important;
+        margin-bottom: 15px !important;
     }}
     
     /* En-tête aminci et épuré style WhatsApp */
@@ -91,7 +91,6 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
