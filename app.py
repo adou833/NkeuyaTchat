@@ -34,17 +34,10 @@ st.markdown(f"""
     .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
     .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
     
-    /* Masquage forcé de tous les éléments Streamlit (en haut et en bas) */
-    [data-testid="stHeader"] {{display: none !important;}}
-    [data-testid="stToolbar"] {{visibility: hidden !important; display: none !important;}}
-    [data-testid="stDecoration"] {{display: none !important;}}
-    [data-testid="stFooter"] {{display: none !important;}}
-    #MainMenu {{visibility: hidden !important; display: none !important;}}
-    footer {{visibility: hidden !important; display: none !important;}}
-    header {{visibility: hidden !important; display: none !important;}}
-    .stDeployButton {{display: none !important;}}
+    /* On garde uniquement le strict nécessaire pour un affichage propre */
+    footer {{visibility: hidden;}}
     </style>
-""", unsafe_allow_html=True) 
+""", unsafe_allow_html=True
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
