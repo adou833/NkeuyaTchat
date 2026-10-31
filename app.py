@@ -19,6 +19,8 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
+if "draft_msg" not in st.session_state:
+    st.session_state.draft_msg = ""
 
 # --- PERSONNALISATION COULEURS WHATSAPP ---
 theme_colors = {
@@ -77,7 +79,7 @@ if not st.session_state.user:
                 except Exception as e:
                     st.error("Erreur : Ce numéro de téléphone est déjà enregistré.")
             else:
-                st.warning("Tous les champs sont obligatoires.")
+                st.warning("All fields are required.")
 
 # --- INTERFACE PRINCIPALE DE MESSAGERIE ---
 else:
@@ -107,7 +109,7 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
-        # --- SECTION NOUVELLE : MEMBRES DE LA FAMILLE ---
+        # --- SECTION : MEMBRES DE LA FAMILLE ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
             profiles = supabase.table("profiles").select("prenom", "nom", "groupe").execute().data
@@ -131,38 +133,30 @@ else:
     # Affichage des messages
     messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).execute().data
     for msg in messages:
-        msg_id = msg["id"]
-        reactions = msg.get("reactions") or {}
-
         with st.chat_message("user" if msg["sender_prenom"] != user["prenom"] else "assistant"):
             st.write(f"**{msg['sender_prenom']}** : {msg['content']}")
             if msg.get("file_url"):
                 st.image(msg["file_url"])
 
-            # --- AFFICHAGE ET AJOUT DES REAGTIONS EMOJIS ---
-            # Afficher les réactions existantes
-            if reactions:
-                react_text = " ".join([f"{emoji} {count}" for emoji, count in reactions.items() if count > 0])
-                if react_text:
-                    st.caption(f"Réactions : {react_text}")
-
-            # Boutons émojis sous chaque message
-            col_e1, col_e2, col_e3, col_e4, col_e5, _ = st.columns([1, 1, 1, 1, 1, 5])
-            emojis = ["❤️", "👍", "😂", "🙏", "🎉"]
-            cols = [col_e1, col_e2, col_e3, col_e4, col_e5]
-
-            for idx, emoji in enumerate(emojis):
-                if cols[idx].button(emoji, key=f"react_{msg_id}_{emoji}"):
-                    # Mettre à jour le compteur de l'émoji
-                    current_count = reactions.get(emoji, 0)
-                    reactions[emoji] = current_count + 1
-                    supabase.table("messages").update({"reactions": reactions}).eq("id", msg_id).execute()
-                    st.rerun()
-
-    # Zone de saisie
+    # Zone de saisie et Emojis juste en dessous
     if can_post:
         st.divider()
+        
+        # Champ de texte pour le message
         msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+
+        # --- EMOJIS JUSTE EN DESSOUS DU CHAMP DE TEXTE ---
+        st.caption("Ajouter un emoji rapide dans le message :")
+        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
+        if c1.button("😀", key="em_1"): st.session_state.input_msg += " 😀"; st.rerun()
+        if c2.button("❤️", key="em_2"): st.session_state.input_msg += " ❤️"; st.rerun()
+        if c3.button("👍", key="em_3"): st.session_state.input_msg += " 👍"; st.rerun()
+        if c4.button("😂", key="em_4"): st.session_state.input_msg += " 😂"; st.rerun()
+        if c5.button("🙏", key="em_5"): st.session_state.input_msg += " 🙏"; st.rerun()
+        if c6.button("🔥", key="em_6"): st.session_state.input_msg += " 🔥"; st.rerun()
+        if c7.button("🎉", key="em_7"): st.session_state.input_msg += " 🎉"; st.rerun()
+        if c8.button("👏", key="em_8"): st.session_state.input_msg += " 👏"; st.rerun()
+
         uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
         
         col1, col2 = st.columns([1, 4])
@@ -176,8 +170,7 @@ else:
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
                         "salon": salon_choisi,
-                        "content": msg_text,
-                        "reactions": {}
+                        "content": msg_text
                     }).execute()
                     st.rerun()
 
