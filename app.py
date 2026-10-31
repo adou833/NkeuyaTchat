@@ -34,16 +34,17 @@ st.markdown(f"""
     .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
     .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
     
-    /* Masquer complètement les éléments Streamlit en bas et le menu hamburger */
-    footer {{visibility: hidden; display: none;}}
-    .stDeployButton {{visibility: hidden; display: none;}}
-    #MainMenu {{visibility: hidden; display: none;}}
-    header {{visibility: hidden; display: none;}}
-    
-    /* Cacher la barre supérieure flottante de Streamlit sur mobile */
-    [data-testid="stHeader"] {{visibility: hidden; display: none;}}
+    /* Masquage forcé de tous les éléments Streamlit (en haut et en bas) */
+    [data-testid="stHeader"] {{display: none !important;}}
+    [data-testid="stToolbar"] {{visibility: hidden !important; display: none !important;}}
+    [data-testid="stDecoration"] {{display: none !important;}}
+    [data-testid="stFooter"] {{display: none !important;}}
+    #MainMenu {{visibility: hidden !important; display: none !important;}}
+    footer {{visibility: hidden !important; display: none !important;}}
+    header {{visibility: hidden !important; display: none !important;}}
+    .stDeployButton {{display: none !important;}}
     </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) 
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
