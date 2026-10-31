@@ -1,5 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
+import json
 
 # Configuration de la page
 st.set_page_config(page_title="NkeuyaTchat", page_icon="💬", layout="centered")
@@ -19,10 +20,7 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- CORRECTION EXACTE DES COULEURS ---
-# WhatsApp Classic = Vert WhatsApp (#075E54)
-# Bleu Nkeuya = Bleu (#0084FF)
-# Vert Sombre = Vert foncé (#128C7E)
+# --- PERSONNALISATION COULEURS WHATSAPP ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -109,6 +107,13 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
+        # --- SECTION NOUVELLE : MEMBRES DE LA FAMILLE ---
+        st.divider()
+        with st.expander("👥 Membres de la Famille"):
+            profiles = supabase.table("profiles").select("prenom", "nom", "groupe").execute().data
+            for p in profiles:
+                st.write(f"• **{p['prenom']} {p['nom']}** ({p['groupe']})")
+
         st.divider()
         if st.button("🚪 Déconnexion Complète", key="btn_logout"):
             st.session_state.user = None
@@ -123,13 +128,38 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
+    # Affichage des messages
     messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).execute().data
     for msg in messages:
+        msg_id = msg["id"]
+        reactions = msg.get("reactions") or {}
+
         with st.chat_message("user" if msg["sender_prenom"] != user["prenom"] else "assistant"):
             st.write(f"**{msg['sender_prenom']}** : {msg['content']}")
             if msg.get("file_url"):
                 st.image(msg["file_url"])
 
+            # --- AFFICHAGE ET AJOUT DES REAGTIONS EMOJIS ---
+            # Afficher les réactions existantes
+            if reactions:
+                react_text = " ".join([f"{emoji} {count}" for emoji, count in reactions.items() if count > 0])
+                if react_text:
+                    st.caption(f"Réactions : {react_text}")
+
+            # Boutons émojis sous chaque message
+            col_e1, col_e2, col_e3, col_e4, col_e5, _ = st.columns([1, 1, 1, 1, 1, 5])
+            emojis = ["❤️", "👍", "😂", "🙏", "🎉"]
+            cols = [col_e1, col_e2, col_e3, col_e4, col_e5]
+
+            for idx, emoji in enumerate(emojis):
+                if cols[idx].button(emoji, key=f"react_{msg_id}_{emoji}"):
+                    # Mettre à jour le compteur de l'émoji
+                    current_count = reactions.get(emoji, 0)
+                    reactions[emoji] = current_count + 1
+                    supabase.table("messages").update({"reactions": reactions}).eq("id", msg_id).execute()
+                    st.rerun()
+
+    # Zone de saisie
     if can_post:
         st.divider()
         msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
@@ -146,10 +176,12 @@ else:
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
                         "salon": salon_choisi,
-                        "content": msg_text
+                        "content": msg_text,
+                        "reactions": {}
                     }).execute()
                     st.rerun()
 
+    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
     if user.get("is_admin"):
         with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
             st.write("Contrôle total de l'application familial :")
