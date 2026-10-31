@@ -130,7 +130,6 @@ if not st.session_state.user:
         if st.button("🚀 Se Connecter", key="btn_login"):
             clean_prenom = prenom_login.strip().lower() if prenom_login else ""
             
-            # Récupération de tous les profils pour un matching souple (insensible aux majuscules)
             res = supabase.table("profiles").select("*").execute()
             user_data = None
             if res.data:
@@ -141,14 +140,11 @@ if not st.session_state.user:
             
             if user_data:
                 stored_password = user_data["password"]
-                
-                # Vérification : gère à la fois le mot de passe haché et l'ancien mot de passe en clair
                 is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
                 
                 if is_valid:
                     st.session_state.user = user_data
                     
-                    # Enregistrement de la connexion
                     default_salon = "Salon : Général"
                     session_res = supabase.table("user_sessions").insert({
                         "prenom": user_data["prenom"],
@@ -172,27 +168,34 @@ if not st.session_state.user:
         prenom = st.text_input("Prénom *", key="signup_prenom")
         phone = st.text_input("Le Numéro de téléphone *", key="signup_phone")
         groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], key="signup_groupe")
-        password = st.text_input("Créer un mot de passe fort *", type="password", key="signup_pwd")
+        
+        password = st.text_input("Créer un mot de passe (min. 6 caractères) *", type="password", key="signup_pwd")
+        confirm_password = st.text_input("Confirmer le mot de passe *", type="password", key="signup_pwd_confirm")
         
         is_admin = True if prenom.strip().lower() == "eric" else False
 
         if st.button("✨ S'inscrire", key="btn_signup"):
-            if nom and prenom and phone and password:
-                hashed_pwd = hash_password(password)
-                
-                new_user = {
-                    "nom": nom.strip(), 
-                    "prenom": prenom.strip(), 
-                    "phone": phone.strip(),
-                    "groupe": groupe, 
-                    "password": hashed_pwd, 
-                    "is_admin": is_admin
-                }
-                try:
-                    supabase.table("profiles").insert(new_user).execute()
-                    st.success("Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
-                except Exception as e:
-                    st.error("Erreur : Ce numéro de téléphone est déjà enregistré.")
+            if nom and prenom and phone and password and confirm_password:
+                if len(password) < 6:
+                    st.warning("⚠️ Le mot de passe est trop court. Il doit contenir au moins 6 caractères.")
+                elif password != confirm_password:
+                    st.error("❌ Les deux mots de passe ne correspondent pas.")
+                else:
+                    hashed_pwd = hash_password(password)
+                    
+                    new_user = {
+                        "nom": nom.strip(), 
+                        "prenom": prenom.strip(), 
+                        "phone": phone.strip(),
+                        "groupe": groupe, 
+                        "password": hashed_pwd, 
+                        "is_admin": is_admin
+                    }
+                    try:
+                        supabase.table("profiles").insert(new_user).execute()
+                        st.success("🎉 Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
+                    except Exception as e:
+                        st.error("⚠️ Erreur : Ce numéro de téléphone est déjà enregistré.")
             else:
                 st.warning("Tous les champs sont obligatoires.")
 
@@ -295,7 +298,10 @@ else:
                                             "groupe": edit_groupe
                                         }
                                         if edit_pwd.strip():
-                                            update_payload["password"] = hash_password(edit_pwd.strip())
+                                            if len(edit_pwd.strip()) < 6:
+                                                st.warning("⚠️ Le nouveau mot de passe doit faire au moins 6 caractères.")
+                                            else:
+                                                update_payload["password"] = hash_password(edit_pwd.strip())
                                         
                                         supabase.table("profiles").update(update_payload).eq("phone", p['phone']).execute()
                                         st.success("Modifications enregistrées !")
