@@ -35,14 +35,18 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Forcer l'arrondi sur TOUTES les extrémités (haut et bas) du conteneur principal */
-    [data-testid="stMainBlockContainer"], [data-testid="block-container"], .main .block-container {{
+    /* Conteneur principal englobant toute la page, avec des arrondis en haut ET en bas */
+    [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
-        border-radius: 30px !important;
-        padding: 20px !important;
+        border-radius: 28px !important;
+        overflow: hidden !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
-        margin-top: 20px !important;
-        margin-bottom: 20px !important;
+        margin: 20px auto !important;
+        max-width: 730px !important;
+    }}
+    
+    [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
+        padding: 20px !important;
     }}
     
     /* En-tête décalé vers le bas et épuré style WhatsApp */
@@ -54,7 +58,7 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: 15px;
+        margin-top: 10px;
         margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
