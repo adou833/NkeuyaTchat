@@ -1,11 +1,7 @@
-
 import streamlit as st
 from supabase import create_client, Client
 import json
-from datetime import datetime, timedelta, timezone # <-- Ajoute ceci en haut
-import streamlit as st
-from supabase import create_client, Client
-import json
+from datetime import datetime, timedelta, timezone
 
 # Configuration de la page
 st.set_page_config(page_title="NkeuyaTchat", page_icon="💬", layout="centered")
@@ -33,6 +29,7 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
+
 st.markdown(f"""
     <style>
     /* Fond général de la page */
@@ -86,7 +83,7 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Agrandir légèrement la hauteur des champs de saisie (message et recherche) */
+    /* Champs de saisie agrandis et arrondis (message et recherche) */
     .stTextInput input {{
         border-radius: 22px !important;
         padding: 12px 16px !important;
@@ -107,6 +104,7 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
+
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
@@ -117,7 +115,9 @@ if not st.session_state.user:
         prenom_login = st.text_input("Prénom *", key="login_prenom")
         pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
         if st.button("🚀 Se Connecter", key="btn_login"):
+            # Nettoyage automatique des espaces parasites du clavier mobile
             clean_prenom = prenom_login.strip() if prenom_login else ""
+            
             res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
             if res.data:
                 st.session_state.user = res.data[0]
@@ -202,8 +202,15 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Récupération et filtrage des messages
-    messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).execute().data
+    # Filtrage des messages des 30 derniers jours et non bloqués
+    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    
+    messages = supabase.table("messages") \
+        .select("*") \
+        .eq("salon", salon_choisi) \
+        .eq("is_blocked", False) \
+        .gte("created_at", thirty_days_ago) \
+        .execute().data
     
     if search_query:
         messages = [m for m in messages if search_query.lower() in m["content"].lower()]
