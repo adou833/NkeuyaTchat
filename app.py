@@ -20,7 +20,7 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -31,9 +31,19 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Fond général style WhatsApp chat */
+    /* Fond général de la page */
     .stApp {{
         background-color: #ECE5DD;
+    }}
+    
+    /* Arrondir les angles de toute l'interface principale (haut et bas) */
+    .main .block-container {{
+        background-color: #FFFFFF;
+        border-radius: 20px;
+        padding: 1.5rem 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-top: 15px;
+        margin-bottom: 15px;
     }}
     
     /* En-tête aminci et épuré style WhatsApp */
@@ -41,11 +51,11 @@ st.markdown(f"""
         background-color: {primary_color};
         color: white;
         padding: 8px 12px;
-        border-radius: 8px;
+        border-radius: 12px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
         font-size: 1.1rem !important;
