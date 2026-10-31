@@ -35,7 +35,7 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Conteneur principal avec arrondis en haut et en bas SANS bloquer le bas */
+    /* Conteneur principal avec arrondis en haut et en bas */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px !important;
@@ -73,7 +73,7 @@ st.markdown(f"""
         color: white;
         border-radius: 20px;
         border: none;
-        padding: 6px 14px;
+        padding: 8px 16px;
         font-weight: 500;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }}
@@ -81,8 +81,15 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Champs de saisie arrondis */
-    .stTextInput input, .stSelectbox select {{
+    /* Agrandir légèrement la hauteur des champs de saisie (message et recherche) */
+    .stTextInput input {{
+        border-radius: 22px !important;
+        padding: 12px 16px !important;
+        font-size: 1rem !important;
+        min-height: 45px !important;
+    }}
+    
+    .stSelectbox select {{
         border-radius: 18px !important;
     }}
 
@@ -95,7 +102,6 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
