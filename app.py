@@ -31,9 +31,55 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: #ECE5DD; }}
-    .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
-    .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
+    /* Fond général style WhatsApp chat */
+    .stApp {{
+        background-color: #ECE5DD;
+    }}
+    
+    /* En-tête aminci et épuré style WhatsApp */
+    .main-header {{
+        background-color: {primary_color};
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: bold;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+    }}
+    .main-header h1, .main-header h2 {{
+        font-size: 1.1rem !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+
+    /* Boutons arrondis style application mobile */
+    .stButton>button {{
+        background-color: {primary_color};
+        color: white;
+        border-radius: 20px;
+        border: none;
+        padding: 6px 14px;
+        font-weight: 500;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }}
+    .stButton>button:hover {{
+        opacity: 0.9;
+    }}
+
+    /* Champs de saisie arrondis */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div {{
+        border-radius: 18px !important;
+        border: 1px solid #ccc !important;
+    }}
+
+    /* Bulles de messages et conteneurs arrondis */
+    .stChatMessage {{
+        border-radius: 12px !important;
+        padding: 8px;
+        margin-bottom: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }}
     </style>
 """, unsafe_allow_html=True)
 
