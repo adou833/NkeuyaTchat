@@ -124,7 +124,7 @@ if not st.session_state.user:
                 user_data = res.data[0]
                 st.session_state.user = user_data
                 
-                # Enregistrement de la connexion dans la table des sessions
+                # Enregistrement de la connexion
                 default_salon = "Salon : Général"
                 session_res = supabase.table("user_sessions").insert({
                     "prenom": user_data["prenom"],
@@ -192,7 +192,7 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
-        # Mettre à jour le salon actif dans la session active en cours
+        # Mettre à jour le salon actif dans la session
         if st.session_state.session_id:
             supabase.table("user_sessions").update({"salon": salon_choisi}).eq("id", st.session_state.session_id).execute()
 
@@ -205,7 +205,6 @@ else:
 
         st.divider()
         if st.button("🚪 Déconnexion Complète", key="btn_logout"):
-            # Enregistrer l'heure de déconnexion
             if st.session_state.session_id:
                 now_utc = datetime.now(timezone.utc).isoformat()
                 supabase.table("user_sessions").update({"logout_at": now_utc}).eq("id", st.session_state.session_id).execute()
@@ -229,11 +228,7 @@ else:
     # Filtrage des messages des 30 derniers jours et non bloqués
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     
-    messages = supabase.table("messages") \
-        .select("*") \.eq("salon", salon_choisi) \
-        .eq("is_blocked", False) \
-        .gte("created_at", thirty_days_ago) \
-        .execute().data
+    messages = supabase.table("messages").select("*").eq("salon", salon_choisi).eq("is_blocked", False).gte("created_at", thirty_days_ago).execute().data
     
     if search_query:
         messages = [m for m in messages if search_query.lower() in m["content"].lower()]
@@ -271,12 +266,10 @@ else:
         with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
             st.write("📊 **Suivi des connexions et activité des membres :**")
             
-            # Récupérer l'historique des sessions depuis Supabase
             sessions_data = supabase.table("user_sessions").select("*").order("login_at", desc=True).limit(20).execute().data
             
             if sessions_data:
                 for s in sessions_data:
-                    # Formatage des dates/heures UTC en lisibles
                     try:
                         login_dt = datetime.fromisoformat(s["login_at"].replace("Z", "+00:00"))
                         login_str = login_dt.strftime("%d/%m/%Y à %H:%M")
