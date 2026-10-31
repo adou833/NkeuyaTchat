@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import json
 from datetime import datetime, timedelta, timezone
+import bcrypt
 
 # Configuration de la page
 st.set_page_config(page_title="NkeuyaTchat", page_icon="💬", layout="centered")
@@ -14,6 +15,16 @@ def init_supabase():
     return create_client(url, key)
 
 supabase = init_supabase()
+
+# Fonctions utilitaires pour les mots de passe sécurisés
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception:
+        return False
 
 # Initialisation des variables de session
 if "user" not in st.session_state:
@@ -119,24 +130,34 @@ if not st.session_state.user:
         if st.button("🚀 Se Connecter", key="btn_login"):
             clean_prenom = prenom_login.strip() if prenom_login else ""
             
-            res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
+            # Récupérer l'utilisateur par son prénom
+            res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).execute()
+            
             if res.data:
                 user_data = res.data[0]
-                st.session_state.user = user_data
+                stored_password = user_data["password"]
                 
-                # Enregistrement de la connexion
-                default_salon = "Salon : Général"
-                session_res = supabase.table("user_sessions").insert({
-                    "prenom": user_data["prenom"],
-                    "nom": user_data["nom"],
-                    "salon": default_salon
-                }).execute()
+                # Vérification sécurisée du mot de passe (gère aussi l'ancienne version en clair si besoin)
+                is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
                 
-                if session_res.data:
-                    st.session_state.session_id = session_res.data[0]["id"]
-                
-                st.success(f"Bienvenue {user_data['prenom']} !")
-                st.rerun()
+                if is_valid:
+                    st.session_state.user = user_data
+                    
+                    # Enregistrement de la connexion
+                    default_salon = "Salon : Général"
+                    session_res = supabase.table("user_sessions").insert({
+                        "prenom": user_data["prenom"],
+                        "nom": user_data["nom"],
+                        "salon": default_salon
+                    }).execute()
+                    
+                    if session_res.data:
+                        st.session_state.session_id = session_res.data[0]["id"]
+                    
+                    st.success(f"Bienvenue {user_data['prenom']} !")
+                    st.rerun()
+                else:
+                    st.error("Prénom ou mot de passe incorrect.")
             else:
                 st.error("Prénom ou mot de passe incorrect.")
 
@@ -152,9 +173,16 @@ if not st.session_state.user:
 
         if st.button("✨ S'inscrire", key="btn_signup"):
             if nom and prenom and phone and password:
+                # Hachage sécurisé du mot de passe avant l'enregistrement
+                hashed_pwd = hash_password(password)
+                
                 new_user = {
-                    "nom": nom.strip(), "prenom": prenom.strip(), "phone": phone.strip(),
-                    "groupe": groupe, "password": password, "is_admin": is_admin
+                    "nom": nom.strip(), 
+                    "prenom": prenom.strip(), 
+                    "phone": phone.strip(),
+                    "groupe": groupe, 
+                    "password": hashed_pwd, 
+                    "is_admin": is_admin
                 }
                 try:
                     supabase.table("profiles").insert(new_user).execute()
@@ -233,8 +261,6 @@ else:
                 # --- SOUS-ONGLET 2 : GESTION, RECHERCHE & MODIFICATION DES COMPTES ---
                 with admin_tab2:
                     st.write("**Gérer les membres :**")
-                    
-                    # Barre de recherche de membre
                     admin_search = st.text_input("🔍 Rechercher un membre", placeholder="Tapez un prénom ou nom...", key="admin_search_member")
                     
                     all_profiles = supabase.table("profiles").select("*").execute().data
@@ -246,7 +272,6 @@ else:
                         for p in all_profiles:
                             st.markdown(f"👤 **{p['prenom']} {p['nom']}**<br>📞 `{p['phone']}` | 📌 *{p['groupe']}*", unsafe_allow_html=True)
                             
-                            # Formulaire complet d'édition du profil
                             with st.expander(f"Modifier {p['prenom']} {p['nom']}"):
                                 edit_prenom = st.text_input("Prénom", value=p['prenom'], key=f"edit_prenom_{p['phone']}")
                                 edit_nom = st.text_input("Nom", value=p['nom'], key=f"edit_nom_{p['phone']}")
@@ -267,8 +292,9 @@ else:
                                             "phone": edit_phone.strip(),
                                             "groupe": edit_groupe
                                         }
+                                        # Si Eric entre un nouveau mot de passe, on le hache !
                                         if edit_pwd.strip():
-                                            update_payload["password"] = edit_pwd.strip()
+                                            update_payload["password"] = hash_password(edit_pwd.strip())
                                         
                                         supabase.table("profiles").update(update_payload).eq("phone", p['phone']).execute()
                                         st.success("Modifications enregistrées !")
