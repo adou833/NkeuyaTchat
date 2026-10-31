@@ -28,16 +28,14 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
+
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #ECE5DD; }}
     .main-header {{ background-color: {primary_color}; color: white; padding: 15px; border-radius: 10px; text-align: center; }}
     .stButton>button {{ background-color: {primary_color}; color: white; border-radius: 20px; }}
-    
-    /* On garde uniquement le strict nécessaire pour un affichage propre */
-    footer {{visibility: hidden;}}
     </style>
-""", unsafe_allow_html=True
+""", unsafe_allow_html=True)
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
