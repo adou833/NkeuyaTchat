@@ -19,8 +19,8 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
-if "draft_msg" not in st.session_state:
-    st.session_state.draft_msg = ""
+if "msg_content" not in st.session_state:
+    st.session_state.msg_content = ""
 
 # --- PERSONNALISATION COULEURS WHATSAPP ---
 theme_colors = {
@@ -79,7 +79,7 @@ if not st.session_state.user:
                 except Exception as e:
                     st.error("Erreur : Ce numéro de téléphone est déjà enregistré.")
             else:
-                st.warning("All fields are required.")
+                st.warning("Tous les champs sont obligatoires.")
 
 # --- INTERFACE PRINCIPALE DE MESSAGERIE ---
 else:
@@ -109,7 +109,7 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
-        # --- SECTION : MEMBRES DE LA FAMILLE ---
+        # --- MEMBRES DE LA FAMILLE ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
             profiles = supabase.table("profiles").select("prenom", "nom", "groupe").execute().data
@@ -138,24 +138,28 @@ else:
             if msg.get("file_url"):
                 st.image(msg["file_url"])
 
-    # Zone de saisie et Emojis juste en dessous
+    # Zone de saisie et Emojis
     if can_post:
         st.divider()
         
-        # Champ de texte pour le message
-        msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+        # Gestion de l'ajout d'émojis via les boutons
+        def add_emoji(emoji):
+            st.session_state.msg_content += " " + emoji
 
-        # --- EMOJIS JUSTE EN DESSOUS DU CHAMP DE TEXTE ---
-        st.caption("Ajouter un emoji rapide dans le message :")
+        # Champ de texte lié à st.session_state.msg_content
+        msg_text = st.text_input("💬 Écris ton message ici...", key="msg_content")
+
+        # --- EMOJIS RAPIDES ---
+        st.caption("Ajouter un emoji rapide :")
         c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
-        if c1.button("😀", key="em_1"): st.session_state.input_msg += " 😀"; st.rerun()
-        if c2.button("❤️", key="em_2"): st.session_state.input_msg += " ❤️"; st.rerun()
-        if c3.button("👍", key="em_3"): st.session_state.input_msg += " 👍"; st.rerun()
-        if c4.button("😂", key="em_4"): st.session_state.input_msg += " 😂"; st.rerun()
-        if c5.button("🙏", key="em_5"): st.session_state.input_msg += " 🙏"; st.rerun()
-        if c6.button("🔥", key="em_6"): st.session_state.input_msg += " 🔥"; st.rerun()
-        if c7.button("🎉", key="em_7"): st.session_state.input_msg += " 🎉"; st.rerun()
-        if c8.button("👏", key="em_8"): st.session_state.input_msg += " 👏"; st.rerun()
+        if c1.button("😀", key="em_1"): add_emoji("😀"); st.rerun()
+        if c2.button("❤️", key="em_2"): add_emoji("❤️"); st.rerun()
+        if c3.button("👍", key="em_3"): add_emoji("👍"); st.rerun()
+        if c4.button("😂", key="em_4"): add_emoji("😂"); st.rerun()
+        if c5.button("🙏", key="em_5"): add_emoji("🙏"); st.rerun()
+        if c6.button("🔥", key="em_6"): add_emoji("🔥"); st.rerun()
+        if c7.button("🎉", key="em_7"): add_emoji("🎉"); st.rerun()
+        if c8.button("👏", key="em_8"): add_emoji("👏"); st.rerun()
 
         uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
         
@@ -172,6 +176,7 @@ else:
                         "salon": salon_choisi,
                         "content": msg_text
                     }).execute()
+                    st.session_state.msg_content = ""  # Réinitialiser après envoi
                     st.rerun()
 
     # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
