@@ -226,19 +226,15 @@ else:
         st.divider()
         st.subheader("💬 Salons de Discussion")
         
-        # Salons communs accessibles à tous
-        salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
-        
-        # Ajout du salon spécifique selon le groupe de l'utilisateur
-        groupe_user = user.get("groupe", "")
-        if groupe_user == "Femmes":
-            salons_accessibles.append("Salon : Femmes")
-        elif groupe_user == "Hommes":
-            salons_accessibles.append("Salon : Garçons")
-        elif groupe_user == "Filles":
-            salons_accessibles.append("Salon : Filles")
-        elif groupe_user == "Petits fils et filles":
-            salons_accessibles.append("Salon : Petits fils/filles")
+        # Tous les salons demandés directement dans le menu déroulant
+        salons_accessibles = [
+            "Salon : Général", 
+            "Salon : Photos de la famille Nkeuya", 
+            "Salon : Femmes", 
+            "Salon : Filles", 
+            "Salon : Garçons", 
+            "Salon : Petits fils/filles"
+        ]
 
         salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
 
