@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & FORÇAGE SIDEBAR MOBILE ---
+# --- DESIGN PROPRE ET STABLE (WHATSAPP) ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -45,79 +45,41 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquage des éléments inutiles Streamlit */
-    [data-testid="stToolbar"], 
-    [data-testid="stDecoration"], 
-    #MainMenu, 
-    footer, 
-    [data-testid="stStatusWidget"], 
-    .stDeployButton,
-    [data-testid="stViewerToolbar"] {{
-        visibility: hidden !important; 
-        display: none !important;
-        height: 0px !important;
-    }}
-    
     /* Fond général de l'application (style WhatsApp) */
     html, body, .stApp {{
-        margin: 0 !important;
-        padding: 0 !important;
         background-color: #ECE5DD !important;
     }}
-
-    /* Rendre l'en-tête natif transparent et au premier plan absolu pour le bouton menu mobile */
-    header[data-testid="stHeader"] {{
-        background-color: transparent !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 999999 !important;
-    }}
-
-    [data-testid="stAppViewBlockContainer"] {{
-        padding: 0px !important;
-    }}
     
-    /* Conteneur principal avec arrondis en haut (28px) et fond blanc */
+    /* Conteneur principal avec arrondis en haut et fond blanc */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px 28px 0 0 !important;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
         max-width: 730px !important;
         margin: 0 auto !important;
-        min-height: 100vh !important;
-        padding-top: 15px !important;
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        padding-top: 10px !important;
+        padding-top: 20px !important;
     }}
     
-    /* Style et visibilité de la barre latérale sur mobile / Android */
-    [data-testid="stSidebar"] {{
-        background-color: #FFFFFF !important;
-        border-right: 1px solid #E0E0E0 !important;
-        z-index: 9999999 !important;
-    }}
-
     /* Bandeau NkeuyaTchat compact et élégant */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 8px 12px;
+        padding: 10px 14px;
         border-radius: 16px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         margin-bottom: 15px;
-        margin-top: 5px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1rem !important;
+        font-size: 1.1rem !important;
         margin: 0 !important;
         padding: 0 !important;
+        color: white !important;
     }}
 
     .stButton>button {{
@@ -242,7 +204,7 @@ else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar) complète
+    # Barre latérale (Sidebar) standard gérée nativement par Streamlit
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
