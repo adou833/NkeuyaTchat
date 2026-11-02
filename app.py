@@ -88,31 +88,37 @@ st.markdown(f"""
         color: #E0E0E0 !important;
     }}
 
-    /* Boutons standards */
+    /* Uniformisation des boutons et alignement à gauche façon Android */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 20px;
+        border-radius: 16px;
         border: none;
-        padding: 8px 16px;
+        padding: 6px 14px;
+        font-size: 0.9rem;
         font-weight: 500;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        width: 100%;
+        display: block;
+        text-align: left;
+        margin-left: 0px !important;
     }}
     .stButton>button:hover {{
         opacity: 0.9;
     }}
 
-    /* Style spécifique pour le bouton de suppression de message (Bleu, même taille) */
+    /* Style spécifique pour le bouton de suppression (Bleu, même taille, aligné à gauche) */
     div[data-testid="stVerticalBlock"] button[kind="secondary"] {{
         background-color: #0084FF !important;
         color: white !important;
-        border-radius: 20px !important;
+        border-radius: 16px !important;
         border: none !important;
-        padding: 8px 16px !important;
+        padding: 6px 14px !important;
+        font-size: 0.9rem !important;
         font-weight: 500 !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
-        width: 100% !important;
+        display: block !important;
+        text-align: left !important;
+        margin-left: 0px !important;
     }}
     div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {{
         opacity: 0.9 !important;
@@ -130,7 +136,7 @@ st.markdown(f"""
         border-radius: 18px !important;
     }}
 
-    /* Styles pour rendre les messages du chat clairement visibles */
+    /* Styles pour rendre les messages du chat clairement visibles et alignés */
     [data-testid="stChatMessage"] {{
         background-color: #F0F2F5 !important;
         border-radius: 14px !important;
@@ -438,7 +444,7 @@ else:
                 
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
                 
-                # Bouton de suppression de message (Bleu, taille alignée)
+                # Bouton de suppression de message (Bleu, taille alignée et aligné à gauche)
                 if user.get("is_admin") or is_me:
                     if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
                         try:
