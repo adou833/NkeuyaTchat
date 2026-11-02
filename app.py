@@ -211,4 +211,145 @@ if not st.session_state.user:
                 else:
                     hashed_pwd = hash_password(password)
                     new_user = {
-                        "nom": nom
+                        "nom": nom.strip(), 
+                        "prenom": prenom.strip(), 
+                        "phone": phone.strip(),
+                        "groupe": groupe, 
+                        "password": hashed_pwd, 
+                        "is_admin": is_admin
+                    }
+                    try:
+                        supabase.table("profiles").insert(new_user).execute()
+                        st.success("🎉 Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
+                    except Exception as e:
+                        st.error("⚠️ Erreur : Ce numéro de téléphone est déjà enregistré.")
+            else:
+                st.warning("Tous les champs sont obligatoires.")
+
+# --- INTERFACE PRINCIPALE DE MESSAGERIE & ADMIN ---
+else:
+    user = st.session_state.user
+    st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
+
+    # Barre latérale (Sidebar) complète avec gestion des salons et mode Admin
+    with st.sidebar:
+        st.write(f"👤 **{user['prenom']} {user['nom']}**")
+        if user.get("is_admin"):
+            st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
+        
+        st.divider()
+        st.subheader("🎨 Thème WhatsApp")
+        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
+
+        st.divider()
+        st.subheader("💬 Salons de Discussion")
+        
+        salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
+        
+        groupe_user = user.get("groupe", "")
+        if groupe_user == "Femmes":
+            salons_accessibles.append("Salon : Groupe Privé Femmes")
+        elif groupe_user == "Hommes":
+            salons_accessibles.append("Salon : Groupe Privé Hommes")
+        elif groupe_user == "Filles":
+            salons_accessibles.append("Salon : Groupe Privé Filles")
+        elif groupe_user == "Petits fils et filles":
+            salons_accessibles.append("Salon : Groupe Privé Petits-enfants")
+            
+        if user.get("is_admin"):
+            salons_accessibles.extend(["Salon : Administration & Annonces", "Salon : Échanges Techniques"])
+
+        salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
+
+        vue_admin = False
+        if user.get("is_admin"):
+            st.divider()
+            st.subheader("⚙️ Administration")
+            if st.checkbox("📊 Ouvrir le tableau de bord Admin", key="toggle_admin_view"):
+                vue_admin = True
+
+        st.divider()
+        if st.button("🚪 Se déconnecter"):
+            if st.session_state.session_id:
+                try:
+                    supabase.table("user_sessions").delete().eq("id", st.session_state.session_id).execute()
+                except Exception:
+                    pass
+            st.session_state.user = None
+            st.session_state.session_id = None
+            st.rerun()
+
+    # --- VUE ADMIN OU VUE MESSAGERIE ---
+    if user.get("is_admin") and vue_admin:
+        st.subheader("📊 Tableau de Bord Administrateur (Eric)")
+        st.info("Suivi en temps réel de l'activité de NkeuyaTchat.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            try:
+                profiles_res = supabase.table("profiles").select("*", count="exact").execute()
+                total_users = len(profiles_res.data) if profiles_res.data else 0
+                st.metric("Utilisateurs Inscrits", total_users)
+            except Exception:
+                st.metric("Utilisateurs Inscrits", "N/A")
+                
+        with col2:
+            try:
+                sessions_res = supabase.table("user_sessions").select("*").execute()
+                active_sessions = len(sessions_res.data) if sessions_res.data else 0
+                st.metric("Sessions Actives", active_sessions)
+            except Exception:
+                st.metric("Sessions Actives", "N/A")
+        
+        st.markdown("### 👥 Liste des utilisateurs enregistrés")
+        try:
+            res_users = supabase.table("profiles").select("nom, prenom, phone, groupe, is_admin").execute()
+            if res_users.data:
+                st.dataframe(res_users.data, use_container_width=True)
+            else:
+                st.write("Aucun utilisateur trouvé.")
+        except Exception:
+            st.error("Impossible de charger les profils depuis Supabase.")
+            
+        st.markdown("### 🟢 Sessions connectées en direct")
+        try:
+            res_sess = supabase.table("user_sessions").select("*").execute()
+            if res_sess.data:
+                st.dataframe(res_sess.data, use_container_width=True)
+            else:
+                st.write("Aucune session active en cours.")
+        except Exception:
+            st.write("Aucune table de sessions disponible.")
+
+    else:
+        # --- CORPS DE LA MESSAGERIE ---
+        st.subheader(f"📢 {salon_actif}")
+
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "prenom": user["prenom"],
+                "nom": user["nom"],
+                "groupe": user.get("groupe", "Famille"),
+                "salon": salon_actif,
+                "content": prompt,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
