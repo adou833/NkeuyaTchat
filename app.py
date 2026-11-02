@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & NETTOYAGE SIDEBAR MOBILE ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & FORÇAGE SIDEBAR MOBILE ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -65,7 +65,7 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* En-tête mobile transparent pour laisser libre le bouton du menu hamburger */
+    /* Rendre l'en-tête natif transparent et au premier plan absolu pour le bouton menu mobile */
     header[data-testid="stHeader"] {{
         background-color: transparent !important;
         position: fixed !important;
@@ -95,10 +95,11 @@ st.markdown(f"""
         padding-top: 10px !important;
     }}
     
-    /* Style propre pour la barre latérale sur mobile */
+    /* Style et visibilité de la barre latérale sur mobile / Android */
     [data-testid="stSidebar"] {{
         background-color: #FFFFFF !important;
         border-right: 1px solid #E0E0E0 !important;
+        z-index: 9999999 !important;
     }}
 
     /* Bandeau NkeuyaTchat compact et élégant */
@@ -241,7 +242,7 @@ else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar) propre et non dupliquée
+    # Barre latérale (Sidebar) complète
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
