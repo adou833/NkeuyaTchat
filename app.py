@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & BOUTON MOBILE VISIBLE ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & MOBILE SIDEBAR FIX ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -45,7 +45,7 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquage des éléments inutiles */
+    /* Masquage des éléments inutiles Streamlit */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
     #MainMenu, 
@@ -65,17 +65,24 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* Rendre l'en-tête natif transparent et au-dessus pour que le menu mobile / sidebar soit toujours cliquable */
+    /* Forcer l'en-tête natif et le bouton hamburger/sidebar au premier plan sur mobile */
     header[data-testid="stHeader"] {{
         background-color: transparent !important;
         z-index: 999999 !important;
+    }
+    
+    /* Bouton de la barre latérale sur Android/Mobile */
+    button[kind="header"] {{
+        display: flex !important;
+        visibility: visible !important;
+        z-index: 9999999 !important;
     }}
 
     [data-testid="stAppViewBlockContainer"] {{
         padding: 0px !important;
     }}
     
-    /* Conteneur principal avec arrondis stricts en haut (28px) et fond blanc */
+    /* Conteneur principal avec arrondis en haut (28px) et fond blanc */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px 28px 0 0 !important;
@@ -87,22 +94,24 @@ st.markdown(f"""
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        padding-top: 25px !important;
+        padding-top: 20px !important;
     }}
     
+    /* Bandeau NkeuyaTchat réduit et compact */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 16px;
-        border-radius: 20px 20px 12px 12px;
+        padding: 8px 12px;
+        border-radius: 16px;
         text-align: center;
         font-weight: bold;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.3rem !important;
+        font-size: 1rem !important;
         margin: 0 !important;
+        padding: 0 !important;
     }}
 
     .stButton>button {{
@@ -120,9 +129,9 @@ st.markdown(f"""
 
     .stTextInput input {{
         border-radius: 22px !important;
-        padding: 12px 16px !important;
+        padding: 10px 14px !important;
         font-size: 1rem !important;
-        min-height: 45px !important;
+        min-height: 40px !important;
     }}
     
     .stSelectbox select {{
@@ -276,76 +285,4 @@ else:
             st.rerun()
 
     # --- VUE ADMIN OU VUE MESSAGERIE ---
-    if user.get("is_admin") and vue_admin:
-        st.subheader("📊 Tableau de Bord Administrateur (Eric)")
-        st.info("Suivi en temps réel de l'activité de NkeuyaTchat.")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            try:
-                profiles_res = supabase.table("profiles").select("*", count="exact").execute()
-                total_users = len(profiles_res.data) if profiles_res.data else 0
-                st.metric("Utilisateurs Inscrits", total_users)
-            except Exception:
-                st.metric("Utilisateurs Inscrits", "N/A")
-                
-        with col2:
-            try:
-                sessions_res = supabase.table("user_sessions").select("*").execute()
-                active_sessions = len(sessions_res.data) if sessions_res.data else 0
-                st.metric("Sessions Actives", active_sessions)
-            except Exception:
-                st.metric("Sessions Actives", "N/A")
-        
-        st.markdown("### 👥 Liste des utilisateurs enregistrés")
-        try:
-            res_users = supabase.table("profiles").select("nom, prenom, phone, groupe, is_admin").execute()
-            if res_users.data:
-                st.dataframe(res_users.data, use_container_width=True)
-            else:
-                st.write("Aucun utilisateur trouvé.")
-        except Exception:
-            st.error("Impossible de charger les profils depuis Supabase.")
-            
-        st.markdown("### 🟢 Sessions connectées en direct")
-        try:
-            res_sess = supabase.table("user_sessions").select("*").execute()
-            if res_sess.data:
-                st.dataframe(res_sess.data, use_container_width=True)
-            else:
-                st.write("Aucune session active en cours.")
-        except Exception:
-            st.write("Aucune table de sessions disponible.")
-
-    else:
-        # --- CORPS DE LA MESSAGERIE ---
-        st.subheader(f"📢 {salon_actif}")
-
-        try:
-            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages = response.data if response.data else []
-        except Exception:
-            messages = []
-
-        for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
-            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "prenom": user["prenom"],
-                "nom": user["nom"],
-                "groupe": user.get("groupe", "Famille"),
-                "salon": salon_actif,
-                "content": prompt,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
+    if user
