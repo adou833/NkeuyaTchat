@@ -69,19 +69,23 @@ st.markdown(f"""
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 12px 16px;
+        padding: 14px 16px;
         border-radius: 16px;
         text-align: center;
-        font-weight: bold;
         box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         margin-top: 15px;
         margin-bottom: 25px;
     }}
-    .main-header h1, .main-header h2 {{
+    .main-header h2 {{
         font-size: 1.2rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
+    }}
+    .main-header p {{
+        font-size: 0.85rem !important;
+        margin: 5px 0 0 0 !important;
+        color: #E0E0E0 !important;
     }}
 
     .stButton>button {{
@@ -126,7 +130,7 @@ st.markdown(f"""
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
-    st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div class='main-header'><h2>💬 NkeuyaTchat Familial</h2><p>Bienvenue dans votre espace sécurisé</p></div>", unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
@@ -211,7 +215,6 @@ if not st.session_state.user:
 # --- INTERFACE PRINCIPALE DE MESSAGERIE & ADMIN ---
 else:
     user = st.session_state.user
-    st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
     # Barre latérale (Sidebar) standard gérée nativement par Streamlit
     with st.sidebar:
@@ -332,9 +335,31 @@ else:
             st.write("Aucune table de sessions disponible.")
 
     else:
-        # --- CORPS DE LA MESSAGERIE ---
-        st.subheader(f"📢 {salon_actif}")
+        # --- MISE À JOUR DE LA SESSION SUR LE SALON ACTIF ---
+        if st.session_state.session_id:
+            try:
+                supabase.table("user_sessions").update({"salon": salon_actif}).eq("id", st.session_state.session_id).execute()
+            except Exception:
+                pass
 
+        # --- RÉCUPÉRATION DES MEMBRES CONNECTÉS DANS CE SALON ---
+        try:
+            res_connected = supabase.table("user_sessions").select("prenom").eq("salon", salon_actif).execute()
+            connected_names = list(set([item["prenom"] for item in res_connected.data])) if res_connected.data else [user['prenom']]
+        except Exception:
+            connected_names = [user['prenom']]
+
+        membres_connectes_str = ", ".join(connected_names)
+
+        # Affichage du bandeau personnalisé avec le salon et les membres connectés
+        st.markdown(f"""
+            <div class='main-header'>
+                <h2>💬 {salon_actif}</h2>
+                <p>🟢 Membres connectés : {membres_connectes_str}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- CORPS DE LA MESSAGERIE ---
         try:
             response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
             messages = response.data if response.data else []
