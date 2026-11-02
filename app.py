@@ -61,10 +61,10 @@ st.markdown(f"""
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        padding-top: 20px !important;
+        padding-top: 25px !important;
     }}
     
-    /* Bandeau NkeuyaTchat compact et élégant */
+    /* Bandeau NkeuyaTchat compact, élégant et décalé vers le bas pour ne pas être masqué */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -73,6 +73,7 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        margin-top: 15px;
         margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
@@ -295,34 +296,4 @@ else:
             st.write("Aucune table de sessions disponible.")
 
     else:
-        # --- CORPS DE LA MESSAGERIE ---
-        st.subheader(f"📢 {salon_actif}")
-
-        try:
-            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages = response.data if response.data else []
-        except Exception:
-            messages = []
-
-        for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
-            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "prenom": user["prenom"],
-                "nom": user["nom"],
-                "groupe": user.get("groupe", "Famille"),
-                "salon": salon_actif,
-                "content": prompt,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
+        # --- CORPS DE LA MESS
