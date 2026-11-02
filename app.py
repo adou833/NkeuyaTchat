@@ -33,6 +33,8 @@ if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
+if "messages_locaux" not in st.session_state:
+    st.session_state.messages_locaux = {}
 
 # --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
@@ -157,37 +159,42 @@ if not st.session_state.user:
         if st.button("🚀 Se Connecter", key="btn_login"):
             clean_prenom = prenom_login.strip().lower() if prenom_login else ""
             
-            res = supabase.table("profiles").select("*").execute()
-            user_data = None
-            if res.data:
-                for p in res.data:
-                    if p.get("prenom", "").strip().lower() == clean_prenom:
-                        user_data = p
-                        break
-            
-            if user_data:
-                stored_password = user_data["password"]
-                is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
+            try:
+                res = supabase.table("profiles").select("*").execute()
+                user_data = None
+                if res.data:
+                    for p in res.data:
+                        if p.get("prenom", "").strip().lower() == clean_prenom:
+                            user_data = p
+                            break
                 
-                if is_valid:
-                    st.session_state.user = user_data
+                if user_data:
+                    stored_password = user_data["password"]
+                    is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
                     
-                    default_salon = "Salon : Général"
-                    session_res = supabase.table("user_sessions").insert({
-                        "prenom": user_data["prenom"],
-                        "nom": user_data["nom"],
-                        "salon": default_salon
-                    }).execute()
-                    
-                    if session_res.data:
-                        st.session_state.session_id = session_res.data[0]["id"]
-                    
-                    st.success(f"Bienvenue {user_data['prenom']} !")
-                    st.rerun()
+                    if is_valid:
+                        st.session_state.user = user_data
+                        
+                        default_salon = "Salon : Général"
+                        try:
+                            session_res = supabase.table("user_sessions").insert({
+                                "prenom": user_data["prenom"],
+                                "nom": user_data["nom"],
+                                "salon": default_salon
+                            }).execute()
+                            if session_res.data:
+                                st.session_state.session_id = session_res.data[0]["id"]
+                        except Exception:
+                            pass
+                        
+                        st.success(f"Bienvenue {user_data['prenom']} !")
+                        st.rerun()
+                    else:
+                        st.error("Mot de passe incorrect.")
                 else:
-                    st.error("Mot de passe incorrect.")
-            else:
-                st.error("Prénom introuvable. Vérifiez l'orthographe.")
+                    st.error("Prénom introuvable. Vérifiez l'orthographe.")
+            except Exception as e:
+                st.error("Erreur de connexion à la table 'profiles'. Vérifiez Supabase.")
 
     with tab2:
         st.subheader("CREER SON COMPTE")
@@ -251,14 +258,3 @@ else:
         
         st.divider()
         if st.button("🚪 Se Déconnecter"):
-            st.session_state.user = None
-            st.session_state.session_id = None
-            st.rerun()
-
-    # --- AFFICHAGE ET ENVOI DES MESSAGES ---
-    st.subheader(f"📍 {salon_actif}")
-    
-    # Lecture directe des messages pour le salon actif
-    msg_res = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", ascending=True).limit(50).execute()
-    messages_list = msg_res.data if (msg_res and msg_res.data) else []
-
