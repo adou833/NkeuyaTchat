@@ -48,7 +48,7 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 st.markdown(f"""
     <style>
     /* ================================================================= */
-    /* BLOC SÉCURITÉ : MASQUAGE STRICT DES BARRES ET FOOTER STREAMLIT   */
+    /* BLOC SÉCURITÉ : MASQUAGE STRICT DES BARRES ET FOOTER STREAMLIT    */
     /* ================================================================= */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
@@ -64,7 +64,7 @@ st.markdown(f"""
     }}
     
     /* ================================================================= */
-    /* AJUSTEMENT MAXIMUM PLEIN ÉCRAN MOBILE SANS VIDE                  */
+    /* AJUSTEMENT MAXIMUM PLEIN ÉCRAN MOBILE SANS VIDE                 */
     /* ================================================================= */
     html, body, .stApp {{
         margin: 0 !important;
@@ -238,7 +238,7 @@ else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar) - Entièrement aplatie pour éviter les IndentationError
+    # Barre latérale (Sidebar) complète
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
@@ -251,8 +251,53 @@ else:
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         
-        # Ajout linéaire sécurisé sans décalage de bloc conditionnel
         if user.get("groupe") == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
             
-        # Menu de sélection du salon actif
+        salon_actif = st.selectbox("💬 Choisir un salon", salons_accessibles)
+
+        st.divider()
+        if st.button("🚪 Se déconnecter"):
+            if st.session_state.session_id:
+                try:
+                    supabase.table("user_sessions").delete().eq("id", st.session_state.session_id).execute()
+                except Exception:
+                    pass
+            st.session_state.user = None
+            st.session_state.session_id = None
+            st.rerun()
+
+    # --- CORPS DE LA MESSAGERIE ---
+    st.subheader(f"📢 {salon_actif}")
+
+    # Nettoyage automatique des messages de plus de 30 jours (ou affichage standard)
+    try:
+        response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+        messages = response.data if response.data else []
+    except Exception:
+        messages = []
+
+    # Affichage des messages existants
+    for msg in messages:
+        auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+        is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+        
+        with st.chat_message("user" if is_me else "assistant"):
+            st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+            st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+    # Zone de saisie d'un nouveau message
+    if prompt := st.chat_input("Écrivez votre message ici..."):
+        nouveau_msg = {
+            "prenom": user["prenom"],
+            "nom": user["nom"],
+            "groupe": user.get("groupe", "Famille"),
+            "salon": salon_actif,
+            "content": prompt,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        try:
+            supabase.table("messages").insert(nouveau_msg).execute()
+            st.rerun()
+        except Exception as e:
+            st.error("Erreur lors de l'envoi du message.")
