@@ -88,6 +88,7 @@ st.markdown(f"""
         color: #E0E0E0 !important;
     }}
 
+    /* Boutons standards */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -96,9 +97,26 @@ st.markdown(f"""
         padding: 8px 16px;
         font-weight: 500;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        width: 100%;
     }}
     .stButton>button:hover {{
         opacity: 0.9;
+    }}
+
+    /* Style spécifique pour le bouton de suppression de message (Bleu, même taille) */
+    div[data-testid="stVerticalBlock"] button[kind="secondary"] {{
+        background-color: #0084FF !important;
+        color: white !important;
+        border-radius: 20px !important;
+        border: none !important;
+        padding: 8px 16px !important;
+        font-weight: 500 !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        width: 100% !important;
+    }}
+    div[data-testid="stVerticalBlock"] button[kind="secondary"]:hover {{
+        opacity: 0.9 !important;
+        background-color: #0073E6 !important;
     }}
 
     .stTextInput input {{
@@ -219,7 +237,7 @@ if not st.session_state.user:
                         except Exception as ex:
                             st.error(f"⚠️ Erreur : {ex}")
             else:
-                st.warning("All fields are required.")
+                st.warning("Tous les champs sont obligatoires.")
 
 # --- INTERFACE PRINCIPALE DE MESSAGERIE & ADMIN ---
 else:
@@ -420,7 +438,7 @@ else:
                 
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
                 
-                # Bouton de suppression de message (Visible pour l'Admin ou l'auteur du message)
+                # Bouton de suppression de message (Bleu, taille alignée)
                 if user.get("is_admin") or is_me:
                     if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
                         try:
