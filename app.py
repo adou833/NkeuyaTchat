@@ -300,7 +300,7 @@ else:
         with col2:
             try:
                 sessions_res = supabase.table("user_sessions").select("*").execute()
-                    active_sessions = len(sessions_res.data) if sessions_res.data else 0
+                active_sessions = len(sessions_res.data) if sessions_res.data else 0
                 st.metric("Sessions Actives", active_sessions)
             except Exception:
                 st.metric("Sessions Actives", "N/A")
