@@ -396,4 +396,73 @@ else:
                             
                             user_prenom = user['prenom']
                             if user_prenom in current_reactions[em]:
-                                current_reactions[em].remove(user_prenom
+                                current_reactions[em].remove(user_prenom)
+                                if not current_reactions[em]:
+                                    del current_reactions[em]
+                            else:
+                                current_reactions[em].append(user_prenom)
+                            
+                            try:
+                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(f"Erreur réaction : {ex}")
+
+        # --- ENVOI DE FICHIERS / MÉDIAS & MESSAGE TEXTE ---
+        with st.expander("📎 Joindre une photo, un document ou un son"):
+            uploaded_file = st.file_uploader("Choisir un fichier", type=["png", "jpg", "jpeg", "pdf", "mp3", "wav", "ogg", "m4a", "docx", "txt"])
+            caption_file = st.text_input("Légende (optionnel)", key="caption_file_input")
+            
+            if st.button("📤 Envoyer le fichier"):
+                if uploaded_file:
+                    try:
+                        file_bytes = uploaded_file.getvalue()
+                        file_ext = uploaded_file.name.split('.')[-1].lower()
+                        file_name = f"{int(datetime.now().timestamp())}_{uploaded_file.name}"
+                        
+                        # Upload dans le bucket Supabase Storage nommé "media"
+                        supabase.storage.from_("media").upload(file_name, file_bytes)
+                        media_url = supabase.storage.from_("media").get_public_url(file_name)
+                        
+                        # Déterminer le type de média
+                        if file_ext in ["png", "jpg", "jpeg"]:
+                            m_type = "image"
+                        elif file_ext in ["mp3", "wav", "ogg", "m4a"]:
+                            m_type = "audio"
+                        else:
+                            m_type = "document"
+                            
+                        nouveau_msg = {
+                            "salon": salon_actif,
+                            "content": caption_file if caption_file else f"Fichiers joints : {uploaded_file.name}",
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "reactions": {},
+                            "media_url": media_url,
+                            "media_type": m_type
+                        }
+                        supabase.table("messages").insert(nouveau_msg).execute()
+                        st.success("Fichier envoyé avec succès !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur lors de l'envoi du fichier : {e}")
+                else:
+                    st.warning("Veuillez sélectionner un fichier à envoyer.")
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {},
+                "media_url": None,
+                "media_type": None
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
