@@ -345,17 +345,18 @@ else:
             auteur = msg.get('sender_prenom', 'Anonyme')
             is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
             msg_id = msg.get('id')
-            reactions = msg.get('reactions', {}) # Dictionnaire des réactions ex: {"👍": ["Eric", "Marie"]}
+            reactions = msg.get('reactions', {})
             
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {msg.get('content', '')}")
                 
-                # Affichage des réactions existantes sous le message
-                if reactions:
+                # Gestion sécurisée des réactions
+                if reactions and isinstance(reactions, dict):
                     react_str = " "
                     for emoji, users_list in reactions.items():
                         if users_list:
-                            react_str += f"`{emoji} {len(users_list)}` "
+                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
+                            react_str += f"`{emoji} {count}` "
                     st.caption(react_str)
                 
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
@@ -366,12 +367,10 @@ else:
                 for idx, em in enumerate(emojis_dispo):
                     with cols_react[idx]:
                         if st.button(em, key=f"react_{msg_id}_{em}"):
-                            # Mettre à jour les réactions dans Supabase
-                            current_reactions = dict(reactions) if reactions else {}
-                            if em not in current_reactions:
+                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
+                            if em not in current_reactions or not isinstance(current_reactions[em], list):
                                 current_reactions[em] = []
                             
-                            # Basculer l'avis de l'utilisateur (ajouter ou retirer)
                             user_prenom = user['prenom']
                             if user_prenom in current_reactions[em]:
                                 current_reactions[em].remove(user_prenom)
