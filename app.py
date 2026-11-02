@@ -32,7 +32,7 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 if "session_id" not in st.session_state:
-    st.session_id = None
+    st.session_state.session_id = None
 
 # --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
@@ -64,7 +64,6 @@ st.markdown(f"""
     /* ================================================================= */
     /* AJUSTEMENT MAXIMUM PLEIN ÉCRAN MOBILE SANS VIDE                  */
     /* ================================================================= */
-    /* Suppression totale des marges système et fonds techniques */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
@@ -72,7 +71,6 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* Supprime les paddings internes imposés par Streamlit sur les côtés */
     [data-testid="stAppViewBlockContainer"] {{
         padding-top: 0px !important;
         padding-bottom: 0px !important;
@@ -80,19 +78,14 @@ st.markdown(f"""
         padding-right: 10px !important;
     }}
     
-    /* Conteneur principal étiré au maximum de l'écran du téléphone */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
         max-width: 730px !important;
         margin: 0 auto !important;
-        
-        /* Occupe 100% de l'écran disponible sous la barre de notification */
         height: calc(100vh - env(safe-area-inset-top)) !important;
         min-height: calc(100vh - env(safe-area-inset-top)) !important;
-        
-        /* Calage parfait au pixel près sous la barre système */
         margin-top: env(safe-area-inset-top) !important; 
         margin-bottom: 0px !important;
     }}
@@ -102,7 +95,6 @@ st.markdown(f"""
         margin-top: 0px !important;
     }}
     
-    /* En-tête style WhatsApp - Parfaitement aligné */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -120,7 +112,6 @@ st.markdown(f"""
         padding: 0 !important;
     }}
 
-    /* Boutons arrondis */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -134,7 +125,6 @@ st.markdown(f"""
         opacity: 0.9;
     }}
 
-    /* Champs de saisie agrandis et arrondis */
     .stTextInput input {{
         border-radius: 22px !important;
         padding: 12px 16px !important;
@@ -146,7 +136,6 @@ st.markdown(f"""
         border-radius: 18px !important;
     }}
 
-    /* Bulles de messages et conteneurs arrondis */
     .stChatMessage {{
         border-radius: 14px !important;
         padding: 10px;
@@ -256,3 +245,19 @@ else:
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         if user["groupe"] == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
+            
+        # Menu de sélection du salon actif
+        salon_actif = st.selectbox("💬 Choisir un salon", salons_accessibles)
+        
+        st.divider()
+        if st.button("🚪 Se Déconnecter"):
+            st.session_state.user = None
+            st.session_state.session_id = None
+            st.rerun()
+
+    # --- AFFICHAGE ET ENVOI DES MESSAGES ---
+    st.subheader(f"📍 {salon_actif}")
+    
+    # 1. Récupération des anciens messages pour le salon actif (limité aux 50 derniers)
+    try:
+        msg_res = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", ascending=True).limit(50).execute()
