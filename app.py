@@ -46,51 +46,66 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 st.markdown(f"""
     <style>
     /* ================================================================= */
-    /* BLOC SÉCURITÉ : MASQUAGE DES BARRES D'OUTILS ET ICÔNES STREAMLIT */
+    /* BLOC SÉCURITÉ : MASQUAGE STRICT DES BARRES ET FOOTER STREAMLIT   */
     /* ================================================================= */
-    [data-testid="stToolbar"] {{visibility: hidden !important; display: none !important;}}
-    [data-testid="stDecoration"] {{visibility: hidden !important; height: 0px !important;}}
-    #MainMenu {{visibility: hidden !important;}}
-    footer {{visibility: hidden !important;}}
-    [data-testid="stStatusWidget"] {{visibility: hidden !important;}}
-    header {{visibility: hidden !important;}}
+    [data-testid="stToolbar"], 
+    [data-testid="stDecoration"], 
+    #MainMenu, 
+    footer, 
+    [data-testid="stStatusWidget"], 
+    header,
+    .stDeployButton,
+    [data-testid="stViewerToolbar"] {{
+        visibility: hidden !important; 
+        display: none !important;
+        height: 0px !important;
+    }}
     
     /* ================================================================= */
-    /* DESIGN DE L'APPLICATION (VOTRE STYLE EXISTING)                  */
+    /* SUPPRESSION DES VIDES ET PLEINE HAUTEUR POUR MOBILE               */
     /* ================================================================= */
+    /* Supprime les espaces blancs tout en haut imposés par Streamlit */
+    [data-testid="stAppViewBlockContainer"] {{
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+    }}
+    
     /* Fond général de la page */
     .stApp {{
         background-color: #ECE5DD;
     }}
     
-    /* Conteneur principal avec arrondis en haut et en bas */
+    /* Conteneur principal collé en haut, pleine hauteur sur mobile */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
-        border-radius: 28px !important;
+        border-radius: 0px 0px 28px 28px !important; /* Arrondi seulement en bas */
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
-        margin: 20px auto !important;
+        margin: 0 auto !important; /* Supprime le décalage du haut (margin-top à 0) */
         max-width: 730px !important;
+        min-height: 100vh !important; /* Force l'application à prendre tout l'écran */
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
-        padding: 20px !important;
-        border-radius: 28px !important;
+        padding: 15px !important;
+        margin-top: 0px !important;
     }}
     
-    /* En-tête décalé vers le bas et épuré style WhatsApp */
+    /* En-tête style WhatsApp - Collé en haut */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 10px 14px;
-        border-radius: 16px;
+        padding: 14px 14px;
+        border-radius: 0px 0px 16px 16px; /* Arrondi uniquement en bas pour coller le haut */
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: 10px;
-        margin-bottom: 15px;
+        margin-top: -15px; /* Compense le léger padding restant */
+        margin-left: -15px;
+        margin-right: -15px;
+        margin-bottom: 20px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
         margin: 0 !important;
         padding: 0 !important;
     }}
