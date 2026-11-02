@@ -238,7 +238,7 @@ else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar)
+    # Barre latérale (Sidebar) - Entièrement aplatie pour éviter les IndentationError
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
@@ -250,11 +250,9 @@ else:
 
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
-        if user["groupe"] == "Femmes":
+        
+        # Ajout linéaire sécurisé sans décalage de bloc conditionnel
+        if user.get("groupe") == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
             
         # Menu de sélection du salon actif
-        salon_actif = st.selectbox("💬 Choisir un salon", salons_accessibles)
-        
-        st.divider()
-        if st.button("🚪 Se Déconnecter"):
