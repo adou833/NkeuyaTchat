@@ -232,14 +232,11 @@ else:
         if groupe_user == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
         elif groupe_user == "Hommes":
-            salons_accessibles.append("Salon : Groupe Privé Hommes")
+            salons_accessibles.append("Salon : Groupe Privé Garçons")
         elif groupe_user == "Filles":
             salons_accessibles.append("Salon : Groupe Privé Filles")
         elif groupe_user == "Petits fils et filles":
-            salons_accessibles.append("Salon : Groupe Privé Petits-enfants")
-            
-        if user.get("is_admin"):
-            salons_accessibles.extend(["Salon : Administration & Annonces", "Salon : Échanges Techniques"])
+            salons_accessibles.append("Salon : Groupe Privé Petits-fils/filles")
 
         salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
 
