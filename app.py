@@ -48,7 +48,7 @@ st.markdown(f"""
     footer {{ visibility: hidden; }}
     [data-testid="stDecoration"] {{ display: none !important; }}
 
-    /* Bandeau compact et élégant (identique à ton ancienne configuration) */
+    /* Bandeau compact et élégant */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -354,4 +354,8 @@ else:
                     react_str = " "
                     for emoji, users_list in reactions.items():
                         if users_list:
-                            count = len(users_list) if isinstance(users_list, (list, tuple
+                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
+                            react_str += f"`{emoji} {count}` "
+                    st.caption(react_str)
+                
+                st.caption
