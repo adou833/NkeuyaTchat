@@ -62,40 +62,51 @@ st.markdown(f"""
     }}
     
     /* ================================================================= */
-    /* DESIGN DE L'APPLICATION ET CORRECTION DES BORDURES HAUTES         */
+    /* AJUSTEMENT PLEIN ÉCRAN MOBILE ET RESPECT BARRE DE NOTIFICATIONS */
     /* ================================================================= */
-    /* Réduit l'espace blanc technique imposé par Streamlit tout en haut */
+    /* Réinitialisation complète des marges de l'application */
+    html, body, .stApp {{
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100vh !important;
+        background-color: #ECE5DD !important;
+    }}
+
+    /* Supprime les paddings internes imposés par Streamlit en haut */
     [data-testid="stAppViewBlockContainer"] {{
-        padding-top: 10px !important;
+        padding-top: 0px !important;
         padding-bottom: 0px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
     }}
     
-    /* Fond général de la page */
-    .stApp {{
-        background-color: #ECE5DD;
-    }}
-    
-    /* Conteneur principal - Arrondi harmonieux sur tous les coins */
+    /* Conteneur principal - S'ajuste sous la barre système (safe area) */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
-        border-radius: 28px !important; /* Arrondit les 4 côtés pour épouser le style */
+        border-radius: 28px !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
-        margin: 15px auto !important; /* Ajoute un léger espace esthétique en haut */
         max-width: 730px !important;
-        min-height: calc(100vh - 30px) !important; /* Garde la pleine hauteur sur mobile */
+        margin: 0 auto !important;
+        
+        /* Gestion intelligente de la hauteur : s'adapte à l'écran du téléphone */
+        height: calc(100vh - env(safe-area-inset-top) - 10px) !important;
+        min-height: calc(100vh - env(safe-area-inset-top) - 10px) !important;
+        
+        /* Ajoute un léger espace juste en dessous de la barre d'état (heure/batterie) */
+        margin-top: calc(env(safe-area-inset-top) + 5px) !important; 
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
-        padding: 20px !important;
+        padding: 15px !important;
         margin-top: 0px !important;
     }}
     
-    /* En-tête style WhatsApp - Alignée sur les angles de la page */
+    /* En-tête style WhatsApp - Parfaitement aligné */
     .main-header {{
         background-color: {primary_color};
         color: white;
         padding: 14px 14px;
-        border-radius: 16px; /* Arrondi identique de 16px sur tous les coins */
+        border-radius: 16px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
