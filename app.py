@@ -258,8 +258,9 @@ else:
     # --- AFFICHAGE ET ENVOI DES MESSAGES ---
     st.subheader(f"📍 {salon_actif}")
     
-    # Lecture sécurisée des messages
+    # Lecture sécurisée et isolée des messages
     messages_list = []
-    base_de_donnees_ok = True
     try:
         msg_res = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", ascending=True).limit(50).execute()
+        if msg_res and msg_res.data:
+            messages_list = msg_res.data
