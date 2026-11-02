@@ -64,7 +64,7 @@ st.markdown(f"""
         padding-top: 25px !important;
     }}
     
-    /* Bandeau NkeuyaTchat compact, élégant et décalé vers le bas pour ne pas être masqué */
+    /* Bandeau NkeuyaTchat compact, élégant et décalé vers le bas */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -296,4 +296,34 @@ else:
             st.write("Aucune table de sessions disponible.")
 
     else:
-        # --- CORPS DE LA MESS
+        # --- CORPS DE LA MESSAGERIE ---
+        st.subheader(f"📢 {salon_actif}")
+
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "prenom": user["prenom"],
+                "nom": user["nom"],
+                "groupe": user.get("groupe", "Famille"),
+                "salon": salon_actif,
+                "content": prompt,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
