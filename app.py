@@ -303,3 +303,58 @@ else:
                 sessions_res = supabase.table("user_sessions").select("*").execute()
                 active_sessions = len(sessions_res.data) if sessions_res.data else 0
                 st.metric("Sessions Actives", active_sessions)
+            except Exception:
+                st.metric("Sessions Actives", "N/A")
+        
+        st.markdown("### 👥 Liste des utilisateurs enregistrés")
+        try:
+            res_users = supabase.table("profiles").select("nom, prenom, phone, groupe, is_admin").execute()
+            if res_users.data:
+                st.dataframe(res_users.data, use_container_width=True)
+            else:
+                st.write("Aucun utilisateur trouvé.")
+        except Exception:
+            st.error("Impossible de charger les profils depuis Supabase.")
+            
+        st.markdown("### 🟢 Sessions connectées en direct")
+        try:
+            res_sess = supabase.table("user_sessions").select("*").execute()
+            if res_sess.data:
+                st.dataframe(res_sess.data, use_container_width=True)
+            else:
+                st.write("Aucune session active en cours.")
+        except Exception:
+            st.write("Aucune table de sessions disponible.")
+
+    else:
+        # --- CORPS DE LA MESSAGERIE ---
+        st.subheader(f"📢 {salon_actif}")
+
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "prenom": user["prenom"],
+                "nom": user["nom"],
+                "groupe": user.get("groupe", "Famille"),
+                "salon": salon_actif,
+                "content": prompt,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
