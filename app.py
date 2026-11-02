@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS HAUT ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -45,7 +45,7 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquage des éléments superflus SANS bloquer le bouton mobile de la sidebar */
+    /* Masquage des éléments inutiles MAIS conservation absolue du bouton de menu mobile */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
     #MainMenu, 
@@ -58,7 +58,7 @@ st.markdown(f"""
         height: 0px !important;
     }}
     
-    /* Plein écran mobile et conteneur principal avec arrondis en haut */
+    /* Fond général de l'application */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
@@ -69,6 +69,7 @@ st.markdown(f"""
         padding: 0px !important;
     }}
     
+    /* Conteneur principal avec arrondis stricts en haut (28px) et fond blanc */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px 28px 0 0 !important;
@@ -80,6 +81,17 @@ st.markdown(f"""
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
+        padding-top: 25px !important;
+    }}
+    
+    /* Correction spécifique mobile pour forcer l'affichage du bouton de la barre latérale */
+    [data-testid="stSidebarNav"] {{
+        display: block !important;
+    }}
+    button[kind="header"] {{
+        display: flex !important;
+        visibility: visible !important;
+        z-index: 999999 !important;
     }}
     
     .main-header {{
@@ -232,7 +244,6 @@ else:
         st.divider()
         st.subheader("💬 Salons de Discussion")
         
-        # Liste complète des salons par défaut et selon le groupe
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         
         groupe_user = user.get("groupe", "")
@@ -250,7 +261,6 @@ else:
 
         salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
 
-        # Panneau d'administration rapide dans la sidebar pour Eric
         vue_admin = False
         if user.get("is_admin"):
             st.divider()
@@ -293,56 +303,4 @@ else:
         
         st.markdown("### 👥 Liste des utilisateurs enregistrés")
         try:
-            res_users = supabase.table("profiles").select("nom, prenom, phone, groupe, is_admin").execute()
-            if res_users.data:
-                st.dataframe(res_users.data, use_container_width=True)
-            else:
-                st.write("Aucun utilisateur trouvé.")
-        except Exception:
-            st.error("Impossible de charger les profils depuis Supabase.")
-            
-        st.markdown("### 🟢 Sessions connectées en direct")
-        try:
-            res_sess = supabase.table("user_sessions").select("*").execute()
-            if res_sess.data:
-                st.dataframe(res_sess.data, use_container_width=True)
-            else:
-                st.write("Aucune session active en cours.")
-        except Exception:
-            st.write("Aucune table de sessions disponible.")
-
-    else:
-        # --- CORPS DE LA MESSAGERIE ---
-        st.subheader(f"📢 {salon_actif}")
-
-        # Récupération des messages du salon actif depuis Supabase
-        try:
-            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages = response.data if response.data else []
-        except Exception:
-            messages = []
-
-        # Affichage des messages sous forme de bulles
-        for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
-            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-
-        # Zone de saisie d'un nouveau message
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "prenom": user["prenom"],
-                "nom": user["nom"],
-                "groupe": user.get("groupe", "Famille"),
-                "salon": salon_actif,
-                "content": prompt,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
+            res_users = supabase.table("profiles
