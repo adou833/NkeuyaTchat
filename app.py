@@ -32,7 +32,7 @@ if "user" not in st.session_state:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 if "session_id" not in st.session_state:
-    st.session_state.session_id = None
+    st.session_id = None
 
 # --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
@@ -258,6 +258,8 @@ else:
     # --- AFFICHAGE ET ENVOI DES MESSAGES ---
     st.subheader(f"📍 {salon_actif}")
     
-    # 1. Récupération des anciens messages pour le salon actif (limité aux 50 derniers)
-    try:
-        msg_res = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", ascending=True).limit(50).execute()
+    # Récupération directe des messages pour le salon actif
+    msg_res = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", ascending=True).limit(50).execute()
+    messages_list = msg_res.data if msg_res.data else []
+
+    # Conteneur visuel des messages
