@@ -344,10 +344,47 @@ else:
         for msg in messages:
             auteur = msg.get('sender_prenom', 'Anonyme')
             is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
+            msg_id = msg.get('id')
+            reactions = msg.get('reactions', {}) # Dictionnaire des réactions ex: {"👍": ["Eric", "Marie"]}
             
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                
+                # Affichage des réactions existantes sous le message
+                if reactions:
+                    react_str = " "
+                    for emoji, users_list in reactions.items():
+                        if users_list:
+                            react_str += f"`{emoji} {len(users_list)}` "
+                    st.caption(react_str)
+                
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+                
+                # Petits boutons d'emojis rapides pour réagir au message
+                cols_react = st.columns(5)
+                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
+                for idx, em in enumerate(emojis_dispo):
+                    with cols_react[idx]:
+                        if st.button(em, key=f"react_{msg_id}_{em}"):
+                            # Mettre à jour les réactions dans Supabase
+                            current_reactions = dict(reactions) if reactions else {}
+                            if em not in current_reactions:
+                                current_reactions[em] = []
+                            
+                            # Basculer l'avis de l'utilisateur (ajouter ou retirer)
+                            user_prenom = user['prenom']
+                            if user_prenom in current_reactions[em]:
+                                current_reactions[em].remove(user_prenom)
+                                if not current_reactions[em]:
+                                    del current_reactions[em]
+                            else:
+                                current_reactions[em].append(user_prenom)
+                            
+                            try:
+                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(f"Erreur réaction : {ex}")
 
         if prompt := st.chat_input("Écrivez votre message ici..."):
             nouveau_msg = {
@@ -355,7 +392,8 @@ else:
                 "content": prompt,
                 "sender_prenom": user["prenom"],
                 "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {}
             }
             try:
                 supabase.table("messages").insert(nouveau_msg).execute()
