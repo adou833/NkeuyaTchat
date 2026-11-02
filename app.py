@@ -150,7 +150,6 @@ if not st.session_state.user:
                             break
                 
                 if user_data:
-                    # Vérifier si le compte est bloqué
                     if user_data.get("is_active") is False:
                         st.error("🚫 Ce compte a été bloqué par l'administrateur.")
                     else:
@@ -213,7 +212,6 @@ if not st.session_state.user:
                         supabase.table("profiles").insert(new_user).execute()
                         st.success("🎉 Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
                     except Exception as e:
-                        # Fallback si is_active n'existe pas dans la table profiles
                         try:
                             del new_user["is_active"]
                             supabase.table("profiles").insert(new_user).execute()
@@ -274,8 +272,8 @@ else:
         st.subheader("📊 Tableau de Bord Administrateur (Eric)")
         st.info("Suivi en temps réel et gestion des utilisateurs de NkeuyaTchat.")
         
-        col1, col2 = st.columns(2)
-        with col1:
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
             try:
                 profiles_res = supabase.table("profiles").select("*", count="exact").execute()
                 total_users = len(profiles_res.data) if profiles_res.data else 0
@@ -283,7 +281,7 @@ else:
             except Exception:
                 st.metric("Utilisateurs Inscrits", "N/A")
                 
-        with col2:
+        with col_m2:
             try:
                 sessions_res = supabase.table("user_sessions").select("*").execute()
                 active_sessions = len(sessions_res.data) if sessions_res.data else 0
@@ -303,7 +301,10 @@ else:
                     
                     status_label = "🟢 Actif" if p_active else "🔴 Bloqué"
                     
-                    with st.expander(f"{p_prenom} {p_nom} ({p_phone}) — {status_label}"):
+                    # Utilisation d'un conteneur visible directement (plus besoin de cliquer)
+                    with st.container(border=True):
+                        st.markdown(f"**👤 {p_prenom} {p_nom}** — 📱 *{p_phone}* — {status_label}")
+                        
                         subcol1, subcol2, subcol3 = st.columns(3)
                         
                         # 1. Réinitialisation du mot de passe
@@ -314,7 +315,7 @@ else:
                                     hashed = hash_password(new_pwd)
                                     try:
                                         supabase.table("profiles").update({"password": hashed}).eq("phone", p_phone).execute()
-                                        st.success(f"Mot de passe de {p_prenom} mis à jour !")
+                                        st.success(f"Mot de passe mis à jour !")
                                     except Exception as ex:
                                         st.error(f"Erreur : {ex}")
                                 else:
@@ -322,34 +323,34 @@ else:
                                     
                         # 2. Blocage / Déblocage du compte
                         with subcol2:
-                            st.write("Statut")
+                            st.write("Statut du compte")
                             if p_active:
                                 if st.button(f"🚫 Bloquer", key=f"btn_block_{p.get('id', p_phone)}"):
                                     try:
                                         supabase.table("profiles").update({"is_active": False}).eq("phone", p_phone).execute()
-                                        st.warning(f"Compte de {p_prenom} bloqué.")
+                                        st.warning(f"Compte bloqué.")
                                         st.rerun()
                                     except Exception as ex:
-                                        st.error(f"Erreur (colonne is_active manquante sur Supabase ?): {ex}")
+                                        st.error(f"Erreur : {ex}")
                             else:
                                 if st.button(f"✅ Débloquer", key=f"btn_unblock_{p.get('id', p_phone)}"):
                                     try:
                                         supabase.table("profiles").update({"is_active": True}).eq("phone", p_phone).execute()
-                                        st.success(f"Compte de {p_prenom} débloqué !")
+                                        st.success(f"Compte débloqué !")
                                         st.rerun()
                                     except Exception as ex:
                                         st.error(f"Erreur : {ex}")
                                         
                         # 3. Suppression du compte
                         with subcol3:
-                            st.write("Suppression")
+                            st.write("Action critique")
                             if st.button(f"🗑️ Supprimer", key=f"btn_delete_{p.get('id', p_phone)}"):
                                 if p_prenom.strip().lower() == "eric":
                                     st.error("Impossible de supprimer l'admin principal.")
                                 else:
                                     try:
                                         supabase.table("profiles").delete().eq("phone", p_phone).execute()
-                                        st.success(f"Compte de {p_prenom} supprimé.")
+                                        st.success(f"Compte supprimé.")
                                         st.rerun()
                                     except Exception as ex:
                                         st.error(f"Erreur : {ex}")
@@ -396,65 +397,4 @@ else:
         # --- CORPS DE LA MESSAGERIE ---
         try:
             response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages = response.data if response.data else []
-        except Exception:
-            messages = []
-
-        for msg in messages:
-            auteur = msg.get('sender_prenom', 'Anonyme')
-            is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
-            msg_id = msg.get('id')
-            reactions = msg.get('reactions', {})
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-                
-                # Gestion sécurisée des réactions
-                if reactions and isinstance(reactions, dict):
-                    react_str = " "
-                    for emoji, users_list in reactions.items():
-                        if users_list:
-                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
-                            react_str += f"`{emoji} {count}` "
-                    st.caption(react_str)
-                
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-                
-                # Petits boutons d'emojis rapides pour réagir au message
-                cols_react = st.columns(5)
-                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
-                for idx, em in enumerate(emojis_dispo):
-                    with cols_react[idx]:
-                        if st.button(em, key=f"react_{msg_id}_{em}"):
-                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
-                            if em not in current_reactions or not isinstance(current_reactions[em], list):
-                                current_reactions[em] = []
-                            
-                            user_prenom = user['prenom']
-                            if user_prenom in current_reactions[em]:
-                                current_reactions[em].remove(user_prenom)
-                                if not current_reactions[em]:
-                                    del current_reactions[em]
-                            else:
-                                current_reactions[em].append(user_prenom)
-                            
-                            try:
-                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
-                                st.rerun()
-                            except Exception as ex:
-                                st.error(f"Erreur réaction : {ex}")
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "salon": salon_actif,
-                "content": prompt,
-                "sender_prenom": user["prenom"],
-                "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "reactions": {}
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
+            messages
