@@ -42,20 +42,13 @@ theme_colors = {
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
-st.markdown(f"""
+st.markdown("""
     <style>
-    .main-header {{
-        background-color: {primary_color};
-        color: white;
-        padding: 14px 16px;
-        border-radius: 14px;
-        text-align: center;
-        margin-bottom: 20px;
-    }}
-    .main-header h2, .main-header p {{
-        color: white !important;
-        margin: 0;
-    }}
+    /* Masquer le menu hamburger de Streamlit, le pied de page et les icônes de contrôle */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    [data-testid="stToolbar"] {display: none !important;}
     </style>
 """, unsafe_allow_html=True)
 
