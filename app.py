@@ -354,6 +354,7 @@ else:
                 "salon": salon_actif,
                 "content": prompt,
                 "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             try:
