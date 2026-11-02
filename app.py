@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- DESIGN PROPRE ET STABLE (WHATSAPP) ---
+# --- DESIGN PROPRE ET ESPACEMENT MOBILE ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -50,33 +50,35 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
     
-    /* Conteneur principal avec arrondis en haut et fond blanc */
+    /* Conteneur principal avec arrondis en haut, fond blanc et marge de sécurité en haut */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px 28px 0 0 !important;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
         max-width: 730px !important;
         margin: 0 auto !important;
+        padding-top: 15px !important;
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
-        padding: 15px !important;
-        padding-top: 20px !important;
+        padding: 20px !important;
+        padding-top: 30px !important;
     }}
     
-    /* Bandeau NkeuyaTchat compact, élégant et visible */
+    /* Bandeau NkeuyaTchat bien visible et espacé */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 10px 14px;
+        padding: 12px 16px;
         border-radius: 16px;
         text-align: center;
         font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        margin-top: 15px;
+        margin-bottom: 25px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
@@ -117,9 +119,6 @@ st.markdown(f"""
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
-    # Espaceur vertical pour descendre le tout vers le milieu de l'écran sur mobile
-    st.markdown("<div style='height: 12vh;'></div>", unsafe_allow_html=True)
-    
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
@@ -300,32 +299,3 @@ else:
     else:
         # --- CORPS DE LA MESSAGERIE ---
         st.subheader(f"📢 {salon_actif}")
-
-        try:
-            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages = response.data if response.data else []
-        except Exception:
-            messages = []
-
-        for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
-            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "prenom": user["prenom"],
-                "nom": user["nom"],
-                "groupe": user.get("groupe", "Famille"),
-                "salon": salon_actif,
-                "content": prompt,
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
