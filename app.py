@@ -352,7 +352,6 @@ else:
         if prompt := st.chat_input("Écrivez votre message ici..."):
             nouveau_msg = {
                 "prenom": user["prenom"],
-                "nom": user["nom"],
                 "salon": salon_actif,
                 "content": prompt,
                 "created_at": datetime.now(timezone.utc).isoformat()
