@@ -62,9 +62,9 @@ st.markdown(f"""
     }}
     
     /* ================================================================= */
-    /* AJUSTEMENT PLEIN ÉCRAN MOBILE ET RESPECT BARRE DE NOTIFICATIONS */
+    /* AJUSTEMENT MAXIMUM PLEIN ÉCRAN MOBILE SANS VIDE                  */
     /* ================================================================= */
-    /* Réinitialisation complète des marges de l'application */
+    /* Suppression totale des marges système et fonds techniques */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
@@ -72,7 +72,7 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* Supprime les paddings internes imposés par Streamlit en haut */
+    /* Supprime les paddings internes imposés par Streamlit sur les côtés */
     [data-testid="stAppViewBlockContainer"] {{
         padding-top: 0px !important;
         padding-bottom: 0px !important;
@@ -80,7 +80,7 @@ st.markdown(f"""
         padding-right: 10px !important;
     }}
     
-    /* Conteneur principal - S'ajuste sous la barre système (safe area) */
+    /* Conteneur principal étiré au maximum de l'écran du téléphone */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
         border-radius: 28px !important;
@@ -88,12 +88,13 @@ st.markdown(f"""
         max-width: 730px !important;
         margin: 0 auto !important;
         
-        /* Gestion intelligente de la hauteur : s'adapte à l'écran du téléphone */
-        height: calc(100vh - env(safe-area-inset-top) - 10px) !important;
-        min-height: calc(100vh - env(safe-area-inset-top) - 10px) !important;
+        /* Occupe 100% de l'écran disponible sous la barre de notification */
+        height: calc(100vh - env(safe-area-inset-top)) !important;
+        min-height: calc(100vh - env(safe-area-inset-top)) !important;
         
-        /* Ajoute un léger espace juste en dessous de la barre d'état (heure/batterie) */
-        margin-top: calc(env(safe-area-inset-top) + 5px) !important; 
+        /* Calage parfait au pixel près sous la barre système */
+        margin-top: env(safe-area-inset-top) !important; 
+        margin-bottom: 0px !important;
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
@@ -255,5 +256,3 @@ else:
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         if user["groupe"] == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
-        
-        # Vous pouvez continuer à coder vos salons et l'affichage des messages ici...
