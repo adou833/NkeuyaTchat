@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & LIBÉRATION DU MENU MOBILE ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & NETTOYAGE SIDEBAR MOBILE ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -65,7 +65,7 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* GARANTIR QUE L'EN-TÊTE MOBILE ET LE BOUTON MENU RESTENT CLIQUABLES AU DESSUS */
+    /* En-tête mobile transparent pour laisser libre le bouton du menu hamburger */
     header[data-testid="stHeader"] {{
         background-color: transparent !important;
         position: fixed !important;
@@ -95,6 +95,12 @@ st.markdown(f"""
         padding-top: 10px !important;
     }}
     
+    /* Style propre pour la barre latérale sur mobile */
+    [data-testid="stSidebar"] {{
+        background-color: #FFFFFF !important;
+        border-right: 1px solid #E0E0E0 !important;
+    }}
+
     /* Bandeau NkeuyaTchat compact et élégant */
     .main-header {{
         background-color: {primary_color};
@@ -235,7 +241,7 @@ else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar) complète avec gestion des salons et mode Admin
+    # Barre latérale (Sidebar) propre et non dupliquée
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
