@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & MOBILE SIDEBAR FIX ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & LIBÉRATION DU MENU MOBILE ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -65,17 +65,14 @@ st.markdown(f"""
         background-color: #ECE5DD !important;
     }}
 
-    /* Forcer l'en-tête natif et le bouton hamburger/sidebar au premier plan sur mobile */
+    /* GARANTIR QUE L'EN-TÊTE MOBILE ET LE BOUTON MENU RESTENT CLIQUABLES AU DESSUS */
     header[data-testid="stHeader"] {{
         background-color: transparent !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         z-index: 999999 !important;
-    }}
-    
-    /* Bouton de la barre latérale sur Android/Mobile */
-    button[kind="header"] {{
-        display: flex !important;
-        visibility: visible !important;
-        z-index: 9999999 !important;
     }}
 
     [data-testid="stAppViewBlockContainer"] {{
@@ -90,14 +87,15 @@ st.markdown(f"""
         max-width: 730px !important;
         margin: 0 auto !important;
         min-height: 100vh !important;
+        padding-top: 15px !important;
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        padding-top: 20px !important;
+        padding-top: 10px !important;
     }}
     
-    /* Bandeau NkeuyaTchat réduit et compact */
+    /* Bandeau NkeuyaTchat compact et élégant */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -107,6 +105,7 @@ st.markdown(f"""
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         margin-bottom: 15px;
+        margin-top: 5px;
     }}
     .main-header h1, .main-header h2 {{
         font-size: 1rem !important;
@@ -301,7 +300,7 @@ else:
         with col2:
             try:
                 sessions_res = supabase.table("user_sessions").select("*").execute()
-                active_sessions = len(sessions_res.data) if sessions_res.data else 0
+                    active_sessions = len(sessions_res.data) if sessions_res.data else 0
                 st.metric("Sessions Actives", active_sessions)
             except Exception:
                 st.metric("Sessions Actives", "N/A")
