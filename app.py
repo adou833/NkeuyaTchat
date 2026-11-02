@@ -342,16 +342,12 @@ else:
             messages = []
 
         for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')}"
-            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
-            
-            with st.chat_message("user" if is_me else "assistant"):
-                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+            with st.chat_message("user"):
+                st.markdown(f"{msg.get('content', '')}")
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
 
         if prompt := st.chat_input("Écrivez votre message ici..."):
             nouveau_msg = {
-                "prenom": user["prenom"],
                 "salon": salon_actif,
                 "content": prompt,
                 "created_at": datetime.now(timezone.utc).isoformat()
