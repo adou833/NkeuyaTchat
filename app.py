@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS HAUT ---
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & BOUTON MOBILE VISIBLE ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -45,7 +45,7 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquage des éléments inutiles MAIS conservation absolue du bouton de menu mobile */
+    /* Masquage des éléments inutiles */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
     #MainMenu, 
@@ -58,11 +58,17 @@ st.markdown(f"""
         height: 0px !important;
     }}
     
-    /* Fond général de l'application */
+    /* Fond général de l'application (style WhatsApp) */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
         background-color: #ECE5DD !important;
+    }}
+
+    /* Rendre l'en-tête natif transparent et au-dessus pour que le menu mobile / sidebar soit toujours cliquable */
+    header[data-testid="stHeader"] {{
+        background-color: transparent !important;
+        z-index: 999999 !important;
     }}
 
     [data-testid="stAppViewBlockContainer"] {{
@@ -82,16 +88,6 @@ st.markdown(f"""
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
         padding-top: 25px !important;
-    }}
-    
-    /* Correction spécifique mobile pour forcer l'affichage du bouton de la barre latérale */
-    [data-testid="stSidebarNav"] {{
-        display: block !important;
-    }}
-    button[kind="header"] {{
-        display: flex !important;
-        visibility: visible !important;
-        z-index: 999999 !important;
     }}
     
     .main-header {{
