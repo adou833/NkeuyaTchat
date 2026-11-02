@@ -61,10 +61,10 @@ st.markdown(f"""
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        padding-top: 25px !important;
+        padding-top: 20px !important;
     }}
     
-    /* Bandeau NkeuyaTchat compact, élégant et décalé vers le bas */
+    /* Bandeau NkeuyaTchat compact, élégant et visible */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -73,8 +73,7 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: 15px;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }}
     .main-header h1, .main-header h2 {{
         font-size: 1.1rem !important;
@@ -118,6 +117,9 @@ st.markdown(f"""
 
 # --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
+    # Espaceur vertical pour descendre le tout vers le milieu de l'écran sur mobile
+    st.markdown("<div style='height: 12vh;'></div>", unsafe_allow_html=True)
+    
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
