@@ -45,13 +45,12 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquage des éléments natifs Streamlit superflus */
+    /* Masquage des éléments superflus SANS bloquer le bouton mobile de la sidebar */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
     #MainMenu, 
     footer, 
     [data-testid="stStatusWidget"], 
-    header,
     .stDeployButton,
     [data-testid="stViewerToolbar"] {{
         visibility: hidden !important; 
@@ -59,7 +58,7 @@ st.markdown(f"""
         height: 0px !important;
     }}
     
-    /* Plein écran mobile et conteneur principal */
+    /* Plein écran mobile et conteneur principal avec arrondis en haut */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
