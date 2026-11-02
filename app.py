@@ -342,7 +342,7 @@ else:
             messages = []
 
         for msg in messages:
-            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            auteur = f"{msg.get('prenom', 'Anonyme')}"
             is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
             
             with st.chat_message("user" if is_me else "assistant"):
@@ -353,7 +353,6 @@ else:
             nouveau_msg = {
                 "prenom": user["prenom"],
                 "nom": user["nom"],
-                "groupe": user.get("groupe", "Famille"),
                 "salon": salon_actif,
                 "content": prompt,
                 "created_at": datetime.now(timezone.utc).isoformat()
