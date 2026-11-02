@@ -41,34 +41,35 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
+
 st.markdown(f"""
     <style>
-    /* Masquer et désactiver totalement les clics sur les badges Streamlit Cloud et pieds de page */
-    .viewerBadge_container {{ 
-        display: none !important; 
-        visibility: hidden !important; 
-        pointer-events: none !important; 
+    /* Masquer le pied de page Streamlit */
+    footer {{ visibility: hidden; }}
+    [data-testid="stDecoration"] {{ display: none !important; }}
+    .viewerBadge_container {{ display: none !important; }}
+
+    /* Bandeau compact et élégant avec la couleur dynamique */
+    .main-header {{
+        background-color: {primary_color};
+        color: white;
+        padding: 10px 14px;
+        border-radius: 12px;
+        text-align: center;
+        margin-top: -10px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.12);
     }}
-    div[data-testid="stToolbar"] {{ 
-        display: none !important; 
-        pointer-events: none !important; 
+    .main-header h2 {{
+        font-size: 1.1rem !important;
+        color: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }}
-    #MainMenu {{ 
-        visibility: hidden !important; 
-        display: none !important; 
-    }}
-    footer {{ 
-        visibility: hidden !important; 
-        display: none !important; 
-    }}
-    header {{ 
-        visibility: hidden !important; 
-        display: none !important; 
-    }}
-    
-    /* Sécurité supplémentaire : désactiver les clics sur tout élément flottant en bas de page */
-    iframe {{
-        pointer-events: auto; /* Laisse fonctionner le reste si besoin */
+    .main-header p {{
+        font-size: 0.8rem !important;
+        color: #E0E0E0 !important;
+        margin: 3px 0 0 0 !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -327,7 +328,7 @@ else:
 
         membres_connectes_str = ", ".join(connected_names)
 
-        # Affichage du bandeau compact
+        # Affichage du bandeau compact avec couleur
         st.markdown(f"""
             <div class='main-header'>
                 <h2>💬 {salon_actif}</h2>
@@ -372,40 +373,4 @@ else:
                             st.error(f"Erreur de suppression : {ex}")
                 
                 # Réactions par emojis
-                cols_react = st.columns(5)
-                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
-                for idx, em in enumerate(emojis_dispo):
-                    with cols_react[idx]:
-                        if st.button(em, key=f"react_{msg_id}_{em}"):
-                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
-                            if em not in current_reactions or not isinstance(current_reactions[em], list):
-                                current_reactions[em] = []
-                            
-                            user_prenom = user['prenom']
-                            if user_prenom in current_reactions[em]:
-                                current_reactions[em].remove(user_prenom)
-                                if not current_reactions[em]:
-                                    del current_reactions[em]
-                            else:
-                                current_reactions[em].append(user_prenom)
-                            
-                            try:
-                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
-                                st.rerun()
-                            except Exception as ex:
-                                st.error(f"Erreur réaction : {ex}")
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "salon": salon_actif,
-                "content": prompt,
-                "sender_prenom": user["prenom"],
-                "sender_phone": user["phone"],
-                "created_id": datetime.now(timezone.utc).isoformat(),
-                "reactions": {}
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
+                cols_react = st.columns(
