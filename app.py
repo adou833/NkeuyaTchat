@@ -41,34 +41,34 @@ theme_colors = {
 }
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
-
 st.markdown(f"""
     <style>
-    /* Masquer le pied de page Streamlit */
-    footer {{ visibility: hidden; }}
-    [data-testid="stDecoration"] {{ display: none !important; }}
-
-    /* Bandeau compact et élégant */
-    .main-header {{
-        background-color: {primary_color};
-        color: white;
-        padding: 10px 14px;
-        border-radius: 12px;
-        text-align: center;
-        margin-top: -10px;
-        margin-bottom: 15px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+    /* Masquer et désactiver totalement les clics sur les badges Streamlit Cloud et pieds de page */
+    .viewerBadge_container {{ 
+        display: none !important; 
+        visibility: hidden !important; 
+        pointer-events: none !important; 
     }}
-    .main-header h2 {{
-        font-size: 1.1rem !important;
-        color: white !important;
-        margin: 0 !important;
-        padding: 0 !important;
+    div[data-testid="stToolbar"] {{ 
+        display: none !important; 
+        pointer-events: none !important; 
     }}
-    .main-header p {{
-        font-size: 0.8rem !important;
-        color: #E0E0E0 !important;
-        margin: 3px 0 0 0 !important;
+    #MainMenu {{ 
+        visibility: hidden !important; 
+        display: none !important; 
+    }}
+    footer {{ 
+        visibility: hidden !important; 
+        display: none !important; 
+    }}
+    header {{ 
+        visibility: hidden !important; 
+        display: none !important; 
+    }}
+    
+    /* Sécurité supplémentaire : désactiver les clics sur tout élément flottant en bas de page */
+    iframe {{
+        pointer-events: auto; /* Laisse fonctionner le reste si besoin */
     }}
     </style>
 """, unsafe_allow_html=True)
