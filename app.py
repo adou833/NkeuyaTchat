@@ -33,7 +33,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- DESIGN PROPRE ET LISIBLE ---
+# --- DESIGN & COULEURS DU THÈME ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -42,13 +42,31 @@ theme_colors = {
 
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
-st.markdown("""
+st.markdown(f"""
     <style>
-    /* Masquer le menu hamburger de Streamlit, le pied de page et les icônes de contrôle */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    [data-testid="stToolbar"] {display: none !important;}
+    /* Masquer complètement les menus, le footer et le badge Streamlit en bas */
+    #MainMenu {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
+    [data-testid="stToolbar"] {{ display: none !important; }}
+    [data-testid="stDecoration"] {{ display: none !important; }}
+    .viewerBadge_container {{ display: none !important; }}
+    iframe[src*="streamlit.app"] {{ display: none !important; }}
+
+    /* Bandeau dynamique avec la couleur choisie */
+    .main-header {{
+        background-color: {primary_color};
+        color: white;
+        padding: 14px 16px;
+        border-radius: 14px;
+        text-align: center;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }}
+    .main-header h2, .main-header p {{
+        color: white !important;
+        margin: 0;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -305,7 +323,7 @@ else:
 
         membres_connectes_str = ", ".join(connected_names)
 
-        # Affichage du bandeau
+        # Affichage du bandeau dynamique
         st.markdown(f"""
             <div class='main-header'>
                 <h2>💬 {salon_actif}</h2>
