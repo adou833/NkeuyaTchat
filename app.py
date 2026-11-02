@@ -44,14 +44,9 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquer complètement les menus, le footer et le badge Streamlit en bas */
-    #MainMenu {{ visibility: hidden; }}
+    /* Masquer uniquement le pied de page Streamlit (le header est gardé pour afficher le menu latéral sur Android) */
     footer {{ visibility: hidden; }}
-    header {{ visibility: hidden; }}
-    [data-testid="stToolbar"] {{ display: none !important; }}
     [data-testid="stDecoration"] {{ display: none !important; }}
-    .viewerBadge_container {{ display: none !important; }}
-    iframe[src*="streamlit.app"] {{ display: none !important; }}
 
     /* Bandeau dynamique avec la couleur choisie */
     .main-header {{
