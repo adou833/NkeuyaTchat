@@ -146,31 +146,27 @@ if not st.session_state.user:
                             break
                 
                 if user_data:
-                    # Vérifier si le compte est bloqué (si is_active est False)
-                    if user_data.get("is_active") is False:
-                        st.error("🚫 Ce compte a été bloqué par l'administrateur.")
-                    else:
-                        stored_password = user_data["password"]
-                        is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
+                    stored_password = user_data["password"]
+                    is_valid = verify_password(pwd_login, stored_password) or (pwd_login == stored_password)
+                    
+                    if is_valid:
+                        st.session_state.user = user_data
+                        default_salon = "Salon : Général"
+                        try:
+                            session_res = supabase.table("user_sessions").insert({
+                                "prenom": user_data["prenom"],
+                                "nom": user_data["nom"],
+                                "salon": default_salon
+                            }).execute()
+                            if session_res.data:
+                                st.session_state.session_id = session_res.data[0]["id"]
+                        except Exception:
+                            pass
                         
-                        if is_valid:
-                            st.session_state.user = user_data
-                            default_salon = "Salon : Général"
-                            try:
-                                session_res = supabase.table("user_sessions").insert({
-                                    "prenom": user_data["prenom"],
-                                    "nom": user_data["nom"],
-                                    "salon": default_salon
-                                }).execute()
-                                if session_res.data:
-                                    st.session_state.session_id = session_res.data[0]["id"]
-                            except Exception:
-                                pass
-                            
-                            st.success(f"Bienvenue {user_data['prenom']} !")
-                            st.rerun()
-                        else:
-                            st.error("Mot de passe incorrect.")
+                        st.success(f"Bienvenue {user_data['prenom']} !")
+                        st.rerun()
+                    else:
+                        st.error("Mot de passe incorrect.")
                 else:
                     st.error("Prénom introuvable. Vérifiez l'orthographe.")
             except Exception as e:
@@ -202,8 +198,7 @@ if not st.session_state.user:
                         "phone": phone.strip(),
                         "groupe": groupe, 
                         "password": hashed_pwd, 
-                        "is_admin": is_admin,
-                        "is_active": True
+                        "is_admin": is_admin
                     }
                     try:
                         supabase.table("profiles").insert(new_user).execute()
@@ -290,22 +285,20 @@ else:
         
         st.markdown("### 👥 Gestion des utilisateurs")
         try:
-            res_users = supabase.table("profiles").select("id, nom, prenom, phone, groupe, is_admin, is_active").execute()
+            res_users = supabase.table("profiles").select("id, nom, prenom, phone, groupe, is_admin").execute()
             if res_users.data:
                 for p in res_users.data:
                     p_nom = p.get('nom', '')
                     p_prenom = p.get('prenom', '')
                     p_phone = p.get('phone', '')
-                    p_active = p.get('is_active', True)
                     
-                    status_badge = "🟢 Actif" if p_active else "🔴 Bloqué"
-                    with st.expander(f"{p_prenom} {p_nom} ({p_phone}) - {status_badge}"):
-                        subcol1, subcol2, subcol3 = st.columns(3)
+                    with st.expander(f"{p_prenom} {p_nom} ({p_phone})"):
+                        subcol1, subcol2 = st.columns(2)
                         
                         # 1. Réinitialisation du mot de passe
                         with subcol1:
                             new_pwd = st.text_input(f"Nouveau MDP ({p_prenom})", type="password", key=f"pwd_{p.get('id', p_phone)}")
-                            if st.button(f"🔑 Réinitialiser", key=f"btn_reset_{p.get('id', p_phone)}"):
+                            if st.button(f"🔑 Réinitialiser MDP", key=f"btn_reset_{p.get('id', p_phone)}"):
                                 if len(new_pwd) >= 6:
                                     hashed = hash_password(new_pwd)
                                     try:
@@ -316,30 +309,10 @@ else:
                                 else:
                                     st.warning("Minimum 6 caractères requis.")
                                     
-                        # 2. Blocage / Déblocage du compte
+                        # 2. Suppression du compte
                         with subcol2:
-                            st.write("Statut du compte")
-                            if p_active:
-                                if st.button(f"🚫 Bloquer", key=f"btn_block_{p.get('id', p_phone)}"):
-                                    try:
-                                        supabase.table("profiles").update({"is_active": False}).eq("phone", p_phone).execute()
-                                        st.warning(f"Compte de {p_prenom} bloqué.")
-                                        st.rerun()
-                                    except Exception as ex:
-                                        st.error(f"Erreur : {ex}")
-                            else:
-                                if st.button(f"✅ Débloquer", key=f"btn_unblock_{p.get('id', p_phone)}"):
-                                    try:
-                                        supabase.table("profiles").update({"is_active": True}).eq("phone", p_phone).execute()
-                                        st.success(f"Compte de {p_prenom} débloqué !")
-                                        st.rerun()
-                                    except Exception as ex:
-                                        st.error(f"Erreur : {ex}")
-                                        
-                        # 3. Suppression du compte
-                        with subcol3:
-                            st.write("Suppression")
-                            if st.button(f"🗑️ Supprimer", key=f"btn_delete_{p.get('id', p_phone)}"):
+                            st.write("Zone de danger")
+                            if st.button(f"🗑️ Supprimer le compte", key=f"btn_delete_{p.get('id', p_phone)}"):
                                 if p_prenom.strip().lower() == "eric":
                                     st.error("Impossible de supprimer le compte administrateur principal.")
                                 else:
