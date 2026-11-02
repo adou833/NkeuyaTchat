@@ -34,7 +34,7 @@ if "theme_color" not in st.session_state:
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
 
-# --- DESIGN PROPRE ET ESPACEMENT MOBILE ---
+# --- DESIGN WHATSAPP & VISIBILITÉ DES MESSAGES ---
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -108,11 +108,18 @@ st.markdown(f"""
         border-radius: 18px !important;
     }}
 
-    .stChatMessage {{
+    /* Styles pour rendre les messages du chat clairement visibles */
+    [data-testid="stChatMessage"] {{
+        background-color: #F0F2F5 !important;
         border-radius: 14px !important;
-        padding: 10px;
-        margin-bottom: 8px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+        color: #000000 !important;
+    }}
+    
+    [data-testid="stChatMessage"] p, [data-testid="stChatMessage"] span {{
+        color: #111111 !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -299,3 +306,32 @@ else:
     else:
         # --- CORPS DE LA MESSAGERIE ---
         st.subheader(f"📢 {salon_actif}")
+
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "prenom": user["prenom"],
+                "nom": user["nom"],
+                "groupe": user.get("groupe", "Famille"),
+                "salon": salon_actif,
+                "content": prompt,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
