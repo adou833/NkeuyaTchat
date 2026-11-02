@@ -62,11 +62,11 @@ st.markdown(f"""
     }}
     
     /* ================================================================= */
-    /* SUPPRESSION DES VIDES ET PLEINE HAUTEUR POUR MOBILE               */
+    /* DESIGN DE L'APPLICATION ET CORRECTION DES BORDURES HAUTES         */
     /* ================================================================= */
-    /* Supprime les espaces blancs tout en haut imposés par Streamlit */
+    /* Réduit l'espace blanc technique imposé par Streamlit tout en haut */
     [data-testid="stAppViewBlockContainer"] {{
-        padding-top: 0px !important;
+        padding-top: 10px !important;
         padding-bottom: 0px !important;
     }}
     
@@ -75,33 +75,31 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Conteneur principal collé en haut, pleine hauteur sur mobile */
+    /* Conteneur principal - Arrondi harmonieux sur tous les coins */
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
-        border-radius: 0px 0px 28px 28px !important; /* Arrondi seulement en bas */
+        border-radius: 28px !important; /* Arrondit les 4 côtés pour épouser le style */
         box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
-        margin: 0 auto !important; /* Supprime le décalage du haut (margin-top à 0) */
+        margin: 15px auto !important; /* Ajoute un léger espace esthétique en haut */
         max-width: 730px !important;
-        min-height: 100vh !important; /* Force l'application à prendre tout l'écran */
+        min-height: calc(100vh - 30px) !important; /* Garde la pleine hauteur sur mobile */
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
-        padding: 15px !important;
+        padding: 20px !important;
         margin-top: 0px !important;
     }}
     
-    /* En-tête style WhatsApp - Collé en haut */
+    /* En-tête style WhatsApp - Alignée sur les angles de la page */
     .main-header {{
         background-color: {primary_color};
         color: white;
         padding: 14px 14px;
-        border-radius: 0px 0px 16px 16px; /* Arrondi uniquement en bas pour coller le haut */
+        border-radius: 16px; /* Arrondi identique de 16px sur tous les coins */
         text-align: center;
         font-weight: bold;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: -15px; /* Compense le léger padding restant */
-        margin-left: -15px;
-        margin-right: -15px;
+        margin-top: 0px; 
         margin-bottom: 20px;
     }}
     .main-header h1, .main-header h2 {{
