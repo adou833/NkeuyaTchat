@@ -219,7 +219,7 @@ if not st.session_state.user:
                         except Exception as ex:
                             st.error(f"⚠️ Erreur : {ex}")
             else:
-                st.warning("Tous les champs sont obligatoires.")
+                st.warning("All fields are required.")
 
 # --- INTERFACE PRINCIPALE DE MESSAGERIE & ADMIN ---
 else:
@@ -270,7 +270,7 @@ else:
     # --- VUE ADMIN OU VUE MESSAGERIE ---
     if user.get("is_admin") and vue_admin:
         st.subheader("📊 Tableau de Bord Administrateur (Eric)")
-        st.info("Suivi en temps réel et gestion des utilisateurs de NkeuyaTchat.")
+        st.info("Suivi en temps réel, modération des messages et gestion des mots de passe.")
         
         col_m1, col_m2 = st.columns(2)
         with col_m1:
@@ -289,7 +289,7 @@ else:
             except Exception:
                 st.metric("Sessions Actives", "N/A")
         
-        st.markdown("### 👥 Gestion des utilisateurs")
+        st.markdown("### 👥 Gestion des utilisateurs & Mots de passe définitifs / provisoires")
         try:
             res_users = supabase.table("profiles").select("*").execute()
             if res_users.data:
@@ -306,19 +306,19 @@ else:
                         
                         subcol1, subcol2, subcol3 = st.columns(3)
                         
-                        # 1. Réinitialisation du mot de passe
+                        # 1. Attribuer un mot de passe (Définitif ou Provisoire)
                         with subcol1:
-                            new_pwd = st.text_input(f"Nouveau MDP", type="password", key=f"pwd_{p.get('id', p_phone)}")
-                            if st.button(f"🔑 Réinitialiser", key=f"btn_reset_{p.get('id', p_phone)}"):
-                                if len(new_pwd) >= 6:
+                            new_pwd = st.text_input(f"Mot de passe (Déf/Prov)", type="password", key=f"pwd_{p.get('id', p_phone)}")
+                            if st.button(f"🔑 Définir MDP", key=f"btn_reset_{p.get('id', p_phone)}"):
+                                if new_pwd:
                                     hashed = hash_password(new_pwd)
                                     try:
                                         supabase.table("profiles").update({"password": hashed}).eq("phone", p_phone).execute()
-                                        st.success(f"Mot de passe mis à jour !")
+                                        st.success(f"Mot de passe appliqué !")
                                     except Exception as ex:
                                         st.error(f"Erreur : {ex}")
                                 else:
-                                    st.warning("Min. 6 caractères.")
+                                    st.warning("Saisissez un mot de passe.")
                                     
                         # 2. Blocage / Déblocage du compte
                         with subcol2:
@@ -419,6 +419,16 @@ else:
                     st.caption(react_str)
                 
                 st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+                
+                # Bouton de suppression de message (Visible pour l'Admin ou l'auteur du message)
+                if user.get("is_admin") or is_me:
+                    if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
+                        try:
+                            supabase.table("messages").delete().eq("id", msg_id).execute()
+                            st.success("Message supprimé.")
+                            st.rerun()
+                        except Exception as ex:
+                            st.error(f"Erreur de suppression : {ex}")
                 
                 # Petits boutons d'emojis rapides pour réagir au message
                 cols_react = st.columns(5)
