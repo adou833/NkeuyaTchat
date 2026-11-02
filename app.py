@@ -301,7 +301,6 @@ else:
                     
                     status_label = "🟢 Actif" if p_active else "🔴 Bloqué"
                     
-                    # Utilisation d'un conteneur visible directement (plus besoin de cliquer)
                     with st.container(border=True):
                         st.markdown(f"**👤 {p_prenom} {p_nom}** — 📱 *{p_phone}* — {status_label}")
                         
@@ -397,4 +396,65 @@ else:
         # --- CORPS DE LA MESSAGERIE ---
         try:
             response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-            messages
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = msg.get('sender_prenom', 'Anonyme')
+            is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
+            msg_id = msg.get('id')
+            reactions = msg.get('reactions', {})
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                
+                # Gestion sécurisée des réactions
+                if reactions and isinstance(reactions, dict):
+                    react_str = " "
+                    for emoji, users_list in reactions.items():
+                        if users_list:
+                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
+                            react_str += f"`{emoji} {count}` "
+                    st.caption(react_str)
+                
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+                
+                # Petits boutons d'emojis rapides pour réagir au message
+                cols_react = st.columns(5)
+                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
+                for idx, em in enumerate(emojis_dispo):
+                    with cols_react[idx]:
+                        if st.button(em, key=f"react_{msg_id}_{em}"):
+                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
+                            if em not in current_reactions or not isinstance(current_reactions[em], list):
+                                current_reactions[em] = []
+                            
+                            user_prenom = user['prenom']
+                            if user_prenom in current_reactions[em]:
+                                current_reactions[em].remove(user_prenom)
+                                if not current_reactions[em]:
+                                    del current_reactions[em]
+                            else:
+                                current_reactions[em].append(user_prenom)
+                            
+                            try:
+                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(f"Erreur réaction : {ex}")
+
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {}
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
