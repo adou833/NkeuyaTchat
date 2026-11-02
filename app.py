@@ -69,7 +69,7 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{
         background-color: transparent !important;
         z-index: 999999 !important;
-    }
+    }}
     
     /* Bouton de la barre latérale sur Android/Mobile */
     button[kind="header"] {{
@@ -285,4 +285,21 @@ else:
             st.rerun()
 
     # --- VUE ADMIN OU VUE MESSAGERIE ---
-    if user
+    if user.get("is_admin") and vue_admin:
+        st.subheader("📊 Tableau de Bord Administrateur (Eric)")
+        st.info("Suivi en temps réel de l'activité de NkeuyaTchat.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            try:
+                profiles_res = supabase.table("profiles").select("*", count="exact").execute()
+                total_users = len(profiles_res.data) if profiles_res.data else 0
+                st.metric("Utilisateurs Inscrits", total_users)
+            except Exception:
+                st.metric("Utilisateurs Inscrits", "N/A")
+                
+        with col2:
+            try:
+                sessions_res = supabase.table("user_sessions").select("*").execute()
+                active_sessions = len(sessions_res.data) if sessions_res.data else 0
+                st.metric("Sessions Actives", active_sessions)
