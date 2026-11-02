@@ -204,7 +204,7 @@ if not st.session_state.user:
                         supabase.table("profiles").insert(new_user).execute()
                         st.success("🎉 Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
                     except Exception as e:
-                        st.error("⚠️ Erreur : Ce numéro de téléphone est déjà enregistré.")
+                        st.error(f"⚠️ Erreur : {e}")
             else:
                 st.warning("Tous les champs sont obligatoires.")
 
@@ -226,7 +226,6 @@ else:
         st.divider()
         st.subheader("💬 Salons de Discussion")
         
-        # Tous les salons demandés directement dans le menu déroulant
         salons_accessibles = [
             "Salon : Général", 
             "Salon : Photos de la famille Nkeuya", 
@@ -363,4 +362,4 @@ else:
                 supabase.table("messages").insert(nouveau_msg).execute()
                 st.rerun()
             except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
+                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
