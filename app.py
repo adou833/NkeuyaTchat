@@ -44,23 +44,31 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* Masquer uniquement le pied de page Streamlit (le header est gardé pour afficher le menu latéral sur Android) */
+    /* Masquer le pied de page Streamlit */
     footer {{ visibility: hidden; }}
     [data-testid="stDecoration"] {{ display: none !important; }}
 
-    /* Bandeau dynamique avec la couleur choisie */
+    /* Bandeau compact et élégant (identique à ton ancienne configuration) */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 14px 16px;
-        border-radius: 14px;
+        padding: 10px 14px;
+        border-radius: 12px;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        margin-top: -10px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.12);
     }}
-    .main-header h2, .main-header p {{
+    .main-header h2 {{
+        font-size: 1.1rem !important;
         color: white !important;
-        margin: 0;
+        margin: 0 !important;
+        padding: 0 !important;
+    }}
+    .main-header p {{
+        font-size: 0.8rem !important;
+        color: #E0E0E0 !important;
+        margin: 3px 0 0 0 !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -318,7 +326,7 @@ else:
 
         membres_connectes_str = ", ".join(connected_names)
 
-        # Affichage du bandeau dynamique
+        # Affichage du bandeau compact
         st.markdown(f"""
             <div class='main-header'>
                 <h2>💬 {salon_actif}</h2>
@@ -346,57 +354,4 @@ else:
                     react_str = " "
                     for emoji, users_list in reactions.items():
                         if users_list:
-                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
-                            react_str += f"`{emoji} {count}` "
-                    st.caption(react_str)
-                
-                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-                
-                # Bouton de suppression de message
-                if user.get("is_admin") or is_me:
-                    if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
-                        try:
-                            supabase.table("messages").delete().eq("id", msg_id).execute()
-                            st.success("Message supprimé.")
-                            st.rerun()
-                        except Exception as ex:
-                            st.error(f"Erreur de suppression : {ex}")
-                
-                # Réactions par emojis
-                cols_react = st.columns(5)
-                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
-                for idx, em in enumerate(emojis_dispo):
-                    with cols_react[idx]:
-                        if st.button(em, key=f"react_{msg_id}_{em}"):
-                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
-                            if em not in current_reactions or not isinstance(current_reactions[em], list):
-                                current_reactions[em] = []
-                            
-                            user_prenom = user['prenom']
-                            if user_prenom in current_reactions[em]:
-                                current_reactions[em].remove(user_prenom)
-                                if not current_reactions[em]:
-                                    del current_reactions[em]
-                            else:
-                                current_reactions[em].append(user_prenom)
-                            
-                            try:
-                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
-                                st.rerun()
-                            except Exception as ex:
-                                st.error(f"Erreur réaction : {ex}")
-
-        if prompt := st.chat_input("Écrivez votre message ici..."):
-            nouveau_msg = {
-                "salon": salon_actif,
-                "content": prompt,
-                "sender_prenom": user["prenom"],
-                "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "reactions": {}
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
+                            count = len(users_list) if isinstance(users_list, (list, tuple
