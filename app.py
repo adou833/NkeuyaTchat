@@ -33,8 +33,6 @@ if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 if "session_id" not in st.session_state:
     st.session_state.session_id = None
-if "messages_locaux" not in st.session_state:
-    st.session_state.messages_locaux = {}
 
 # --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
 theme_colors = {
@@ -47,9 +45,7 @@ primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 st.markdown(f"""
     <style>
-    /* ================================================================= */
-    /* BLOC SÉCURITÉ : MASQUAGE STRICT DES BARRES ET FOOTER STREAMLIT    */
-    /* ================================================================= */
+    /* Masquage des éléments natifs Streamlit superflus */
     [data-testid="stToolbar"], 
     [data-testid="stDecoration"], 
     #MainMenu, 
@@ -63,55 +59,43 @@ st.markdown(f"""
         height: 0px !important;
     }}
     
-    /* ================================================================= */
-    /* AJUSTEMENT MAXIMUM PLEIN ÉCRAN MOBILE SANS VIDE                 */
-    /* ================================================================= */
+    /* Plein écran mobile et conteneur principal */
     html, body, .stApp {{
         margin: 0 !important;
         padding: 0 !important;
-        height: 100vh !important;
         background-color: #ECE5DD !important;
     }}
 
     [data-testid="stAppViewBlockContainer"] {{
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
+        padding: 0px !important;
     }}
     
     [data-testid="stMain"], .main {{
         background-color: #FFFFFF !important;
-        border-radius: 28px !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        border-radius: 28px 28px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
         max-width: 730px !important;
         margin: 0 auto !important;
-        height: calc(100vh - env(safe-area-inset-top)) !important;
-        min-height: calc(100vh - env(safe-area-inset-top)) !important;
-        margin-top: env(safe-area-inset-top) !important; 
-        margin-bottom: 0px !important;
+        min-height: 100vh !important;
     }}
     
     [data-testid="stMainBlockContainer"], [data-testid="block-container"] {{
         padding: 15px !important;
-        margin-top: 0px !important;
     }}
     
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 14px 14px;
-        border-radius: 16px;
+        padding: 16px;
+        border-radius: 20px 20px 12px 12px;
         text-align: center;
         font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        margin-top: 0px; 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         margin-bottom: 20px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.2rem !important;
+        font-size: 1.3rem !important;
         margin: 0 !important;
-        padding: 0 !important;
     }}
 
     .stButton>button {{
@@ -174,7 +158,6 @@ if not st.session_state.user:
                     
                     if is_valid:
                         st.session_state.user = user_data
-                        
                         default_salon = "Salon : Général"
                         try:
                             session_res = supabase.table("user_sessions").insert({
@@ -197,7 +180,7 @@ if not st.session_state.user:
                 st.error("Erreur de connexion à la table 'profiles'. Vérifiez Supabase.")
 
     with tab2:
-        st.subheader("CREER SON COMPTE")
+        st.subheader("Créer son compte")
         nom = st.text_input("Le Nom *", key="signup_nom")
         prenom = st.text_input("Prénom *", key="signup_prenom")
         phone = st.text_input("Le Numéro de téléphone *", key="signup_phone")
@@ -211,12 +194,11 @@ if not st.session_state.user:
         if st.button("✨ S'inscrire", key="btn_signup"):
             if nom and prenom and phone and password and confirm_password:
                 if len(password) < 6:
-                    st.warning("⚠️ Le mot de passe est trop court. Il doit contenir au moins 6 caractères.")
+                    st.warning("⚠️ Le mot de passe est trop court (min. 6 caractères).")
                 elif password != confirm_password:
-                    st.error("❌ Les deux mots de passe ne correspondent pas.")
+                    st.error("❌ Les mots de passe ne correspondent pas.")
                 else:
                     hashed_pwd = hash_password(password)
-                    
                     new_user = {
                         "nom": nom.strip(), 
                         "prenom": prenom.strip(), 
@@ -233,12 +215,12 @@ if not st.session_state.user:
             else:
                 st.warning("Tous les champs sont obligatoires.")
 
-# --- INTERFACE PRINCIPALE DE MESSAGERIE ---
+# --- INTERFACE PRINCIPALE DE MESSAGERIE & ADMIN ---
 else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar) complète
+    # Barre latérale (Sidebar) complète avec gestion des salons et mode Admin
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
@@ -249,12 +231,33 @@ else:
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
         st.divider()
+        st.subheader("💬 Salons de Discussion")
+        
+        # Liste complète des salons par défaut et selon le groupe
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         
-        if user.get("groupe") == "Femmes":
+        groupe_user = user.get("groupe", "")
+        if groupe_user == "Femmes":
             salons_accessibles.append("Salon : Groupe Privé Femmes")
+        elif groupe_user == "Hommes":
+            salons_accessibles.append("Salon : Groupe Privé Hommes")
+        elif groupe_user == "Filles":
+            salons_accessibles.append("Salon : Groupe Privé Filles")
+        elif groupe_user == "Petits fils et filles":
+            salons_accessibles.append("Salon : Groupe Privé Petits-enfants")
             
-        salon_actif = st.selectbox("💬 Choisir un salon", salons_accessibles)
+        if user.get("is_admin"):
+            salons_accessibles.extend(["Salon : Administration & Annonces", "Salon : Échanges Techniques"])
+
+        salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
+
+        # Panneau d'administration rapide dans la sidebar pour Eric
+        vue_admin = False
+        if user.get("is_admin"):
+            st.divider()
+            st.subheader("⚙️ Administration")
+            if st.checkbox("📊 Ouvrir le tableau de bord Admin", key="toggle_admin_view"):
+                vue_admin = True
 
         st.divider()
         if st.button("🚪 Se déconnecter"):
@@ -267,37 +270,80 @@ else:
             st.session_state.session_id = None
             st.rerun()
 
-    # --- CORPS DE LA MESSAGERIE ---
-    st.subheader(f"📢 {salon_actif}")
-
-    # Nettoyage automatique des messages de plus de 30 jours (ou affichage standard)
-    try:
-        response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
-        messages = response.data if response.data else []
-    except Exception:
-        messages = []
-
-    # Affichage des messages existants
-    for msg in messages:
-        auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
-        is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+    # --- VUE ADMIN OU VUE MESSAGERIE ---
+    if user.get("is_admin") and vue_admin:
+        st.subheader("📊 Tableau de Bord Administrateur (Eric)")
+        st.info("Suivi en temps réel de l'activité de NkeuyaTchat.")
         
-        with st.chat_message("user" if is_me else "assistant"):
-            st.markdown(f"**{auteur}** : {msg.get('content', '')}")
-            st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
-
-    # Zone de saisie d'un nouveau message
-    if prompt := st.chat_input("Écrivez votre message ici..."):
-        nouveau_msg = {
-            "prenom": user["prenom"],
-            "nom": user["nom"],
-            "groupe": user.get("groupe", "Famille"),
-            "salon": salon_actif,
-            "content": prompt,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
+        col1, col2 = st.columns(2)
+        with col1:
+            try:
+                profiles_res = supabase.table("profiles").select("*", count="exact").execute()
+                total_users = len(profiles_res.data) if profiles_res.data else 0
+                st.metric("Utilisateurs Inscrits", total_users)
+            except Exception:
+                st.metric("Utilisateurs Inscrits", "N/A")
+                
+        with col2:
+            try:
+                sessions_res = supabase.table("user_sessions").select("*").execute()
+                active_sessions = len(sessions_res.data) if sessions_res.data else 0
+                st.metric("Sessions Actives", active_sessions)
+            except Exception:
+                st.metric("Sessions Actives", "N/A")
+        
+        st.markdown("### 👥 Liste des utilisateurs enregistrés")
         try:
-            supabase.table("messages").insert(nouveau_msg).execute()
-            st.rerun()
-        except Exception as e:
-            st.error("Erreur lors de l'envoi du message.")
+            res_users = supabase.table("profiles").select("nom, prenom, phone, groupe, is_admin").execute()
+            if res_users.data:
+                st.dataframe(res_users.data, use_container_width=True)
+            else:
+                st.write("Aucun utilisateur trouvé.")
+        except Exception:
+            st.error("Impossible de charger les profils depuis Supabase.")
+            
+        st.markdown("### 🟢 Sessions connectées en direct")
+        try:
+            res_sess = supabase.table("user_sessions").select("*").execute()
+            if res_sess.data:
+                st.dataframe(res_sess.data, use_container_width=True)
+            else:
+                st.write("Aucune session active en cours.")
+        except Exception:
+            st.write("Aucune table de sessions disponible.")
+
+    else:
+        # --- CORPS DE LA MESSAGERIE ---
+        st.subheader(f"📢 {salon_actif}")
+
+        # Récupération des messages du salon actif depuis Supabase
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        # Affichage des messages sous forme de bulles
+        for msg in messages:
+            auteur = f"{msg.get('prenom', 'Anonyme')} ({msg.get('groupe', 'Famille')})"
+            is_me = (msg.get('prenom', '').strip().lower() == user['prenom'].strip().lower())
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {msg.get('content', '')}")
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+
+        # Zone de saisie d'un nouveau message
+        if prompt := st.chat_input("Écrivez votre message ici..."):
+            nouveau_msg = {
+                "prenom": user["prenom"],
+                "nom": user["nom"],
+                "groupe": user.get("groupe", "Famille"),
+                "salon": salon_actif,
+                "content": prompt,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
