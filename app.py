@@ -290,3 +290,105 @@ else:
                                 if p_prenom.strip().lower() == "eric":
                                     st.error("Impossible de supprimer l'admin principal.")
                                 else:
+                                    try:
+                                        supabase.table("profiles").delete().eq("phone", p_phone).execute()
+                                        st.success("Compte supprimé.")
+                                        st.rerun()
+                                    except Exception as ex:
+                                        st.error(f"Erreur : {ex}")
+            else:
+                st.write("Aucun utilisateur trouvé.")
+        except Exception as e:
+            st.error(f"Erreur chargement profils : {e}")
+            
+        st.markdown("### 🟢 Sessions connectées en direct")
+        try:
+            res_sess = supabase.table("user_sessions").select("*").execute()
+            if res_sess.data:
+                st.dataframe(res_sess.data, use_container_width=True)
+            else:
+                st.write("Aucune session active en cours.")
+        except Exception:
+            st.write("Aucune table de sessions disponible.")
+
+    else:
+        # --- MISE À JOUR DE LA SESSION SUR LE SALON ACTIF ---
+        if st.session_state.session_id:
+            try:
+                supabase.table("user_sessions").update({"salon": salon_actif}).eq("id", st.session_state.session_id).execute()
+            except Exception:
+                pass
+
+        # --- RÉCUPÉRATION DES MEMBRES CONNECTÉS DANS CE SALON ---
+        try:
+            res_connected = supabase.table("user_sessions").select("prenom").eq("salon", salon_actif).execute()
+            connected_names = list(set([item["prenom"] for item in res_connected.data])) if res_connected.data else [user['prenom']]
+        except Exception:
+            connected_names = [user['prenom']]
+
+        membres_connectes_str = ", ".join(connected_names)
+
+        # Affichage du bandeau compact avec couleur
+        st.markdown(f"""
+            <div class='main-header'>
+                <h2>💬 {salon_actif}</h2>
+                <p>🟢 Membres connectés : {membres_connectes_str}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- CORPS DE LA MESSAGERIE ---
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = msg.get('sender_prenom', 'Anonyme')
+            is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
+            msg_id = msg.get('id')
+            reactions = msg.get('reactions', {})
+            content = msg.get('content', '')
+            media_url = msg.get('media_url')
+            media_type = msg.get('media_type')
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {content}")
+                
+                # Affichage des médias (Photos, Documents, Sons / Vocaux)
+                if media_url:
+                    if media_type == "image":
+                        st.image(media_url, use_column_width=True)
+                    elif media_type == "audio":
+                        st.audio(media_url)
+                    elif media_type == "document":
+                        st.markdown(f"📄 [📥 Télécharger le document]({media_url})")
+
+                if reactions and isinstance(reactions, dict):
+                    react_str = " "
+                    for emoji, users_list in reactions.items():
+                        if users_list:
+                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
+                            react_str += f"`{emoji} {count}` "
+                    st.caption(react_str)
+                
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+                
+                # Bouton de suppression de message
+                if user.get("is_admin") or is_me:
+                    if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
+                        try:
+                            supabase.table("messages").delete().eq("id", msg_id).execute()
+                            st.success("Message supprimé.")
+                            st.rerun()
+                        except Exception as ex:
+                            st.error(f"Erreur de suppression : {ex}")
+                
+                # Réactions par emojis
+                cols_react = st.columns(5)
+                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
+                for idx, em in enumerate(emojis_dispo):
+                    with cols_react[idx]:
+                        if st.button(em, key=f"react_{msg_id}_{em}"):
+                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
+                            if em not in current_reactions or not isinstance(current_reactions[em], list
