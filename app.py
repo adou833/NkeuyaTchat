@@ -193,8 +193,9 @@ else:
 
         salon_actif = st.selectbox("Choisir un salon actif", salons_accessibles)
 
+        # --- BLOC ADMINISTRATION STRICTEMENT RÉSERVÉ À ERIC ---
         vue_admin = False
-        if user.get("is_admin"):
+        if user.get("is_admin") is True and user.get("prenom", "").strip().lower() == "eric":
             st.divider()
             st.subheader("⚙️ Administration")
             if st.checkbox("📊 Ouvrir le tableau de bord Admin", key="toggle_admin_view"):
@@ -212,7 +213,7 @@ else:
             st.rerun()
 
     # --- VUE ADMIN OU VUE MESSAGERIE ---
-    if user.get("is_admin") and vue_admin:
+    if user.get("is_admin") is True and user.get("prenom", "").strip().lower() == "eric" and vue_admin:
         st.subheader("📊 Tableau de Bord Administrateur (Eric)")
         st.info("Suivi en temps réel, modération des messages et gestion des mots de passe.")
         
@@ -400,7 +401,7 @@ else:
                 "content": prompt,
                 "sender_prenom": user["prenom"],
                 "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_id": datetime.now(timezone.utc).isoformat(),
                 "reactions": {}
             }
             try:
