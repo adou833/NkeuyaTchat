@@ -408,26 +408,7 @@ else:
                             except Exception as ex:
                                 st.error(f"Erreur réaction : {ex}")
 
-        # --- 1. BARRE DE SAISIE DE TEXTE PRINCIPALE ---
-        prompt = st.chat_input("Écrivez votre message ici...")
-        if prompt:
-            nouveau_msg = {
-                "salon": salon_actif,
-                "content": prompt,
-                "sender_prenom": user["prenom"],
-                "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "reactions": {},
-                "media_url": None,
-                "media_type": None
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
-
-        # --- 2. OUTILS MULTIMÉDIA ET VOCAL (EN DESSOUS DE LA BARRE DE TCHAT) ---
+        # --- 1. OUTILS MULTIMÉDIA ET VOCAL (AU-DESSUS DE LA BARRE DE TCHAT) ---
         with st.container():
             st.markdown("---")
             media_tab1, media_tab2, media_tab3, media_tab4 = st.tabs(["📸 Photo", "📄 Document", "🎵 Fichier Son", "🎙️ Message Vocal"])
@@ -547,3 +528,22 @@ else:
                             st.rerun()
                         except Exception as e:
                             st.error("Erreur lors de l'envoi du message vocal.")
+
+        # --- 2. BARRE DE SAISIE DE TEXTE PRINCIPALE (EN TOUT DERNIER) ---
+        prompt = st.chat_input("Écrivez votre message ici...")
+        if prompt:
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {},
+                "media_url": None,
+                "media_type": None
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
