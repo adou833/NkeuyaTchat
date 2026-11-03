@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client, Client
 from datetime import datetime, timezone
 import bcrypt
@@ -39,7 +40,6 @@ saved_phone = query_params.get("logged_in_phone", None)
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# Si l'URL contient un téléphone mais que la session est vide, on restaure l'utilisateur automatiquement
 if not st.session_state.user and saved_phone:
     try:
         res = supabase.table("profiles").select("*").eq("phone", saved_phone).execute()
@@ -119,7 +119,6 @@ if not st.session_state.user:
                         
                         if is_valid:
                             st.session_state.user = user_data
-                            # Enregistrement du numéro dans l'URL pour persister après F5
                             st.query_params["logged_in_phone"] = user_data["phone"]
                             
                             default_salon = "Salon : Général"
@@ -227,7 +226,6 @@ else:
                     supabase.table("user_sessions").delete().eq("id", st.session_state.session_id).execute()
                 except Exception:
                     pass
-            # Nettoyage des paramètres URL et de la session à la déconnexion
             st.query_params.clear()
             st.session_state.user = None
             st.session_state.session_id = None
@@ -446,14 +444,15 @@ else:
                             except Exception as ex:
                                 st.error(f"Erreur réaction : {ex}")
 
-        # --- OUTILS MULTIMÉDIA ET VOCAL (AU-DESSUS DE LA BARRE DE TCHAT) ---
+        # --- OUTILS MULTIMÉDIA, VOCAL ET APPELS (AU-DESSUS DE LA BARRE DE TCHAT) ---
         with st.container():
             st.markdown("---")
-            media_tab1, media_tab2, media_tab3, media_tab4 = st.tabs([
+            media_tab1, media_tab2, media_tab3, media_tab4, media_tab5 = st.tabs([
                 "📸 Photo", 
                 "📄 Document", 
                 "🎵 Fichier Son", 
-                "🎙️ Message Vocal"
+                "🎙️ Message Vocal",
+                "📞 Appels"
             ])
             
             with media_tab1:
@@ -595,6 +594,22 @@ else:
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur détaillée du vocal : {e}")
+
+            with media_tab5:
+                st.info(f"📞 Lancer un appel audio ou vidéo en direct pour le **{salon_actif}**.")
+                
+                room_name = f"NkeuyaTchat_{salon_actif.replace(' ', '_').replace(':', '').replace('/', '_')}"
+                jitsi_url = f"https://meet.jit.si/{room_name}"
+                
+                st.markdown(f"""
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <a href="{jitsi_url}" target="_blank" style="text-decoration: none; background-color: #25D366; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1rem; display: inline-block;">
+                            🚀 Ouvrir l'appel en plein écran
+                        </a>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                components.iframe(jitsi_url, height=500, scrolling=True)
 
         # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
         prompt = st.chat_input("Écrivez votre message ici...")
