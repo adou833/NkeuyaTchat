@@ -33,20 +33,20 @@ def verify_password(password: str, hashed: str) -> bool:
     except Exception:
         return False
 
-# --- GESTION DE LA PERSISTANCE VIA L'URL (Anti-déconnexion au rafraîchissement) ---
-query_params = st.query_params
-saved_phone = query_params.get("logged_in_phone", None)
-
+# --- GESTION INSTANTANÉE DE LA PERSISTANCE (Anti-bug / Anti-boucle) ---
 if "user" not in st.session_state:
     st.session_state.user = None
 
-if not st.session_state.user and saved_phone:
-    try:
-        res = supabase.table("profiles").select("*").eq("phone", saved_phone).execute()
-        if res.data:
-            st.session_state.user = res.data[0]
-    except Exception:
-        pass
+# Restauration immédiate via les query_params si non connecté en mémoire
+if not st.session_state.user:
+    saved_phone = st.query_params.get("logged_in_phone", None)
+    if saved_phone:
+        try:
+            res = supabase.table("profiles").select("*").eq("phone", saved_phone).execute()
+            if res.data:
+                st.session_state.user = res.data[0]
+        except Exception:
+            pass
 
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
