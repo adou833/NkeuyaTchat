@@ -1,6 +1,6 @@
 # --- OUTILS MULTIMÉDIA ET VOCAL ---
+        with st.container():
             st.markdown("---")
-            # 1. On définit les 4 onglets ici
             media_tab1, media_tab2, media_tab3, media_tab4 = st.tabs([
                 "📸 Photo", 
                 "📄 Document", 
@@ -8,7 +8,6 @@
                 "🎙️ Message Vocal"
             ])
             
-            # 2. Onglet Photo
             with media_tab1:
                 photo_file = st.file_uploader("Choisir une photo", type=["png", "jpg", "jpeg"], key="photo_uploader")
                 photo_caption = st.text_input("Légende de la photo", key="photo_caption_input")
@@ -38,7 +37,6 @@
                     else:
                         st.warning("Veuillez sélectionner une photo.")
 
-            # 3. Onglet Document
             with media_tab2:
                 doc_file = st.file_uploader("Choisir un document", type=["pdf", "docx", "txt", "xlsx"], key="doc_uploader")
                 doc_caption = st.text_input("Description du document", key="doc_caption_input")
@@ -68,7 +66,6 @@
                     else:
                         st.warning("Veuillez sélectionner un document.")
 
-            # 4. Onglet Fichier Son
             with media_tab3:
                 sound_file = st.file_uploader("Choisir un fichier audio/son", type=["mp3", "wav", "ogg", "m4a"], key="sound_uploader")
                 sound_caption = st.text_input("Légende audio (optionnel)", key="sound_caption_input")
@@ -98,7 +95,6 @@
                     else:
                         st.warning("Veuillez sélectionner un fichier audio.")
 
-            # 5. Onglet Message Vocal
             with media_tab4:
                 st.info("🎙️ Enregistrez un message vocal avec votre micro.")
                 audio_input_file = st.audio_input("Enregistrer un message vocal")
@@ -127,3 +123,22 @@
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur détaillée du vocal : {e}")
+
+        # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
+        prompt = st.chat_input("Écrivez votre message ici...")
+        if prompt:
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {},
+                "media_url": None,
+                "media_type": None
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
