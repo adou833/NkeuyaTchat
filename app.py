@@ -362,7 +362,7 @@ else:
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {content}")
                 
-                # Affichage des médias avec boutons natifs
+                # Affichage des médias
                 if media_url:
                     if media_type == "image":
                         st.image(media_url, use_column_width=True)
@@ -376,10 +376,10 @@ else:
                             </audio>
                         """, unsafe_allow_html=True)
                     elif media_type == "document":
-                        # CORRECTION DU TÉLÉCHARGEMENT DOCUMENT : Forçage du lien de téléchargement direct HTML
+                        # Bouton HTML avec attribut download pour forcer le téléchargement propre
                         st.markdown(f"""
-                            <div style="margin-top: 5px; margin-bottom: 5px;">
-                                <a href="{media_url}" download target="_blank" style="text-decoration: none; background-color: #0084FF; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold;">
+                            <div style="margin-top: 6px; margin-bottom: 6px;">
+                                <a href="{media_url}" download target="_blank" style="text-decoration: none; background-color: {primary_color}; color: white; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
                                     📄 📥 Télécharger le document
                                 </a>
                             </div>
@@ -477,6 +477,7 @@ else:
                             file_bytes = doc_file.getvalue()
                             file_name = f"doc_{int(datetime.now().timestamp())}_{doc_file.name}"
                             
+                            # Détection stricte du type MIME pour éviter l'altération à l'ouverture
                             ext = doc_file.name.split('.')[-1].lower()
                             mime_types = {
                                 "pdf": "application/pdf",
