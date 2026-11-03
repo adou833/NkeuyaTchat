@@ -14,13 +14,13 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. Thème CSS personnalisé - Style "Bleu Nkeuya / WhatsApp"
+# 2. Thème CSS personnalisé - Style "WhatsApp Dark / Vert Nkeuya"
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* Fond principal sombre Bleu Nkeuya */
+    /* Fond général style WhatsApp (Gris-vert sombre, pas noir pur) */
     .stApp {
-        background-color: #0b141a;
+        background-color: #111b21;
         color: #e9edef;
     }
     
@@ -32,6 +32,7 @@ st.markdown("""
         margin-bottom: 20px;
         text-align: center;
         border-bottom: 3px solid #00a884;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     }
     .header-title {
         color: #00a884;
@@ -45,7 +46,7 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* Bulles de message */
+    /* Bulles de message style WhatsApp */
     .chat-bubble-sent {
         background-color: #005c4b;
         color: #e9edef;
@@ -54,6 +55,7 @@ st.markdown("""
         margin-bottom: 8px;
         max-width: 80%;
         margin-left: auto;
+        box-shadow: 0 1px 0.5px rgba(0,0,0,0.2);
     }
     .chat-bubble-received {
         background-color: #202c33;
@@ -63,6 +65,7 @@ st.markdown("""
         margin-bottom: 8px;
         max-width: 80%;
         margin-right: auto;
+        box-shadow: 0 1px 0.5px rgba(0,0,0,0.2);
     }
     
     /* Input & Boutons */
@@ -88,7 +91,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. Connexion sécurisée à Supabase (Evite les crashs au démarrage)
+# 3. Connexion sécurisée à Supabase
 # ---------------------------------------------------------
 @st.cache_resource
 def get_supabase_client() -> Client:
@@ -117,7 +120,7 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 # ---------------------------------------------------------
-# 5. Interface Connexion / Inscription
+# 5. Interface Connexion / Inscription avec Onglets
 # ---------------------------------------------------------
 if not st.session_state.user:
     tab_login, tab_register = st.tabs(["🔐 Connexion", "📝 Inscription"])
@@ -137,7 +140,6 @@ if not st.session_state.user:
                         res = supabase.table("users").select("*").eq("username", username).execute()
                         if res.data:
                             user_data = res.data[0]
-                            # Vérification du mot de passe haché avec bcrypt
                             if bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash'].encode('utf-8')):
                                 st.session_state.user = user_data
                                 st.success("Connexion réussie !")
@@ -165,15 +167,11 @@ if not st.session_state.user:
                     st.error("Les mots de passe ne correspondent pas.")
                 else:
                     try:
-                        # Vérifier si l'utilisateur existe déjà
                         check_user = supabase.table("users").select("username").eq("username", new_username).execute()
                         if check_user.data:
                             st.error("Ce nom d'utilisateur est déjà pris.")
                         else:
-                            # Hachage du mot de passe
                             hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                            
-                            # Insertion dans Supabase
                             new_user_payload = {
                                 "username": new_username,
                                 "password_hash": hashed_pw,
@@ -188,7 +186,6 @@ if not st.session_state.user:
 # 6. Espace de Discussion (Connecté)
 # ---------------------------------------------------------
 else:
-    # Barre supérieure avec utilisateur et bouton de déconnexion
     col_usr, col_btn = st.columns([3, 1])
     with col_usr:
         st.markdown(f"Connecté en tant que **{st.session_state.user['username']}**")
@@ -199,11 +196,9 @@ else:
 
     st.divider()
 
-    # Zone de messages (Exemple de rendu visuel avec bulles)
     st.subheader("💬 Salon de discussion")
 
     try:
-        # Chargement des messages depuis Supabase (limité aux 30 derniers)
         msgs_res = supabase.table("messages").select("*").order("created_at", desc=False).limit(30).execute()
         messages = msgs_res.data if msgs_res.data else []
 
@@ -227,7 +222,6 @@ else:
     except Exception as e:
         st.info("Aucun message à afficher ou table messages non configurée.")
 
-    # Zone de saisie d'un nouveau message
     st.divider()
     with st.form("send_msg_form", clear_on_submit=True):
         input_content = st.text_input("Écrire un message...", placeholder="Tapez votre message ici...")
@@ -243,7 +237,6 @@ else:
             except Exception as e:
                 st.error(f"Erreur d'envoi : {e}")
 
-    # Section Administrateur (Si le compte est admin)
     if st.session_state.user.get('is_admin', False):
         st.sidebar.divider()
         st.sidebar.subheader("👑 Espace Administrateur")
