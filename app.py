@@ -362,7 +362,7 @@ else:
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {content}")
                 
-                # Affichage des médias avec lecteur HTML5 natif
+                # Affichage des médias avec boutons natifs
                 if media_url:
                     if media_type == "image":
                         st.image(media_url, use_column_width=True)
@@ -376,7 +376,14 @@ else:
                             </audio>
                         """, unsafe_allow_html=True)
                     elif media_type == "document":
-                        st.markdown(f"📄 [📥 Télécharger le document]({media_url})")
+                        # CORRECTION DU TÉLÉCHARGEMENT DOCUMENT : Forçage du lien de téléchargement direct HTML
+                        st.markdown(f"""
+                            <div style="margin-top: 5px; margin-bottom: 5px;">
+                                <a href="{media_url}" download target="_blank" style="text-decoration: none; background-color: #0084FF; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold;">
+                                    📄 📥 Télécharger le document
+                                </a>
+                            </div>
+                        """, unsafe_allow_html=True)
 
                 if reactions and isinstance(reactions, dict):
                     react_str = " "
@@ -470,7 +477,6 @@ else:
                             file_bytes = doc_file.getvalue()
                             file_name = f"doc_{int(datetime.now().timestamp())}_{doc_file.name}"
                             
-                            # Détection automatique du type MIME selon l'extension pour un téléchargement parfait
                             ext = doc_file.name.split('.')[-1].lower()
                             mime_types = {
                                 "pdf": "application/pdf",
