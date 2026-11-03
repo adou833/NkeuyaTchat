@@ -521,3 +521,29 @@ else:
 
             with media_tab4:
                 st.info("🎙️ Enregistrez un message vocal ou importez votre mémo vocal (.wav, .mp3, .ogg, .m4a).")
+                audio_input_file = st.audio_input("Enregistrer un message vocal avec votre micro")
+                
+                if audio_input_file is not None:
+                    st.audio(audio_input_file)
+                    if st.button("📤 Envoyer ce message vocal", key="btn_send_voice"):
+                        try:
+                            audio_bytes = audio_input_file.getvalue()
+                            file_name = f"voice_{int(datetime.now().timestamp())}.wav"
+                            supabase.storage.from_("media").upload(file_name, audio_bytes)
+                            media_url = supabase.storage.from_("media").get_public_url(file_name)
+                            
+                            nouveau_msg = {
+                                "salon": salon_actif,
+                                "content": f"🎙️ Message vocal de {user['prenom']}",
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "reactions": {},
+                                "media_url": media_url,
+                                "media_type": "audio"
+                            }
+                            supabase.table("messages").insert(nouveau_msg).execute()
+                            st.success("Message vocal envoyé avec succès !")
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erreur lors de l'envoi du message vocal.")
