@@ -1,5 +1,4 @@
 # --- OUTILS MULTIMÉDIA ET VOCAL ---
-            
             st.markdown("---")
             # 1. On définit les 4 onglets ici
             media_tab1, media_tab2, media_tab3, media_tab4 = st.tabs([
