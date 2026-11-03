@@ -253,4 +253,296 @@ else:
                         subcol1, subcol2, subcol3 = st.columns(3)
                         
                         with subcol1:
-                            new_pwd = st.text_input("Nouveau MDP", type="password", key=f"pwd_{p.get('
+                            new_pwd = st.text_input("Nouveau MDP", type="password", key=f"pwd_{p.get('id', p_phone)}")
+                            if st.button("🔑 Définir MDP", key=f"btn_reset_{p.get('id', p_phone)}"):
+                                if new_pwd:
+                                    hashed = hash_password(new_pwd)
+                                    try:
+                                        supabase.table("profiles").update({"password": hashed}).eq("phone", p_phone).execute()
+                                        st.success("Mot de passe appliqué !")
+                                    except Exception as ex:
+                                        st.error(f"Erreur : {ex}")
+                                else:
+                                    st.warning("Saisissez un mot de passe.")
+                                    
+                        with subcol2:
+                            st.write("Statut du compte")
+                            if p_active:
+                                if st.button("🚫 Bloquer", key=f"btn_block_{p.get('id', p_phone)}"):
+                                    try:
+                                        supabase.table("profiles").update({"is_active": False}).eq("phone", p_phone).execute()
+                                        st.warning("Compte bloqué.")
+                                        st.rerun()
+                                    except Exception as ex:
+                                        st.error(f"Erreur : {ex}")
+                            else:
+                                if st.button("✅ Débloquer", key=f"btn_unblock_{p.get('id', p_phone)}"):
+                                    try:
+                                        supabase.table("profiles").update({"is_active": True}).eq("phone", p_phone).execute()
+                                        st.success("Compte débloqué !")
+                                        st.rerun()
+                                    except Exception as ex:
+                                        st.error(f"Erreur : {ex}")
+                                        
+                        with subcol3:
+                            st.write("Action critique")
+                            if st.button("🗑️ Supprimer", key=f"btn_delete_{p.get('id', p_phone)}"):
+                                if p_prenom.strip().lower() == "eric":
+                                    st.error("Impossible de supprimer l'admin principal.")
+                                else:
+                                    try:
+                                        supabase.table("profiles").delete().eq("phone", p_phone).execute()
+                                        st.success("Compte supprimé.")
+                                        st.rerun()
+                                    except Exception as ex:
+                                        st.error(f"Erreur : {ex}")
+            else:
+                st.write("Aucun utilisateur trouvé.")
+        except Exception as e:
+            st.error(f"Erreur chargement profils : {e}")
+            
+        st.markdown("### 🟢 Sessions connectées en direct")
+        try:
+            res_sess = supabase.table("user_sessions").select("*").execute()
+            if res_sess.data:
+                st.dataframe(res_sess.data, use_container_width=True)
+            else:
+                st.write("Aucune session active en cours.")
+        except Exception:
+            st.write("Aucune table de sessions disponible.")
+
+    else:
+        # --- MISE À JOUR DE LA SESSION SUR LE SALON ACTIF ---
+        if st.session_state.session_id:
+            try:
+                supabase.table("user_sessions").update({"salon": salon_actif}).eq("id", st.session_state.session_id).execute()
+            except Exception:
+                pass
+
+        # --- RÉCUPÉRATION DES MEMBRES CONNECTÉS DANS CE SALON ---
+        try:
+            res_connected = supabase.table("user_sessions").select("prenom").eq("salon", salon_actif).execute()
+            connected_names = list(set([item["prenom"] for item in res_connected.data])) if res_connected.data else [user['prenom']]
+        except Exception:
+            connected_names = [user['prenom']]
+
+        membres_connectes_str = ", ".join(connected_names)
+
+        # Affichage du bandeau compact avec couleur
+        st.markdown(f"""
+            <div class='main-header'>
+                <h2>💬 {salon_actif}</h2>
+                <p>🟢 Membres connectés : {membres_connectes_str}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- CORPS DE LA MESSAGERIE ---
+        try:
+            response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).execute()
+            messages = response.data if response.data else []
+        except Exception:
+            messages = []
+
+        for msg in messages:
+            auteur = msg.get('sender_prenom', 'Anonyme')
+            is_me = (auteur.strip().lower() == user['prenom'].strip().lower())
+            msg_id = msg.get('id')
+            reactions = msg.get('reactions', {})
+            content = msg.get('content', '')
+            media_url = msg.get('media_url')
+            media_type = msg.get('media_type')
+            
+            with st.chat_message("user" if is_me else "assistant"):
+                st.markdown(f"**{auteur}** : {content}")
+                
+                # Affichage des médias (Photos, Documents, Sons / Vocaux)
+                if media_url:
+                    if media_type == "image":
+                        st.image(media_url, use_column_width=True)
+                    elif media_type == "audio":
+                        st.audio(media_url)
+                    elif media_type == "document":
+                        st.markdown(f"📄 [📥 Télécharger le document]({media_url})")
+
+                if reactions and isinstance(reactions, dict):
+                    react_str = " "
+                    for emoji, users_list in reactions.items():
+                        if users_list:
+                            count = len(users_list) if isinstance(users_list, (list, tuple, set)) else 1
+                            react_str += f"`{emoji} {count}` "
+                    st.caption(react_str)
+                
+                st.caption(msg.get('created_at', '')[:16].replace('T', ' à '))
+                
+                # Bouton de suppression de message
+                if user.get("is_admin") or is_me:
+                    if st.button("🗑️ Supprimer ce message", key=f"del_msg_{msg_id}"):
+                        try:
+                            supabase.table("messages").delete().eq("id", msg_id).execute()
+                            st.success("Message supprimé.")
+                            st.rerun()
+                        except Exception as ex:
+                            st.error(f"Erreur de suppression : {ex}")
+                
+                # Réactions par emojis
+                cols_react = st.columns(5)
+                emojis_dispo = ["👍", "❤️", "😂", "😮", "🙏"]
+                for idx, em in enumerate(emojis_dispo):
+                    with cols_react[idx]:
+                        if st.button(em, key=f"react_{msg_id}_{em}"):
+                            current_reactions = dict(reactions) if isinstance(reactions, dict) else {}
+                            if em not in current_reactions or not isinstance(current_reactions[em], list):
+                                current_reactions[em] = []
+                            
+                            user_prenom = user['prenom']
+                            if user_prenom in current_reactions[em]:
+                                current_reactions[em].remove(user_prenom)
+                                if not current_reactions[em]:
+                                    del current_reactions[em]
+                            else:
+                                current_reactions[em].append(user_prenom)
+                            
+                            try:
+                                supabase.table("messages").update({"reactions": current_reactions}).eq("id", msg_id).execute()
+                                st.rerun()
+                            except Exception as ex:
+                                st.error(f"Erreur réaction : {ex}")
+
+        # --- 1. BARRE DE SAISIE DE TEXTE PRINCIPALE ---
+        prompt = st.chat_input("Écrivez votre message ici...")
+        if prompt:
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {},
+                "media_url": None,
+                "media_type": None
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Erreur détaillée lors de l'envoi : {e}")
+
+        # --- 2. BARRE D'OUTILS MULTIMÉDIA ET VOCAL (PLACÉE DIRECTEMENT SOUS LA BARRE DE MESSAGE) ---
+        st.markdown("---")
+        media_tab1, media_tab2, media_tab3, media_tab4 = st.tabs(["📸 Photo", "📄 Document", "🎵 Fichier Son", "🎙️ Message Vocal (Micro)"])
+        
+        with media_tab1:
+            photo_file = st.file_uploader("Choisir une photo", type=["png", "jpg", "jpeg"], key="photo_uploader")
+            photo_caption = st.text_input("Légende de la photo", key="photo_caption_input")
+            if st.button("📤 Envoyer la photo", key="btn_send_photo"):
+                if photo_file:
+                    try:
+                        file_bytes = photo_file.getvalue()
+                        file_name = f"photo_{int(datetime.now().timestamp())}_{photo_file.name}"
+                        supabase.storage.from_("media").upload(file_name, file_bytes)
+                        media_url = supabase.storage.from_("media").get_public_url(file_name)
+                        
+                        nouveau_msg = {
+                            "salon": salon_actif,
+                            "content": photo_caption if photo_caption else f"📸 Photo : {photo_file.name}",
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "reactions": {},
+                            "media_url": media_url,
+                            "media_type": "image"
+                        }
+                        supabase.table("messages").insert(nouveau_msg).execute()
+                        st.success("Photo envoyée avec succès !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur d'envoi de la photo : {e}")
+                else:
+                    st.warning("Veuillez sélectionner une photo.")
+
+        with media_tab2:
+            doc_file = st.file_uploader("Choisir un document", type=["pdf", "docx", "txt", "xlsx"], key="doc_uploader")
+            doc_caption = st.text_input("Description du document", key="doc_caption_input")
+            if st.button("📤 Envoyer le document", key="btn_send_doc"):
+                if doc_file:
+                    try:
+                        file_bytes = doc_file.getvalue()
+                        file_name = f"doc_{int(datetime.now().timestamp())}_{doc_file.name}"
+                        supabase.storage.from_("media").upload(file_name, file_bytes)
+                        media_url = supabase.storage.from_("media").get_public_url(file_name)
+                        
+                        nouveau_msg = {
+                            "salon": salon_actif,
+                            "content": doc_caption if doc_caption else f"📄 Document : {doc_file.name}",
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "reactions": {},
+                            "media_url": media_url,
+                            "media_type": "document"
+                        }
+                        supabase.table("messages").insert(nouveau_msg).execute()
+                        st.success("Document envoyé avec succès !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur d'envoi du document : {e}")
+                else:
+                    st.warning("Veuillez sélectionner un document.")
+
+        with media_tab3:
+            sound_file = st.file_uploader("Choisir un fichier audio/son", type=["mp3", "wav", "ogg", "m4a"], key="sound_uploader")
+            sound_caption = st.text_input("Légende audio (optionnel)", key="sound_caption_input")
+            if st.button("📤 Envoyer le son", key="btn_send_sound"):
+                if sound_file:
+                    try:
+                        file_bytes = sound_file.getvalue()
+                        file_name = f"sound_{int(datetime.now().timestamp())}_{sound_file.name}"
+                        supabase.storage.from_("media").upload(file_name, file_bytes)
+                        media_url = supabase.storage.from_("media").get_public_url(file_name)
+                        
+                        nouveau_msg = {
+                            "salon": salon_actif,
+                            "content": sound_caption if sound_caption else f"🎵 Fichier audio : {sound_file.name}",
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "reactions": {},
+                            "media_url": media_url,
+                            "media_type": "audio"
+                        }
+                        supabase.table("messages").insert(nouveau_msg).execute()
+                        st.success("Son envoyé avec succès !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur d'envoi du son : {e}")
+                else:
+                    st.warning("Veuillez sélectionner un fichier audio.")
+
+        with media_tab4:
+            st.info("🎙️ Enregistrez un message vocal ou importez votre mémo vocal (.wav, .mp3, .ogg, .m4a).")
+            audio_input_file = st.audio_input("Enregistrer un message vocal avec votre micro")
+            
+            if audio_input_file is not None:
+                st.audio(audio_input_file)
+                if st.button("📤 Envoyer ce message vocal", key="btn_send_voice"):
+                    try:
+                        audio_bytes = audio_input_file.getvalue()
+                        file_name = f"voice_{int(datetime.now().timestamp())}.wav"
+                        supabase.storage.from_("media").upload(file_name, audio_bytes)
+                        media_url = supabase.storage.from_("media").get_public_url(file_name)
+                        
+                        nouveau_msg = {
+                            "salon": salon_actif,
+                            "content": f"🎙️ Message vocal de {user['prenom']}",
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "reactions": {},
+                            "media_url": media_url,
+                            "media_type": "audio"
+                        }
+                        supabase.table("messages").insert(nouveau_msg).execute()
+                        st.success("Message vocal envoyé avec succès !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur lors de l'envoi du message vocal : {e}")
