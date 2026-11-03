@@ -362,12 +362,19 @@ else:
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {content}")
                 
-                # Affichage des médias (Photos, Documents, Sons / Vocaux)
+                # Affichage des médias avec lecteur HTML5 natif pour forcer le son vocal
                 if media_url:
                     if media_type == "image":
                         st.image(media_url, use_column_width=True)
                     elif media_type == "audio":
-                        st.audio(media_url, format="audio/wav")
+                        # Utilisation d'un lecteur HTML5 natif pour contourner les blocages du lecteur Streamlit sur les vocaux
+                        st.markdown(f"""
+                            <audio controls style="width: 100%;">
+                                <source src="{media_url}" type="audio/wav">
+                                <source src="{media_url}" type="audio/mp3">
+                                Votre navigateur ne supporte pas l'élément audio.
+                            </audio>
+                        """, unsafe_allow_html=True)
                     elif media_type == "document":
                         st.markdown(f"📄 [📥 Télécharger le document]({media_url})")
 
