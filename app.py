@@ -14,78 +14,78 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. Thème CSS personnalisé - Style "WhatsApp Dark / Vert Nkeuya"
+# 2. Thème CSS personnalisé - Style WhatsApp Clair (Fond non noir)
 # ---------------------------------------------------------
 st.markdown("""
     <style>
-    /* Fond général style WhatsApp (Gris-vert sombre, pas noir pur) */
+    /* Fond général de l'application (Le fond clair classique de WhatsApp) */
     .stApp {
-        background-color: #111b21;
-        color: #e9edef;
+        background-color: #efeae2;
+        color: #111b21;
     }
     
-    /* Bandeau supérieur style WhatsApp */
+    /* Bandeau supérieur */
     .header-bar {
-        background-color: #202c33;
+        background-color: #008069;
         padding: 16px;
         border-radius: 12px;
         margin-bottom: 20px;
         text-align: center;
-        border-bottom: 3px solid #00a884;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .header-title {
-        color: #00a884;
+        color: #ffffff;
         font-size: 26px;
         font-weight: bold;
         margin: 0;
     }
     .header-subtitle {
-        color: #8696a0;
+        color: #e2fef2;
         font-size: 13px;
         margin-top: 4px;
     }
 
-    /* Bulles de message style WhatsApp */
+    /* Bulles de message style WhatsApp Clair */
     .chat-bubble-sent {
-        background-color: #005c4b;
-        color: #e9edef;
+        background-color: #d9fdd3;
+        color: #111b21;
         padding: 10px 14px;
         border-radius: 12px 12px 2px 12px;
         margin-bottom: 8px;
         max-width: 80%;
         margin-left: auto;
-        box-shadow: 0 1px 0.5px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
     }
     .chat-bubble-received {
-        background-color: #202c33;
-        color: #e9edef;
+        background-color: #ffffff;
+        color: #111b21;
         padding: 10px 14px;
         border-radius: 12px 12px 12px 2px;
         margin-bottom: 8px;
         max-width: 80%;
         margin-right: auto;
-        box-shadow: 0 1px 0.5px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
     }
     
-    /* Input & Boutons */
+    /* Champs de texte et formulaires */
     .stTextInput > div > div > input {
-        background-color: #2a3942 !important;
-        color: #e9edef !important;
-        border-radius: 8px !important;
-        border: 1px solid #3b4a54 !important;
-    }
-    .stButton > button {
-        background-color: #00a884 !important;
+        background-color: #ffffff !important;
         color: #111b21 !important;
+        border-radius: 8px !important;
+        border: 1px solid #d1d7db !important;
+    }
+    
+    /* Boutons */
+    .stButton > button {
+        background-color: #008069 !important;
+        color: #ffffff !important;
         font-weight: bold !important;
         border-radius: 8px !important;
         border: none !important;
         width: 100%;
     }
     .stButton > button:hover {
-        background-color: #029071 !important;
-        color: #ffffff !important;
+        background-color: #01755f !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -106,7 +106,7 @@ def get_supabase_client() -> Client:
 supabase = get_supabase_client()
 
 # ---------------------------------------------------------
-# 4. En-tête (Bandeau Style WhatsApp)
+# 4. En-tête
 # ---------------------------------------------------------
 st.markdown("""
     <div class="header-bar">
@@ -209,13 +209,13 @@ else:
             if sender == st.session_state.user['username']:
                 st.markdown(f"""
                     <div class="chat-bubble-sent">
-                        <small style="color: #8696a0;">Moi</small><br>{content}
+                        <small style="color: #667781;">Moi</small><br>{content}
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                     <div class="chat-bubble-received">
-                        <small style="color: #00a884; font-weight:bold;">{sender}</small><br>{content}
+                        <small style="color: #008069; font-weight:bold;">{sender}</small><br>{content}
                     </div>
                 """, unsafe_allow_html=True)
 
