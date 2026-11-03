@@ -376,14 +376,23 @@ else:
                             </audio>
                         """, unsafe_allow_html=True)
                     elif media_type == "document":
-                        # Bouton HTML avec attribut download pour forcer le téléchargement propre
-                        st.markdown(f"""
-                            <div style="margin-top: 6px; margin-bottom: 6px;">
-                                <a href="{media_url}" download target="_blank" style="text-decoration: none; background-color: {primary_color}; color: white; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-                                    📄 📥 Télécharger le document
-                                </a>
-                            </div>
-                        """, unsafe_allow_html=True)
+                        # Extraction du nom original du fichier depuis l'URL ou le contenu
+                        file_display_name = content.split(":")[-1].strip() if ":" in content else "document_telecharge"
+                        
+                        # Téléchargement propre via le bouton natif Streamlit
+                        try:
+                            # On extrait le chemin relatif du fichier dans le bucket Storage depuis l'URL publique
+                            path_in_bucket = media_url.split("/storage/v1/object/public/media/")[-1]
+                            file_bytes = supabase.storage.from_("media").download(path_in_bucket)
+                            st.download_button(
+                                label=f"📄 📥 Télécharger {file_display_name}",
+                                data=file_bytes,
+                                file_name=file_display_name,
+                                key=f"dl_{msg_id}"
+                            )
+                        except Exception:
+                            # Fallback si le téléchargement direct échoue
+                            st.markdown(f"📄 [📥 Ouvrir/Télécharger le document]({media_url})")
 
                 if reactions and isinstance(reactions, dict):
                     react_str = " "
@@ -477,7 +486,6 @@ else:
                             file_bytes = doc_file.getvalue()
                             file_name = f"doc_{int(datetime.now().timestamp())}_{doc_file.name}"
                             
-                            # Détection stricte du type MIME pour éviter l'altération à l'ouverture
                             ext = doc_file.name.split('.')[-1].lower()
                             mime_types = {
                                 "pdf": "application/pdf",
