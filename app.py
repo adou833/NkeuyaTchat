@@ -32,9 +32,22 @@ def verify_password(password: str, hashed: str) -> bool:
     except Exception:
         return False
 
-# Initialisation des variables de session
+# --- GESTION DE LA PERSISTANCE VIA L'URL (Anti-déconnexion au rafraîchissement) ---
+query_params = st.query_params
+saved_phone = query_params.get("logged_in_phone", None)
+
 if "user" not in st.session_state:
     st.session_state.user = None
+
+# Si l'URL contient un téléphone mais que la session est vide, on restaure l'utilisateur automatiquement
+if not st.session_state.user and saved_phone:
+    try:
+        res = supabase.table("profiles").select("*").eq("phone", saved_phone).execute()
+        if res.data:
+            st.session_state.user = res.data[0]
+    except Exception:
+        pass
+
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 if "session_id" not in st.session_state:
@@ -106,6 +119,9 @@ if not st.session_state.user:
                         
                         if is_valid:
                             st.session_state.user = user_data
+                            # Enregistrement du numéro dans l'URL pour persister après F5
+                            st.query_params["logged_in_phone"] = user_data["phone"]
+                            
                             default_salon = "Salon : Général"
                             try:
                                 session_res = supabase.table("user_sessions").insert({
@@ -211,6 +227,8 @@ else:
                     supabase.table("user_sessions").delete().eq("id", st.session_state.session_id).execute()
                 except Exception:
                     pass
+            # Nettoyage des paramètres URL et de la session à la déconnexion
+            st.query_params.clear()
             st.session_state.user = None
             st.session_state.session_id = None
             st.rerun()
