@@ -94,7 +94,6 @@ if not st.session_state.user:
             clean_prenom = prenom_login.strip().lower() if prenom_login else ""
             
             try:
-                # OPTIMISATION : Requête ciblée et instantanée au lieu de charger toute la table
                 res = supabase.table("profiles").select("*").ilike("prenom", clean_prenom).execute()
                 user_data = res.data[0] if res.data else None
                 
@@ -339,7 +338,7 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
-        # --- CORPS DE LA MESSAGERIE (OPTIMISÉ : LIMITÉ AUX 50 DERNIERS MESSAGES) ---
+        # --- CORPS DE LA MESSAGERIE ---
         try:
             response = supabase.table("messages").select("*").eq("salon", salon_actif).order("created_at", desc=False).limit(50).execute()
             messages = response.data if response.data else []
@@ -558,4 +557,42 @@ else:
                             supabase.storage.from_("media").upload(
                                 file_name, 
                                 audio_bytes, 
-                                file_options={"content-type":
+                                file_options={"content-type": "audio/wav"}
+                            )
+                            
+                            media_url = supabase.storage.from_("media").get_public_url(file_name)
+                            
+                            nouveau_msg = {
+                                "salon": salon_actif,
+                                "content": f"🎙️ Message vocal de {user['prenom']}",
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "reactions": {},
+                                "media_url": media_url,
+                                "media_type": "audio"
+                            }
+                            supabase.table("messages").insert(nouveau_msg).execute()
+                            st.success("Message vocal envoyé avec succès !")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erreur détaillée du vocal : {e}")
+
+        # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
+        prompt = st.chat_input("Écrivez votre message ici...")
+        if prompt:
+            nouveau_msg = {
+                "salon": salon_actif,
+                "content": prompt,
+                "sender_prenom": user["prenom"],
+                "sender_phone": user["phone"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "reactions": {},
+                "media_url": None,
+                "media_type": None
+            }
+            try:
+                supabase.table("messages").insert(nouveau_msg).execute()
+                st.rerun()
+            except Exception as e:
+                st.error("Erreur lors de l'envoi du message.")
