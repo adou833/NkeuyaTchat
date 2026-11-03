@@ -376,12 +376,8 @@ else:
                             </audio>
                         """, unsafe_allow_html=True)
                     elif media_type == "document":
-                        # Extraction du nom original du fichier depuis l'URL ou le contenu
                         file_display_name = content.split(":")[-1].strip() if ":" in content else "document_telecharge"
-                        
-                        # Téléchargement propre via le bouton natif Streamlit
                         try:
-                            # On extrait le chemin relatif du fichier dans le bucket Storage depuis l'URL publique
                             path_in_bucket = media_url.split("/storage/v1/object/public/media/")[-1]
                             file_bytes = supabase.storage.from_("media").download(path_in_bucket)
                             st.download_button(
@@ -391,7 +387,6 @@ else:
                                 key=f"dl_{msg_id}"
                             )
                         except Exception:
-                            # Fallback si le téléchargement direct échoue
                             st.markdown(f"📄 [📥 Ouvrir/Télécharger le document]({media_url})")
 
                 if reactions and isinstance(reactions, dict):
@@ -554,19 +549,19 @@ else:
                         st.warning("Veuillez sélectionner un fichier audio.")
 
             with media_tab4:
-                st.info("🎙️ Envoyez un message vocal (enregistré via un dictaphone ou fichier audio).")
-                voice_file = st.file_uploader("Choisir un fichier vocal", type=["wav", "mp3", "m4a", "ogg", "webm"], key="voice_uploader")
-                voice_caption = st.text_input("Légende du vocal (optionnel)", key="voice_caption_input")
+                st.info("🎙️ Enregistrez directement votre message vocal avec votre micro.")
+                audio_input_file = st.audio_input("Enregistrer un message vocal")
                 
-                if st.button("📤 Envoyer le message vocal", key="btn_send_voice"):
-                    if voice_file:
+                if audio_input_file is not None:
+                    st.audio(audio_input_file)
+                    if st.button("📤 Envoyer ce message vocal", key="btn_send_voice"):
                         try:
-                            file_bytes = voice_file.getvalue()
-                            file_name = f"voice_{int(datetime.now().timestamp())}_{voice_file.name}"
+                            audio_bytes = audio_input_file.getvalue()
+                            file_name = f"voice_{int(datetime.now().timestamp())}.wav"
                             
                             supabase.storage.from_("media").upload(
                                 file_name, 
-                                file_bytes, 
+                                audio_bytes, 
                                 file_options={"content-type": "audio/wav"}
                             )
                             
@@ -574,7 +569,7 @@ else:
                             
                             nouveau_msg = {
                                 "salon": salon_actif,
-                                "content": voice_caption if voice_caption else f"🎙️ Message vocal de {user['prenom']}",
+                                "content": f"🎙️ Message vocal de {user['prenom']}",
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
                                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -587,8 +582,6 @@ else:
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur détaillée du vocal : {e}")
-                    else:
-                        st.warning("Veuillez sélectionner un fichier vocal.")
 
         # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
         prompt = st.chat_input("Écrivez votre message ici...")
