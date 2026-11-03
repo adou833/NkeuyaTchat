@@ -367,7 +367,8 @@ else:
                     if media_type == "image":
                         st.image(media_url, use_column_width=True)
                     elif media_type == "audio":
-                        st.audio(media_url)
+                        # CORRECTION 2 : Format explicite pour la lecture audio
+                        st.audio(media_url, format="audio/wav")
                     elif media_type == "document":
                         st.markdown(f"📄 [📥 Télécharger le document]({media_url})")
 
@@ -509,63 +510,4 @@ else:
                                 "media_type": "audio"
                             }
                             supabase.table("messages").insert(nouveau_msg).execute()
-                            st.success("Son envoyé avec succès !")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erreur détaillée : {e}")
-                    else:
-                        st.warning("Veuillez sélectionner un fichier audio.")
-
-            with media_tab4:
-                st.info("🎙️ Enregistrez un message vocal avec votre micro.")
-                audio_input_file = st.audio_input("Enregistrer un message vocal")
-                
-                if audio_input_file is not None:
-                    st.audio(audio_input_file)
-                    if st.button("📤 Envoyer ce message vocal", key="btn_send_voice"):
-                        try:
-                            audio_bytes = audio_input_file.getvalue()
-                            file_name = f"voice_{int(datetime.now().timestamp())}.wav"
-                            
-                            supabase.storage.from_("media").upload(
-                                file_name, 
-                                audio_bytes, 
-                                file_options={"content-type": "audio/wav"}
-                            )
-                            
-                            media_url = supabase.storage.from_("media").get_public_url(file_name)
-                            
-                            nouveau_msg = {
-                                "salon": salon_actif,
-                                "content": f"🎙️ Message vocal de {user['prenom']}",
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "created_at": datetime.now(timezone.utc).isoformat(),
-                                "reactions": {},
-                                "media_url": media_url,
-                                "media_type": "audio"
-                            }
-                            supabase.table("messages").insert(nouveau_msg).execute()
-                            st.success("Message vocal envoyé avec succès !")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erreur détaillée du vocal : {e}")
-
-        # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
-        prompt = st.chat_input("Écrivez votre message ici...")
-        if prompt:
-            nouveau_msg = {
-                "salon": salon_actif,
-                "content": prompt,
-                "sender_prenom": user["prenom"],
-                "sender_phone": user["phone"],
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "reactions": {},
-                "media_url": None,
-                "media_type": None
-            }
-            try:
-                supabase.table("messages").insert(nouveau_msg).execute()
-                st.rerun()
-            except Exception as e:
-                st.error("Erreur lors de l'envoi du message.")
+                            st.success("Son envoyé avec succès
