@@ -37,7 +37,6 @@ def verify_password(password: str, hashed: str) -> bool:
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# Restauration immédiate via les query_params si non connecté en mémoire
 if not st.session_state.user:
     saved_phone = st.query_params.get("logged_in_phone", None)
     if saved_phone:
@@ -452,7 +451,7 @@ else:
                 "📄 Document", 
                 "🎵 Fichier Son", 
                 "🎙️ Message Vocal",
-                "📞 Appels"
+                "📹 Appels Vidéo & Audio"
             ])
             
             with media_tab1:
@@ -596,20 +595,22 @@ else:
                             st.error(f"Erreur détaillée du vocal : {e}")
 
             with media_tab5:
-                st.info(f"📞 Lancer un appel audio ou vidéo en direct pour le **{salon_actif}**.")
-                
                 room_name = f"NkeuyaTchat_{salon_actif.replace(' ', '_').replace(':', '').replace('/', '_')}"
-                jitsi_url = f"https://meet.jit.si/{room_name}"
+                jitsi_url = f"https://meet.jit.si/{room_name}#config.startWithAudioMuted=false&config.startWithVideoMuted=false"
                 
+                # Design de la carte d'appel vidéo
                 st.markdown(f"""
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <a href="{jitsi_url}" target="_blank" style="text-decoration: none; background-color: #25D366; color: white; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1rem; display: inline-block;">
+                    <div style="background: linear-gradient(135deg, {primary_color} 0%, #111 100%); padding: 16px; border-radius: 12px; color: white; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                        <h3 style="margin: 0; font-size: 1.2rem;">📹 Salon Vidéo & Audio en Direct</h3>
+                        <p style="margin: 5px 0 12px 0; font-size: 0.85rem; color: #ddd;">Connecté sur : <b>{salon_actif}</b></p>
+                        <a href="{jitsi_url}" target="_blank" style="text-decoration: none; background-color: #25D366; color: white; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
                             🚀 Ouvrir l'appel en plein écran
                         </a>
                     </div>
                 """, unsafe_allow_html=True)
                 
-                components.iframe(jitsi_url, height=500, scrolling=True)
+                # Fenêtre vidéo intégrée design et spacieuse
+                components.iframe(jitsi_url, height=600, scrolling=True)
 
         # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
         prompt = st.chat_input("Écrivez votre message ici...")
