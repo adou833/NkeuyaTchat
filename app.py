@@ -362,16 +362,16 @@ else:
             with st.chat_message("user" if is_me else "assistant"):
                 st.markdown(f"**{auteur}** : {content}")
                 
-                # Affichage des médias avec lecteur HTML5 natif pour forcer le son vocal
+                # Affichage des médias avec lecteur HTML5 natif
                 if media_url:
                     if media_type == "image":
                         st.image(media_url, use_column_width=True)
                     elif media_type == "audio":
-                        # Utilisation d'un lecteur HTML5 natif pour contourner les blocages du lecteur Streamlit sur les vocaux
                         st.markdown(f"""
                             <audio controls style="width: 100%;">
                                 <source src="{media_url}" type="audio/wav">
                                 <source src="{media_url}" type="audio/mp3">
+                                <source src="{media_url}" type="audio/m4a">
                                 Votre navigateur ne supporte pas l'élément audio.
                             </audio>
                         """, unsafe_allow_html=True)
@@ -524,19 +524,19 @@ else:
                         st.warning("Veuillez sélectionner un fichier audio.")
 
             with media_tab4:
-                st.info("🎙️ Enregistrez un message vocal avec votre micro.")
-                audio_input_file = st.audio_input("Enregistrer un message vocal")
+                st.info("🎙️ Envoyez un message vocal (enregistré au préalable via votre dictaphone ou application vocale).")
+                voice_file = st.file_uploader("Choisir un fichier vocal", type=["wav", "mp3", "m4a", "ogg", "webm"], key="voice_uploader")
+                voice_caption = st.text_input("Légende du vocal (optionnel)", key="voice_caption_input")
                 
-                if audio_input_file is not None:
-                    st.audio(audio_input_file)
-                    if st.button("📤 Envoyer ce message vocal", key="btn_send_voice"):
+                if st.button("📤 Envoyer le message vocal", key="btn_send_voice"):
+                    if voice_file:
                         try:
-                            audio_bytes = audio_input_file.getvalue()
-                            file_name = f"voice_{int(datetime.now().timestamp())}.wav"
+                            file_bytes = voice_file.getvalue()
+                            file_name = f"voice_{int(datetime.now().timestamp())}_{voice_file.name}"
                             
                             supabase.storage.from_("media").upload(
                                 file_name, 
-                                audio_bytes, 
+                                file_bytes, 
                                 file_options={"content-type": "audio/wav"}
                             )
                             
@@ -544,7 +544,7 @@ else:
                             
                             nouveau_msg = {
                                 "salon": salon_actif,
-                                "content": f"🎙️ Message vocal de {user['prenom']}",
+                                "content": voice_caption if voice_caption else f"🎙️ Message vocal de {user['prenom']}",
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
                                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -557,6 +557,8 @@ else:
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur détaillée du vocal : {e}")
+                    else:
+                        st.warning("Veuillez sélectionner un fichier vocal.")
 
         # --- BARRE DE SAISIE DE TEXTE PRINCIPALE ---
         prompt = st.chat_input("Écrivez votre message ici...")
