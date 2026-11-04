@@ -76,7 +76,7 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }}
     .main-header h1, .main-header h2 {{
         font-size: 1.2rem !important;
@@ -173,7 +173,42 @@ if not st.session_state.user:
 # ---------------------------------------------------------
 else:
     user = st.session_state.user
+    
+    # 1. Le grand bandeau principal
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
+
+    # 2. Zone de recherche de membres DIRECTEMENT SOUS LE BANDEAU
+    search_query = st.text_input("🔍 Rechercher un membre pour tchater...", key="search_member_main")
+
+    if search_query:
+        try:
+            all_profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
+            all_profiles = all_profiles_res.data if all_profiles_res.data else []
+            
+            matched_members = [
+                p for p in all_profiles 
+                if search_query.lower() in p["prenom"].lower() or search_query.lower() in p["nom"].lower()
+            ]
+            
+            if matched_members:
+                st.write(f"**Résultats de recherche ({len(matched_members)}) :**")
+                cols = st.columns(min(len(matched_members), 3))
+                for idx, m in enumerate(matched_members):
+                    if m["prenom"].lower() != user["prenom"].lower():
+                        col_idx = idx % len(cols)
+                        with cols[col_idx]:
+                            if st.button(f"💬 {m['prenom']} {m['nom']}", key=f"btn_dm_{m['prenom']}"):
+                                st.session_state.active_dm = f"Chat avec {m['prenom']} {m['nom']}"
+                                st.rerun()
+                    else:
+                        with cols[idx % len(cols)]:
+                            st.caption(f"• {m['prenom']} (Vous)")
+            else:
+                st.info("Aucun membre trouvé.")
+        except Exception:
+            st.warning("Erreur lors de la recherche des membres.")
+
+    st.divider()
 
     # --- BARRE LATÉRALE (SIDEBAR) ---
     with st.sidebar:
@@ -185,44 +220,10 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
-        # --- NOUVEAU : RECHERCHE DE MEMBRES ---
-        st.divider()
-        st.subheader("🔍 Rechercher un membre")
-        search_query = st.text_input("Taper un prénom ou nom...", key="search_member_input")
-
-        # Si l'utilisateur tape une recherche, on filtre les membres
-        selected_dm_salon = None
-        if search_query:
-            try:
-                # Recherche insensible à la casse dans Supabase (ou filtrage en Python)
-                all_profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
-                all_profiles = all_profiles_res.data if all_profiles_res.data else []
-                
-                matched_members = [
-                    p for p in all_profiles 
-                    if search_query.lower() in p["prenom"].lower() or search_query.lower() in p["nom"].lower()
-                ]
-                
-                if matched_members:
-                    st.write(f"Résultats ({len(matched_members)}) :")
-                    for m in matched_members:
-                        # On évite de se chercher soi-même pour un chat direct
-                        if m["prenom"].lower() != user["prenom"].lower():
-                            dm_name = f"💬 Chat avec {m['prenom']} {m['nom']}"
-                            if st.button(f"👤 {m['prenom']} {m['nom']}", key=f"btn_dm_{m['prenom']}"):
-                                st.session_state.active_dm = dm_name
-                        else:
-                            st.caption(f"• {m['prenom']} {m['nom']} (Vous)")
-                else:
-                    st.info("Aucun membre trouvé.")
-            except Exception:
-                st.write("Erreur lors de la recherche.")
-
         # --- GESTION ET FILTRAGE DES SALONS ---
         st.divider()
-        
-        # Si un DM a été sélectionné via la recherche, on l'ajoute ou le met en avant
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
+        
         salons_accessibles.extend([
             "Salon : Femmes",
             "Salon : Garçons",
@@ -230,7 +231,7 @@ else:
             "Salon : Petits fils/filles"
         ])
 
-        # Si l'utilisateur a cliqué sur un profil pour tchater en privé, on l'ajoute aux choix
+        # Si un DM a été sélectionné via la recherche sous le bandeau, on l'ajoute aux choix
         if "active_dm" in st.session_state and st.session_state.active_dm:
             if st.session_state.active_dm not in salons_accessibles:
                 salons_accessibles.insert(0, st.session_state.active_dm)
@@ -240,7 +241,7 @@ else:
             
         salon_choisi = st.selectbox("📌 Choisir un salon / discussion", salons_accessibles, index=default_index, key="select_salon")
 
-        # --- LISTE DES MEMBRES CLASSIQUE ---
+        # --- LISTE DES MEMBRES ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
             try:
@@ -276,9 +277,13 @@ else:
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom") == user["prenom"])
+                is_me = (msg.get("sender_prenom"] == user["prenom"] if "sender_prenom" in msg else False)
+                # Correction de sécurité pour le nom de l'expéditeur
+                sender = msg.get('sender_prenom', 'Anonyme')
+                is_me = (sender == user["prenom"])
+                
                 with st.chat_message("user" if not is_me else "assistant"):
-                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
+                    st.write(f"**{sender}** : {msg.get('content', '')}")
                     if msg.get("file_url"):
                         st.image(msg["file_url"])
     except Exception as e:
