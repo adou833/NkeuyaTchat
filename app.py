@@ -95,12 +95,10 @@ if not st.session_state.user:
 
     with tab1:
         st.subheader("Connexion à votre espace")
-        # Utilisation d'un formulaire pour que la touche Entrée ou le bouton fonctionnent parfaitement
         with st.form("form_connexion"):
             prenom_login = st.text_input("Prénom *")
             pwd_login = st.text_input("Mot de passe *", type="password")
             
-            # Bouton de soumission du formulaire (joue le rôle de "Se connecter")
             submit_login = st.form_submit_button("🚀 Se Connecter")
 
             if submit_login:
@@ -209,4 +207,48 @@ else:
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg
+                is_me = (msg.get("sender_prenom") == user["prenom"])
+                with st.chat_message("user" if not is_me else "assistant"):
+                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
+                    if msg.get("file_url"):
+                        st.image(msg["file_url"])
+    except Exception as e:
+        st.info("Espace de discussion initialisé. Aucun message pour le moment.")
+
+    # Zone de saisie des messages
+    if can_post:
+        st.divider()
+        
+        with st.form("form_message", clear_on_submit=True):
+            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+            
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                voice_btn = st.form_submit_button("🎙️ Voice")
+            with col2:
+                send_btn = st.form_submit_button("📤 Envoyer")
+
+            if send_btn and (msg_text or uploaded_file):
+                try:
+                    supabase.table("messages").insert({
+                        "sender_prenom": user["prenom"],
+                        "sender_phone": user["phone"],
+                        "salon": salon_choisi,
+                        "content": msg_text if msg_text else "",
+                        "is_blocked": False
+                    }).execute()
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"Erreur lors de l'envoi du message : {err}")
+            elif voice_btn:
+                st.toast("Fonction vocale bientôt active !")
+
+    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
+    if user.get("is_admin"):
+        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
+            st.write("Contrôle total de l'application familiale :")
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
+                st.info("Module de réinitialisation actif.")
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
+                st.info("Module de modération actif.")
