@@ -53,25 +53,17 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict (Masquage menu 3 points, stylo, footer, badge et "Manage app")
+# 4. Style CSS strict (Masquage total de la barre d'outils et verrouillage de la page)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
-    /* Masque les 3 points en haut à droite (menu principal Streamlit) */
-    #MainMenu {{visibility: hidden;}}
-    
-    /* Masque le pied de page 'Made with Streamlit' */
-    footer {{visibility: hidden;}}
-    
-    /* Masque le bouton crayon / stylo d'édition en haut */
-    .stAppToolbar {{display: none !important;}}
-    header[data-testid="stHeader"] {{display: none !important;}}
-
-    /* Masque le badge / indicateur en bas à droite */
-    [data-testid="stStatusWidget"] {{display: none !important;}}
-
-    /* Masque le bouton "Gérer l'application" / Manage app en bas à gauche */
-    [data-testid="stToolbar"] {{display: none !important;}}
+    /* Masquage radical de la barre d'outils, du bouton Manage app, du header et du menu */
+    div[data-testid="stToolbar"], header[data-testid="stHeader"], div.stAppToolbar, button[kind="header"], #MainMenu, footer, [data-testid="stStatusWidget"] {{
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }}
 
     /* Bloque complètement le défilement de la page principale */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
