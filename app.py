@@ -1,34 +1,49 @@
 import streamlit as st
 from supabase import create_client, Client
-import json
 
-# Configuration de la page
-st.set_page_config(page_title="NkeuyaTchat", page_icon="💬", layout="centered")
+# ---------------------------------------------------------
+# 1. Configuration de la page
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="NkeuyaTchat", 
+    page_icon="💬", 
+    layout="centered"
+)
 
-# Connexion Supabase via Streamlit Secrets
+# ---------------------------------------------------------
+# 2. Connexion Supabase via Streamlit Secrets
+# ---------------------------------------------------------
 @st.cache_resource
-def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+def init_supabase() -> Client:
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Erreur de connexion aux secrets Supabase : {e}")
+        st.stop()
 
 supabase = init_supabase()
 
-# Initialisation des variables de session
+# ---------------------------------------------------------
+# 3. Initialisation de la session et du thème
+# ---------------------------------------------------------
 if "user" not in st.session_state:
     st.session_state.user = None
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
+# Couleurs dynamiques selon le thème choisi
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
     "Vert Sombre": "#128C7E"
 }
-
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
+# ---------------------------------------------------------
+# 4. Style CSS personnalisé (Theme WhatsApp & Arrondis)
+# ---------------------------------------------------------
 st.markdown(f"""
     <style>
     /* Fond général de la page */
@@ -36,7 +51,7 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Arrondir les angles de toute l'interface principale */
+    /* Conteneur principal arrondi */
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 20px;
@@ -64,7 +79,7 @@ st.markdown(f"""
         color: white !important;
     }}
 
-    /* Boutons arrondis propres et visibles */
+    /* Boutons arrondis */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -77,7 +92,6 @@ st.markdown(f"""
     }}
     .stButton>button:hover {{
         opacity: 0.9;
-        background-color: {primary_color};
         color: white;
     }}
 
@@ -88,11 +102,14 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- INTERFACE DE CONNEXION / INSCRIPTION ---
+# ---------------------------------------------------------
+# 5. Interface de Connexion / Inscription
+# ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
+    # --- ONGLET 1 : CONNEXION ---
     with tab1:
         st.subheader("Connexion à votre espace")
         with st.form("form_connexion"):
@@ -117,8 +134,9 @@ if not st.session_state.user:
                     except Exception as e:
                         st.error(f"Erreur de connexion à la base de données : {e}")
 
+    # --- ONGLET 2 : INSCRIPTION ---
     with tab2:
-        st.subheader("CREER SON COMPTE")
+        st.subheader("Créer son compte familial")
         with st.form("form_inscription"):
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
@@ -130,6 +148,7 @@ if not st.session_state.user:
 
             if submit_signup:
                 if nom and prenom and phone and password:
+                    # Attribution automatique du rôle administrateur à Eric
                     is_admin = True if prenom.strip().lower() == "eric" else False
                     new_user = {
                         "nom": nom.strip(), 
@@ -143,16 +162,18 @@ if not st.session_state.user:
                         supabase.table("profiles").insert(new_user).execute()
                         st.success("Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
                     except Exception as e:
-                        st.error("Erreur : Ce numéro de téléphone ou cet utilisateur existe déjà.")
+                        st.error(f"Erreur lors de l'inscription : Ce numéro existe déjà ou la table pose problème. ({e})")
                 else:
                     st.warning("Tous les champs sont obligatoires.")
 
-# --- INTERFACE PRINCIPALE DE MESSAGERIE ---
+# ---------------------------------------------------------
+# 6. Interface Principale (Utilisateur Connecté)
+# ---------------------------------------------------------
 else:
     user = st.session_state.user
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # Barre latérale (Sidebar)
+    # --- BARRE LATÉRALE (SIDEBAR) ---
     with st.sidebar:
         st.write(f"👤 **{user['prenom']} {user['nom']}**")
         if user.get("is_admin"):
@@ -162,20 +183,22 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
+        # --- GESTION ET FILTRAGE DES SALONS ---
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
-        if user["groupe"] == "Femmes":
+        groupe_usr = user.get("groupe", "")
+        if groupe_usr == "Femmes":
             salons_accessibles.append("Salon : Femmes")
-        elif user["groupe"] == "Hommes":
+        elif groupe_usr == "Hommes":
             salons_accessibles.append("Salon : Hommes")
-        elif user["groupe"] == "Filles":
+        elif groupe_usr == "Filles":
             salons_accessibles.append("Salon : Filles")
-        elif user["groupe"] == "Petits fils et filles":
+        elif groupe_usr == "Petits fils et filles":
             salons_accessibles.append("Salon : Petits fils et filles")
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
-        # --- MEMBRES DE LA FAMILLE ---
+        # --- LISTE DES MEMBRES ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
             try:
@@ -198,57 +221,4 @@ else:
     can_post = True
     if is_photo_salon and not user.get("is_admin"):
         can_post = False
-        st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
-
-    # Affichage des messages depuis Supabase
-    try:
-        messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-        messages = messages_res.data if messages_res.data else []
-        
-        for msg in messages:
-            if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom") == user["prenom"])
-                with st.chat_message("user" if not is_me else "assistant"):
-                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
-                    if msg.get("file_url"):
-                        st.image(msg["file_url"])
-    except Exception as e:
-        st.info("Espace de discussion initialisé. Aucun message pour le moment.")
-
-    # Zone de saisie des messages
-    if can_post:
-        st.divider()
-        
-        with st.form("form_message", clear_on_submit=True):
-            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
-            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
-            
-            col1, col2 = st.columns([1, 4])
-            with col1:
-                voice_btn = st.form_submit_button("🎙️ Voice")
-            with col2:
-                send_btn = st.form_submit_button("📤 Envoyer")
-
-            if send_btn and (msg_text or uploaded_file):
-                try:
-                    supabase.table("messages").insert({
-                        "sender_prenom": user["prenom"],
-                        "sender_phone": user["phone"],
-                        "salon": salon_choisi,
-                        "content": msg_text if msg_text else "",
-                        "is_blocked": False
-                    }).execute()
-                    st.rerun()
-                except Exception as err:
-                    st.error(f"Erreur lors de l'envoi du message : {err}")
-            elif voice_btn:
-                st.toast("Fonction vocale bientôt active !")
-
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
+        st.info("🔒 Ce salon est en lecture seule. Seul l
