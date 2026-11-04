@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict pour bloquer le scroll global et garder les éléments visibles
+# 4. Style CSS strict pour bloquer le scroll global et optimiser l'affichage
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -70,10 +70,10 @@ st.markdown(f"""
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 16px;
-        padding: 0.8rem 1rem !important;
+        padding: 0.6rem 0.8rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        max-height: 96vh !important;
-        margin-top: 5px;
+        max-height: 98vh !important;
+        margin-top: 2px;
         overflow: hidden !important;
         display: flex;
         flex-direction: column;
@@ -83,14 +83,14 @@ st.markdown(f"""
         background-color: {primary_color};
         color: white;
         padding: 6px 10px;
-        border-radius: 10px;
+        border-radius: 8px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         margin-bottom: 4px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
@@ -102,7 +102,7 @@ st.markdown(f"""
         color: white;
         border-radius: 14px;
         border: none;
-        padding: 6px 14px;
+        padding: 6px 12px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -318,8 +318,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES (Hauteur de 180px pour tout garder visible)
-        chat_container = st.container(height=180)
+        # Zone de messages défilante (hauteur optimisée pour tout voir)
+        chat_container = st.container(height=160)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -332,43 +332,35 @@ else:
                         
                         with st.chat_message("user" if not is_me else "assistant"):
                             st.write(f"**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
             except Exception:
-                st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
+                st.info("Aucun message pour le moment.")
 
-        # ZONE DE SAISIE FIXE EN BAS (Parfaitement visible)
-        st.divider()
+        # Zone de saisie compacte et parfaitement visible
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_general")
-            st.caption("200MB max • PNG, JPG, PDF")
-            
-            col1, col2 = st.columns([1, 4])
-            with col1:
-                voice_btn = st.form_submit_button("🎙️ Voice")
-            with col2:
+            col_send1, col_send2 = st.columns([3, 1])
+            with col_send1:
+                st.caption("Tapez votre message ci-dessus")
+            with col_send2:
                 send_btn = st.form_submit_button("📤 Envoyer")
 
-            if send_btn and (msg_text or uploaded_file):
+            if send_btn and msg_text:
                 try:
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
                         "salon": "Général",
-                        "content": msg_text if msg_text else "",
+                        "content": msg_text,
                         "is_blocked": False
                     }).execute()
                     st.rerun()
                 except Exception as err:
-                    st.error(f"Erreur lors de l'envoi du message : {err}")
-            elif voice_btn:
-                st.toast("Fonction vocale bientôt active !")
+                    st.error(f"Erreur : {err}")
 
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
-        st.subheader("📬 Messages non lus de vos salons")
-        chat_container = st.container(height=220)
+        st.subheader("📬 Messages non lus")
+        chat_container = st.container(height=240)
         with chat_container:
             try:
                 unread_messages = []
@@ -381,34 +373,31 @@ else:
                                 unread_messages.append(m)
                 
                 if unread_messages:
-                    st.success(f"Vous avez {len(unread_messages)} message(s) à consulter dans vos salons :")
                     for msg in unread_messages:
                         sender = msg.get('sender_prenom', 'Anonyme')
                         salon_tag = f"📂 *{msg.get('current_salon')}*"
-                        with st.container():
-                            st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                            st.divider()
+                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                        st.divider()
                 else:
                     st.info("Aucun nouveau message non lu.")
             except Exception:
-                st.info("Vérification des messages non lus...")
+                st.info("Vérification en cours...")
 
     # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
-        st.subheader("⭐ Vos messages et éléments favoris")
+        st.subheader("⭐ Vos Favoris")
         
         if "favoris_list" not in st.session_state:
             st.session_state.favoris_list = []
 
         with st.form("form_add_favori", clear_on_submit=True):
-            new_fav = st.text_input("➕ Ajouter un texte ou une information importante en favori...")
-            add_fav_btn = st.form_submit_button("Enregistrer dans mes favoris")
+            new_fav = st.text_input("➕ Ajouter un favori...")
+            add_fav_btn = st.form_submit_button("Enregistrer")
             if add_fav_btn and new_fav:
                 st.session_state.favoris_list.append(new_fav)
-                st.success("Ajouté aux favoris avec succès !")
+                st.success("Ajouté !")
 
-        st.divider()
-        fav_container = st.container(height=180)
+        fav_container = st.container(height=160)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -420,7 +409,7 @@ else:
                             st.session_state.favoris_list.pop(idx)
                             st.rerun()
             else:
-                st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
+                st.info("Aucun favori enregistré.")
 
     # 4. ONGLET : SALONS
     else:
@@ -431,16 +420,14 @@ else:
             st.session_state.is_chatting_in_salon = False
 
         if not st.session_state.is_chatting_in_salon:
-            st.subheader("📌 Vos Salons Disponibles")
-            st.write("Sélectionnez le salon dans lequel vous souhaitez tchater :")
-            
+            st.subheader("📌 Salons Disponibles")
             for salon in salons_accessibles:
                 if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
                     st.session_state.salon_actif = salon
                     st.session_state.is_chatting_in_salon = True
                     st.rerun()
         else:
-            if st.button("⬅️ Retour à la liste des salons"):
+            if st.button("⬅️ Retour aux salons"):
                 st.session_state.is_chatting_in_salon = False
                 st.rerun()
 
@@ -451,10 +438,9 @@ else:
             can_post = True
             if is_photo_salon and not user.get("is_admin"):
                 can_post = False
-                st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
+                st.info("🔒 Salon en lecture seule.")
 
-            # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON
-            chat_container = st.container(height=180)
+            chat_container = st.container(height=160)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
@@ -467,45 +453,33 @@ else:
                             
                             with st.chat_message("user" if not is_me else "assistant"):
                                 st.write(f"**{sender}** : {msg.get('content', '')}")
-                                if msg.get("file_url"):
-                                    st.image(msg["file_url"])
                 except Exception:
-                    st.info("Espace de discussion initialisé. Aucun message pour le moment.")
+                    st.info("Aucun message pour le moment.")
 
-            # ZONE DE SAISIE FIXE DU SALON EN BAS
             if can_post:
-                st.divider()
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload")
-                    st.caption("200MB max • PNG, JPG, PDF")
-                    
-                    col1, col2 = st.columns([1, 4])
-                    with col1:
-                        voice_btn = st.form_submit_button("🎙️ Voice")
-                    with col2:
+                    col_send1, col_send2 = st.columns([3, 1])
+                    with col_send1:
+                        st.caption("Tapez votre message ci-dessus")
+                    with col_send2:
                         send_btn = st.form_submit_button("📤 Envoyer")
 
-                    if send_btn and (msg_text or uploaded_file):
+                    if send_btn and msg_text:
                         try:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
                                 "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
+                                "content": msg_text,
                                 "is_blocked": False
                             }).execute()
                             st.rerun()
                         except Exception as err:
-                            st.error(f"Erreur lors de l'envoi du message : {err}")
-                    elif voice_btn:
-                        st.toast("Fonction vocale bientôt active !")
+                            st.error(f"Erreur : {err}")
 
     # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
     if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
+        with st.expander("🛠️ Administration"):
+            if st.button("⚙️ Réinitialiser un mot de passe", key="admin_pwd"):
+                st.info("Actif.")
