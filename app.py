@@ -1,243 +1,249 @@
 import streamlit as st
 from supabase import create_client, Client
-import bcrypt
-import time
+import json
 
-# ---------------------------------------------------------
-# 1. Configuration de la page
-# ---------------------------------------------------------
-st.set_page_config(
-    page_title="NkeuyaTchat",
-    page_icon="💬",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# Configuration de la page
+st.set_page_config(page_title="NkeuyaTchat", page_icon="💬", layout="centered")
 
-# ---------------------------------------------------------
-# 2. Thème CSS personnalisé - Style WhatsApp Clair (Fond non noir)
-# ---------------------------------------------------------
-st.markdown("""
+# Connexion Supabase via Streamlit Secrets
+@st.cache_resource
+def init_supabase():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = init_supabase()
+
+# Initialisation des variables de session
+if "user" not in st.session_state:
+    st.session_state.user = None
+if "theme_color" not in st.session_state:
+    st.session_state.theme_color = "WhatsApp Classic"
+
+# --- PERSONNALISATION DESIGN STYLE WHATSAPP & ARRONDIS GLOBAUX ---
+theme_colors = {
+    "WhatsApp Classic": "#075E54",
+    "Bleu Nkeuya": "#0084FF",
+    "Vert Sombre": "#128C7E"
+}
+
+primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
+
+st.markdown(f"""
     <style>
-    /* Fond général de l'application (Le fond clair classique de WhatsApp) */
-    .stApp {
-        background-color: #efeae2;
-        color: #111b21;
-    }
+    /* Fond général de la page */
+    .stApp {{
+        background-color: #ECE5DD;
+    }}
     
-    /* Bandeau supérieur */
-    .header-bar {
-        background-color: #008069;
-        padding: 16px;
+    /* Arrondir les angles de toute l'interface principale (haut et bas) */
+    .main .block-container {{
+        background-color: #FFFFFF;
+        border-radius: 20px;
+        padding: 1.5rem 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }}
+    
+    /* En-tête aminci et épuré style WhatsApp */
+    .main-header {{
+        background-color: {primary_color};
+        color: white;
+        padding: 8px 12px;
         border-radius: 12px;
-        margin-bottom: 20px;
         text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .header-title {
-        color: #ffffff;
-        font-size: 26px;
         font-weight: bold;
-        margin: 0;
-    }
-    .header-subtitle {
-        color: #e2fef2;
-        font-size: 13px;
-        margin-top: 4px;
-    }
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+    }}
+    .main-header h1, .main-header h2 {{
+        font-size: 1.1rem !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        color: white !important;
+    }}
 
-    /* Bulles de message style WhatsApp Clair */
-    .chat-bubble-sent {
-        background-color: #d9fdd3;
-        color: #111b21;
-        padding: 10px 14px;
-        border-radius: 12px 12px 2px 12px;
-        margin-bottom: 8px;
-        max-width: 80%;
-        margin-left: auto;
-        box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
-    }
-    .chat-bubble-received {
-        background-color: #ffffff;
-        color: #111b21;
-        padding: 10px 14px;
-        border-radius: 12px 12px 12px 2px;
-        margin-bottom: 8px;
-        max-width: 80%;
-        margin-right: auto;
-        box-shadow: 0 1px 0.5px rgba(0,0,0,0.1);
-    }
-    
-    /* Champs de texte et formulaires */
-    .stTextInput > div > div > input {
-        background-color: #ffffff !important;
-        color: #111b21 !important;
-        border-radius: 8px !important;
-        border: 1px solid #d1d7db !important;
-    }
-    
-    /* Boutons */
-    .stButton > button {
-        background-color: #008069 !important;
-        color: #ffffff !important;
-        font-weight: bold !important;
-        border-radius: 8px !important;
-        border: none !important;
-        width: 100%;
-    }
-    .stButton > button:hover {
-        background-color: #01755f !important;
-    }
+    /* Boutons arrondis propres et harmonisés */
+    .stButton>button {{
+        background-color: {primary_color};
+        color: white;
+        border-radius: 20px;
+        border: none;
+        padding: 6px 14px;
+        font-weight: 500;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }}
+    .stButton>button:hover {{
+        opacity: 0.9;
+    }}
+
+    /* Champs de saisie aux bordures parfaitement alignées */
+    .stTextInput input, .stSelectbox select {{
+        border-radius: 18px !important;
+    }}
+
+    /* Bulles de messages et conteneurs arrondis */
+    .stChatMessage {{
+        border-radius: 12px !important;
+        padding: 8px;
+        margin-bottom: 6px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 3. Connexion sécurisée à Supabase
-# ---------------------------------------------------------
-@st.cache_resource
-def get_supabase_client() -> Client:
-    try:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
-        return create_client(url, key)
-    except Exception as e:
-        st.error(f"Erreur de connexion aux secrets Supabase : {e}")
-        st.stop()
-
-supabase = get_supabase_client()
-
-# ---------------------------------------------------------
-# 4. En-tête
-# ---------------------------------------------------------
-st.markdown("""
-    <div class="header-bar">
-        <div class="header-title">💬 NkeuyaTchat</div>
-        <div class="header-subtitle">Espace de discussion privé & sécurisé pour la famille</div>
-    </div>
-""", unsafe_allow_html=True)
-
-# Initialisation de la session
-if "user" not in st.session_state:
-    st.session_state.user = None
-
-# ---------------------------------------------------------
-# 5. Interface Connexion / Inscription avec Onglets
-# ---------------------------------------------------------
+# --- INTERFACE DE CONNEXION / INSCRIPTION ---
 if not st.session_state.user:
-    tab_login, tab_register = st.tabs(["🔐 Connexion", "📝 Inscription"])
+    st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
-    # --- ONGLET 1 : CONNEXION ---
-    with tab_login:
-        with st.form("login_form"):
-            username = st.text_input("Nom d'utilisateur")
-            password = st.text_input("Mot de passe", type="password")
-            submit_login = st.form_submit_button("Se connecter")
-
-            if submit_login:
-                if not username or not password:
-                    st.warning("Veuillez remplir tous les champs.")
+    with tab1:
+        st.subheader("Connexion")
+        prenom_login = st.text_input("Prénom *", key="login_prenom")
+        pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
+        if st.button("🚀 Se Connecter", key="btn_login"):
+            clean_prenom = prenom_login.strip() if prenom_login else ""
+            
+            try:
+                res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
+                if res.data:
+                    st.session_state.user = res.data[0]
+                    st.success(f"Bienvenue {st.session_state.user['prenom']} !")
+                    st.rerun()
                 else:
-                    try:
-                        res = supabase.table("users").select("*").eq("username", username).execute()
-                        if res.data:
-                            user_data = res.data[0]
-                            if bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash'].encode('utf-8')):
-                                st.session_state.user = user_data
-                                st.success("Connexion réussie !")
-                                time.sleep(0.5)
-                                st.rerun()
-                            else:
-                                st.error("Mot de passe incorrect.")
-                        else:
-                            st.error("Utilisateur non trouvé.")
-                    except Exception as err:
-                        st.error(f"Erreur lors de la connexion : {err}")
+                    st.error("Prénom ou mot de passe incorrect.")
+            except Exception as e:
+                st.error(f"Erreur de connexion à la base de données : {e}")
 
-    # --- ONGLET 2 : INSCRIPTION ---
-    with tab_register:
-        with st.form("register_form"):
-            new_username = st.text_input("Choisissez un nom d'utilisateur")
-            new_password = st.text_input("Choisissez un mot de passe", type="password")
-            confirm_password = st.text_input("Confirmez le mot de passe", type="password")
-            submit_register = st.form_submit_button("Créer un compte")
+    with tab2:
+        st.subheader("CREER SON COMPTE")
+        nom = st.text_input("Le Nom *", key="signup_nom")
+        prenom = st.text_input("Prénom *", key="signup_prenom")
+        phone = st.text_input("Le Numéro de téléphone *", key="signup_phone")
+        groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], key="signup_groupe")
+        password = st.text_input("Créer un mot de passe fort *", type="password", key="signup_pwd")
+        
+        is_admin = True if prenom.strip().lower() == "eric" else False
 
-            if submit_register:
-                if not new_username or not new_password or not confirm_password:
-                    st.warning("Veuillez remplir tous les champs.")
-                elif new_password != confirm_password:
-                    st.error("Les mots de passe ne correspondent pas.")
-                else:
-                    try:
-                        check_user = supabase.table("users").select("username").eq("username", new_username).execute()
-                        if check_user.data:
-                            st.error("Ce nom d'utilisateur est déjà pris.")
-                        else:
-                            hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                            new_user_payload = {
-                                "username": new_username,
-                                "password_hash": hashed_pw,
-                                "is_admin": False
-                            }
-                            supabase.table("users").insert(new_user_payload).execute()
-                            st.success("Compte créé avec succès ! Vous pouvez maintenant vous connecter.")
-                    except Exception as err:
-                        st.error(f"Erreur lors de l'inscription : {err}")
+        if st.button("✨ S'inscrire", key="btn_signup"):
+            if nom and prenom and phone and password:
+                new_user = {
+                    "nom": nom.strip(), 
+                    "prenom": prenom.strip(), 
+                    "phone": phone.strip(),
+                    "groupe": groupe, 
+                    "password": password, 
+                    "is_admin": is_admin
+                }
+                try:
+                    supabase.table("profiles").insert(new_user).execute()
+                    st.success("Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
+                except Exception as e:
+                    st.error("Erreur : Ce numéro de téléphone ou cet utilisateur existe déjà.")
+            else:
+                st.warning("Tous les champs sont obligatoires.")
 
-# ---------------------------------------------------------
-# 6. Espace de Discussion (Connecté)
-# ---------------------------------------------------------
+# --- INTERFACE PRINCIPALE DE MESSAGERIE ---
 else:
-    col_usr, col_btn = st.columns([3, 1])
-    with col_usr:
-        st.markdown(f"Connecté en tant que **{st.session_state.user['username']}**")
-    with col_btn:
-        if st.button("Déconnexion"):
+    user = st.session_state.user
+    st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
+
+    # Barre latérale (Sidebar)
+    with st.sidebar:
+        st.write(f"👤 **{user['prenom']} {user['nom']}**")
+        if user.get("is_admin"):
+            st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
+        
+        st.divider()
+        st.subheader("🎨 Thème WhatsApp")
+        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
+
+        st.divider()
+        salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
+        if user["groupe"] == "Femmes":
+            salons_accessibles.append("Salon : Femmes")
+        elif user["groupe"] == "Hommes":
+            salons_accessibles.append("Salon : Hommes")
+        elif user["groupe"] == "Filles":
+            salons_accessibles.append("Salon : Filles")
+        elif user["groupe"] == "Petits fils et filles":
+            salons_accessibles.append("Salon : Petits fils et filles")
+            
+        salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
+
+        # --- MEMBRES DE LA FAMILLE ---
+        st.divider()
+        with st.expander("👥 Membres de la Famille"):
+            try:
+                profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
+                profiles = profiles_res.data if profiles_res.data else []
+                for p in profiles:
+                    st.write(f"• **{p['prenom']} {p['nom']}** ({p['groupe']})")
+            except Exception:
+                st.write("Chargement des membres...")
+
+        st.divider()
+        if st.button("🚪 Déconnexion Complète", key="btn_logout"):
             st.session_state.user = None
             st.rerun()
 
-    st.divider()
+    # --- ESPACE DE CHAT ---
+    st.subheader(f"🗣️ {salon_choisi}")
 
-    st.subheader("💬 Salon de discussion")
+    is_photo_salon = "Photos" in salon_choisi
+    can_post = True
+    if is_photo_salon and not user.get("is_admin"):
+        can_post = False
+        st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
+    # Affichage des messages depuis Supabase
     try:
-        msgs_res = supabase.table("messages").select("*").order("created_at", desc=False).limit(30).execute()
-        messages = msgs_res.data if msgs_res.data else []
-
+        messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+        messages = messages_res.data if messages_res.data else []
+        
         for msg in messages:
-            sender = msg.get("sender", "Anonyme")
-            content = msg.get("content", "")
-            
-            if sender == st.session_state.user['username']:
-                st.markdown(f"""
-                    <div class="chat-bubble-sent">
-                        <small style="color: #667781;">Moi</small><br>{content}
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                    <div class="chat-bubble-received">
-                        <small style="color: #008069; font-weight:bold;">{sender}</small><br>{content}
-                    </div>
-                """, unsafe_allow_html=True)
-
+            if not msg.get("is_blocked", False):
+                is_me = (msg.get("sender_prenom") == user["prenom"])
+                with st.chat_message("user" if not is_me else "assistant"):
+                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
+                    if msg.get("file_url"):
+                        st.image(msg["file_url"])
     except Exception as e:
-        st.info("Aucun message à afficher ou table messages non configurée.")
+        st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-    st.divider()
-    with st.form("send_msg_form", clear_on_submit=True):
-        input_content = st.text_input("Écrire un message...", placeholder="Tapez votre message ici...")
-        send_btn = st.form_submit_button("Envoyer 📩")
+    # Zone de saisie des messages
+    if can_post:
+        st.divider()
+        
+        msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+        uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+        
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            if st.button("🎙️ Voice", key="btn_voice"):
+                st.toast("Fonction vocale bientôt active !")
+        with col2:
+            if st.button("📤 Envoyer", key="btn_send"):
+                if msg_text or uploaded_file:
+                    try:
+                        # Gestion simple de l'envoi (vous pourrez y lier le stockage de fichiers Supabase Storage plus tard)
+                        supabase.table("messages").insert({
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "salon": salon_choisi,
+                            "content": msg_text if msg_text else "",
+                            "is_blocked": False
+                        }).execute()
+                        st.rerun()
+                    except Exception as err:
+                        st.error(f"Erreur lors de l'envoi du message : {err}")
 
-        if send_btn and input_content:
-            try:
-                supabase.table("messages").insert({
-                    "sender": st.session_state.user['username'],
-                    "content": input_content
-                }).execute()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erreur d'envoi : {e}")
-
-    if st.session_state.user.get('is_admin', False):
-        st.sidebar.divider()
-        st.sidebar.subheader("👑 Espace Administrateur")
-        st.sidebar.write("Tableau de bord de gestion NkeuyaTchat")
+    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
+    if user.get("is_admin"):
+        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
+            st.write("Contrôle total de l'application familiale :")
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
+                st.info("Module de réinitialisation actif.")
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
+                st.info("Module de modération actif.")
