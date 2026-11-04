@@ -202,7 +202,7 @@ else:
         btn_salons = st.button("💬 Salons")
 
     if "chat_filter" not in st.session_state:
-        st.session_state.chat_filter = "Salons"
+        st.session_state.chat_filter = "Toutes"
 
     if btn_toutes:
         st.session_state.chat_filter = "Toutes"
@@ -214,7 +214,7 @@ else:
         st.session_state.chat_filter = "Salons"
         st.session_state.is_chatting_in_salon = False
 
-    # Salons accessibles (sans le préfixe "Salon : ")
+    # Salons accessibles
     salons_accessibles = ["Général", "Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
@@ -327,6 +327,34 @@ else:
         except Exception:
             st.info("Chargement global des messages...")
 
+        # Zone d'écriture et d'envoi pour l'onglet "Toutes" (avec rappel des 200MB et formats)
+        st.divider()
+        with st.form("form_message_toutes", clear_on_submit=True):
+            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg_toutes")
+            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_toutes")
+            st.caption("200MB per file • PNG, JPG, PDF")
+            
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                voice_btn = st.form_submit_button("🎙️ Voice")
+            with col2:
+                send_btn = st.form_submit_button("📤 Envoyer")
+
+            if send_btn and (msg_text or uploaded_file):
+                try:
+                    supabase.table("messages").insert({
+                        "sender_prenom": user["prenom"],
+                        "sender_phone": user["phone"],
+                        "salon": "Général",
+                        "content": msg_text if msg_text else "",
+                        "is_blocked": False
+                    }).execute()
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"Erreur lors de l'envoi du message : {err}")
+            elif voice_btn:
+                st.toast("Fonction vocale bientôt active !")
+
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
@@ -380,7 +408,7 @@ else:
         else:
             st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
 
-    # 4. ONGLET : SALONS (Affichage de la liste des salons autorisés sans "Salon :")
+    # 4. ONGLET : SALONS
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = "Général"
@@ -428,12 +456,13 @@ else:
             except Exception:
                 st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-            # Zone de saisie des messages
+            # Zone de saisie des messages du salon
             if can_post:
                 st.divider()
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+                    uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload")
+                    st.caption("200MB per file • PNG, JPG, PDF")
                     
                     col1, col2 = st.columns([1, 4])
                     with col1:
