@@ -324,10 +324,10 @@ else:
         except Exception:
             st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
 
-        # Zone d'écriture et d'envoi pour le salon Général
+        # Zone d'écriture et d'envoi pour le salon Général (Texte en gras)
         st.divider()
         with st.form("form_message_general", clear_on_submit=True):
-            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg_general")
+            msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_general")
             st.caption("200MB per file • PNG, JPG, PDF")
             
@@ -453,11 +453,11 @@ else:
             except Exception:
                 st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-            # Zone de saisie des messages du salon
+            # Zone de saisie des messages du salon (Texte en gras)
             if can_post:
                 st.divider()
                 with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
                     uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload")
                     st.caption("200MB per file • PNG, JPG, PDF")
                     
