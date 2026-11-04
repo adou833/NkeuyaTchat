@@ -2,15 +2,6 @@ import streamlit as st
 from supabase import create_client, Client
 
 # ---------------------------------------------------------
-# 0. CONFIGURATION STREAMLIT (Masquage barre d'outils / Manage app)
-# ---------------------------------------------------------
-# N'oublie pas de placer aussi un fichier `.streamlit/config.toml` 
-# contenant :
-# [client]
-# toolbarMode = "minimal"
-# ---------------------------------------------------------
-
-# ---------------------------------------------------------
 # 1. Configuration de la page
 # ---------------------------------------------------------
 st.set_page_config(
@@ -62,11 +53,11 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict (Masquage total de la barre d'outils, Manage app, et verrouillage du scroll)
+# 4. Style CSS optimisé mobile (Autorise le scroll et évite les coupures)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
-    /* Masquage radical de la barre d'outils, du bouton Manage app, du header et du menu */
+    /* Masquage de la barre d'outils et du menu Streamlit */
     div[data-testid="stToolbar"], header[data-testid="stHeader"], div.stAppToolbar, button[kind="header"], #MainMenu, footer, [data-testid="stStatusWidget"] {{
         display: none !important;
         visibility: hidden !important;
@@ -74,10 +65,9 @@ st.markdown(f"""
         pointer-events: none !important;
     }}
 
-    /* Bloque complètement le défilement de la page principale */
+    /* Permet un défilement propre sur mobile pour ne rien couper en bas */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        overflow: hidden !important;
-        height: 100vh !important;
+        overflow-y: auto !important;
     }}
 
     .stApp {{
@@ -89,11 +79,8 @@ st.markdown(f"""
         border-radius: 16px;
         padding: 0.5rem 0.8rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        max-height: 98vh !important;
-        margin-top: 2px;
-        overflow: hidden !important;
-        display: flex;
-        flex-direction: column;
+        margin-top: 5px;
+        margin-bottom: 30px;
     }}
 
     .main-header {{
@@ -104,7 +91,7 @@ st.markdown(f"""
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 4px;
+        margin-bottom: 8px;
     }}
     .main-header h1, .main-header h2 {{
         font-size: 0.9rem !important;
@@ -151,7 +138,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
+    tab1, tab2 = tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
         st.subheader("Connexion à votre espace")
@@ -277,7 +264,7 @@ else:
         st.session_state.chat_filter = "Salons"
         st.session_state.is_chatting_in_salon = False
 
-    # Salons secondaires (Général exclu d'ici car déjà sur l'onglet principal)
+    # Salons secondaires
     salons_accessibles = ["Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
@@ -332,11 +319,11 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : GÉNÉRAL (Avec panneau d'administration uniquement ici pour Eric)
+    # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        chat_container = st.container(height=140)
+        chat_container = st.container(height=250)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -377,7 +364,7 @@ else:
                 except Exception as err:
                     st.error(f"Erreur : {err}")
 
-        # Panneau d'administration (Uniquement visible dans le salon Général pour Eric)
+        # Panneau d'administration (Uniquement dans le salon Général pour Eric)
         if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
             with st.expander("🛠️ Panneau d'Administration (Général)"):
                 st.write("Contrôle total de l'application familiale :")
@@ -389,7 +376,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=220)
+        chat_container = st.container(height=300)
         with chat_container:
             try:
                 unread_messages = []
@@ -427,7 +414,7 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=160)
+        fav_container = st.container(height=250)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -441,7 +428,7 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS (Sans le salon Général et sans panneau d'admin)
+    # 4. ONGLET : SALONS
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
@@ -470,7 +457,7 @@ else:
                 can_post = False
                 st.info("🔒 Salon en lecture seule.")
 
-            chat_container = st.container(height=140)
+            chat_container = st.container(height=250)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
@@ -510,4 +497,4 @@ else:
                             }).execute()
                             st.rerun()
                         except Exception as err:
-                            st.error(f"Erreur : {err}")
+                            st.error(
