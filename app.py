@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS optimisé mobile (Autorise le scroll et évite les coupures)
+# 4. Style CSS optimisé mobile & alignement des boutons en ligne
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -65,7 +65,7 @@ st.markdown(f"""
         pointer-events: none !important;
     }}
 
-    /* Permet un défilement propre sur mobile pour ne rien couper en bas */
+    /* Permet un défilement propre sur mobile */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         overflow-y: auto !important;
     }}
@@ -116,13 +116,27 @@ st.markdown(f"""
         color: white;
     }}
 
+    /* Force l'affichage côte à côte des 4 colonnes sur Android/Mobile */
+    @media (max-width: 768px) {{
+        [data-testid="column"] {{
+            width: 25% !important;
+            flex: 25% !important;
+            min-width: 25% !important;
+            padding: 0 2px !important;
+        }}
+        div[data-testid="horizontal-block"] {{
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+        }}
+    }}
+
     /* Onglets de filtres ultra-fins et compacts */
     div[data-testid="column"] button {{
-        padding: 2px 4px !important;
-        font-size: 0.7rem !important;
+        padding: 2px 2px !important;
+        font-size: 0.65rem !important;
         border-radius: 6px !important;
-        min-height: 18px !important;
-        height: 22px !important;
+        min-height: 22px !important;
+        height: 28px !important;
         line-height: 1 !important;
         margin-bottom: 2px;
     }}
@@ -240,7 +254,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons/onglets principaux fixes
+    # Les 4 boutons/onglets principaux alignés sur la même ligne
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
