@@ -141,6 +141,7 @@ if not st.session_state.user:
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
             phone = st.text_input("Le Numéro de téléphone *")
+            # Tous les groupes d'inscription inclus
             groupe = st.selectbox(
                 "Choisir votre salon familial *", 
                 ["Femmes", "Garçons", "Filles", "Petits fils/filles"]
@@ -185,19 +186,17 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
-        # --- GESTION ET FILTRAGE DES SALONS ---
+        # --- GESTION ET FILTRAGE DES SALONS (TOUS INCLUS) ---
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
-        groupe_usr = user.get("groupe", "")
         
-        if groupe_usr == "Femmes":
-            salons_accessibles.append("Salon : Femmes")
-        elif groupe_usr == "Garçons":
-            salons_accessibles.append("Salon : Garçons")
-        elif groupe_usr == "Filles":
-            salons_accessibles.append("Salon : Filles")
-        elif groupe_usr == "Petits fils/filles":
-            salons_accessibles.append("Salon : Petits fils/filles")
+        # Ajout systématique de TOUS les salons de groupe pour que tout le monde y ait accès
+        salons_accessibles.extend([
+            "Salon : Femmes",
+            "Salon : Garçons",
+            "Salon : Filles",
+            "Salon : Petits fils/filles"
+        ])
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
@@ -226,7 +225,7 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages depuis Supabase (Correction de la syntaxe de la ligne 238)
+    # Affichage des messages depuis Supabase
     try:
         messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
         messages = messages_res.data if messages_res.data else []
