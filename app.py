@@ -45,11 +45,11 @@ if not st.session_state.user and "logged_user" in query_params:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# Correction rigoureuse des couleurs : WhatsApp Classic = Vert, Bleu Nkeuya = Bleu
+# CORRECTION EXACTE : WhatsApp Classic = Vert (#075E54) / Bleu Nkeuya = Bleu (#0084FF)
 theme_colors = {
-    "WhatsApp Classic": "#075E54",  # Vert WhatsApp classique
-    "Bleu Nkeuya": "#0084FF",       # Vrai Bleu Nkeuya
-    "Vert Sombre": "#128C7E"        # Vert Sombre
+    "WhatsApp Classic": "#075E54",
+    "Bleu Nkeuya": "#0084FF",
+    "Vert Sombre": "#128C7E"
 }
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
