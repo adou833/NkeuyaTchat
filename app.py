@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé
+# 4. Style CSS personnalisé (Zone de chat défilante / Scrollbar)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -85,6 +85,26 @@ st.markdown(f"""
         color: white !important;
     }}
     
+    /* Zone défilante pour les messages comme sur WhatsApp */
+    div[data-testid="stVerticalBlock"] > div.chat-scroll-container {{
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 8px;
+        border-radius: 10px;
+        background-color: #F7F5F2;
+        padding: 10px;
+        margin-bottom: 15px;
+    }}
+
+    /* Personnalisation de la barre de défilement (Scrollbar) */
+    div[data-testid="stVerticalBlock"] > div.chat-scroll-container::-webkit-scrollbar {{
+        width: 6px;
+    }}
+    div[data-testid="stVerticalBlock"] > div.chat-scroll-container::-webkit-scrollbar-thumb {{
+        background-color: #CCCCCC;
+        border-radius: 10px;
+    }}
+
     /* Boutons généraux standard */
     .stButton>button {{
         background-color: {primary_color};
@@ -188,12 +208,11 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
+    # En-tête FIXE avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
     with col_head2:
-        # Menu Options en haut à droite
         with st.popover("⚙️ Options", use_container_width=True):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             if user.get("is_admin"):
@@ -203,7 +222,6 @@ else:
             st.subheader("🎨 Thème WhatsApp")
             st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio_popover")
 
-            # --- LISTE DES MEMBRES ---
             st.divider()
             with st.expander("👥 Membres de la Famille"):
                 try:
@@ -223,10 +241,10 @@ else:
                     del st.session_state.active_dm
                 st.rerun()
 
-    # 2. Zone de recherche de membres
+    # Zone de recherche FIXE
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # 3. Les 4 boutons/onglets principaux ultra-compacts et bien alignés
+    # Les 4 boutons/onglets principaux FIXES
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
@@ -308,23 +326,27 @@ else:
     # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
-        try:
-            messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
-            messages = messages_res.data if messages_res.data else []
-            
-            for msg in messages:
-                if not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    is_me = (sender == user["prenom"])
-                    
-                    with st.chat_message("user" if not is_me else "assistant"):
-                        st.write(f"**{sender}** : {msg.get('content', '')}")
-                        if msg.get("file_url"):
-                            st.image(msg["file_url"])
-        except Exception:
-            st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
+        
+        # ZONE DÉFILANTE (SCROLL) POUR LES MESSAGES
+        chat_container = st.container(height=380)
+        with chat_container:
+            try:
+                messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
+                messages = messages_res.data if messages_res.data else []
+                
+                for msg in messages:
+                    if not msg.get("is_blocked", False):
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        is_me = (sender == user["prenom"])
+                        
+                        with st.chat_message("user" if not is_me else "assistant"):
+                            st.write(f"**{sender}** : {msg.get('content', '')}")
+                            if msg.get("file_url"):
+                                st.image(msg["file_url"])
+            except Exception:
+                st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
 
-        # Zone d'écriture et d'envoi pour le salon Général (Texte en gras)
+        # Zone d'écriture FIXE en bas de page
         st.divider()
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
@@ -355,28 +377,30 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
-        try:
-            unread_messages = []
-            for s in salons_accessibles:
-                res = supabase.table("messages").select("*").eq("salon", s).execute()
-                if res.data:
-                    for m in res.data:
-                        if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
-                            m["current_salon"] = s
-                            unread_messages.append(m)
-            
-            if unread_messages:
-                st.success(f"Vous avez {len(unread_messages)} message(s) à consulter dans vos salons :")
-                for msg in unread_messages:
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    salon_tag = f"📂 *{msg.get('current_salon')}*"
-                    with st.container():
-                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                        st.divider()
-            else:
-                st.info("Aucun nouveau message non lu.")
-        except Exception:
-            st.info("Vérification des messages non lus...")
+        chat_container = st.container(height=380)
+        with chat_container:
+            try:
+                unread_messages = []
+                for s in salons_accessibles:
+                    res = supabase.table("messages").select("*").eq("salon", s).execute()
+                    if res.data:
+                        for m in res.data:
+                            if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
+                                m["current_salon"] = s
+                                unread_messages.append(m)
+                
+                if unread_messages:
+                    st.success(f"Vous avez {len(unread_messages)} message(s) à consulter dans vos salons :")
+                    for msg in unread_messages:
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        salon_tag = f"📂 *{msg.get('current_salon')}*"
+                        with st.container():
+                            st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                            st.divider()
+                else:
+                    st.info("Aucun nouveau message non lu.")
+            except Exception:
+                st.info("Vérification des messages non lus...")
 
     # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
@@ -393,17 +417,19 @@ else:
                 st.success("Ajouté aux favoris avec succès !")
 
         st.divider()
-        if st.session_state.favoris_list:
-            for idx, fav in enumerate(st.session_state.favoris_list):
-                col_f1, col_f2 = st.columns([5, 1])
-                with col_f1:
-                    st.write(f"⭐ {fav}")
-                with col_f2:
-                    if st.button("❌", key=f"del_fav_{idx}"):
-                        st.session_state.favoris_list.pop(idx)
-                        st.rerun()
-        else:
-            st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
+        fav_container = st.container(height=300)
+        with fav_container:
+            if st.session_state.favoris_list:
+                for idx, fav in enumerate(st.session_state.favoris_list):
+                    col_f1, col_f2 = st.columns([5, 1])
+                    with col_f1:
+                        st.write(f"⭐ {fav}")
+                    with col_f2:
+                        if st.button("❌", key=f"del_fav_{idx}"):
+                            st.session_state.favoris_list.pop(idx)
+                            st.rerun()
+            else:
+                st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
 
     # 4. ONGLET : SALONS
     else:
@@ -436,24 +462,26 @@ else:
                 can_post = False
                 st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-            # Affichage des messages du salon choisi
-            try:
-                messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-                messages = messages_res.data if messages_res.data else []
-                
-                for msg in messages:
-                    if not msg.get("is_blocked", False):
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        is_me = (sender == user["prenom"])
-                        
-                        with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(f"**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
-            except Exception:
-                st.info("Espace de discussion initialisé. Aucun message pour le moment.")
+            # ZONE DÉFILANTE (SCROLL) POUR LE SALON SÉLECTIONNÉ
+            chat_container = st.container(height=380)
+            with chat_container:
+                try:
+                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+                    messages = messages_res.data if messages_res.data else []
+                    
+                    for msg in messages:
+                        if not msg.get("is_blocked", False):
+                            sender = msg.get('sender_prenom', 'Anonyme')
+                            is_me = (sender == user["prenom"])
+                            
+                            with st.chat_message("user" if not is_me else "assistant"):
+                                st.write(f"**{sender}** : {msg.get('content', '')}")
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
+                except Exception:
+                    st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-            # Zone de saisie des messages du salon (Texte en gras)
+            # Zone de saisie FIXE du salon
             if can_post:
                 st.divider()
                 with st.form("form_message", clear_on_submit=True):
