@@ -53,12 +53,12 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé (Verrouillage du scroll global + Scroll messages uniquement)
+# 4. Style CSS strict pour bloquer le scroll global de la page
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
-    /* Empêche le scroll sur toute la page principale */
-    html, body, [data-testid="stAppViewContainer"] {{
+    /* Bloque complètement le défilement de la page principale de Streamlit */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         overflow: hidden !important;
         height: 100vh !important;
     }}
@@ -66,29 +66,31 @@ st.markdown(f"""
     .stApp {{
         background-color: #ECE5DD;
     }}
+    
     .main .block-container {{
         background-color: #FFFFFF;
-        border-radius: 20px;
-        padding: 1.2rem 1rem;
+        border-radius: 16px;
+        padding: 1rem 1rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        max-height: 94vh !important;
         margin-top: 10px;
-        margin-bottom: 10px;
-        max-height: 92vh;
+        overflow: hidden !important;
         display: flex;
         flex-direction: column;
     }}
+
     .main-header {{
         background-color: {primary_color};
         color: white;
         padding: 8px 12px;
-        border-radius: 12px;
+        border-radius: 10px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.1rem !important;
+        font-size: 1rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
@@ -98,7 +100,7 @@ st.markdown(f"""
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 16px;
+        border-radius: 14px;
         border: none;
         padding: 6px 14px;
         font-weight: bold;
@@ -113,16 +115,16 @@ st.markdown(f"""
     /* Onglets de filtres ultra-fins et compacts */
     div[data-testid="column"] button {{
         padding: 2px 4px !important;
-        font-size: 0.72rem !important;
-        border-radius: 8px !important;
-        min-height: 22px !important;
-        height: 26px !important;
+        font-size: 0.7rem !important;
+        border-radius: 6px !important;
+        min-height: 20px !important;
+        height: 24px !important;
         line-height: 1 !important;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }}
 
     .stTextInput input, .stSelectbox select {{
-        border-radius: 18px !important;
+        border-radius: 16px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -316,8 +318,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES (Hauteur de 260px ajustée au conteneur fixe)
-        chat_container = st.container(height=260)
+        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES (Hauteur compacte de 230px)
+        chat_container = st.container(height=230)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -340,7 +342,7 @@ else:
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_general")
-            st.caption("200MB per file • PNG, JPG, PDF")
+            st.caption("200MB max • PNG, JPG, PDF")
             
             col1, col2 = st.columns([1, 4])
             with col1:
@@ -366,7 +368,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
-        chat_container = st.container(height=280)
+        chat_container = st.container(height=250)
         with chat_container:
             try:
                 unread_messages = []
@@ -400,110 +402,4 @@ else:
 
         with st.form("form_add_favori", clear_on_submit=True):
             new_fav = st.text_input("➕ Ajouter un texte ou une information importante en favori...")
-            add_fav_btn = st.form_submit_button("Enregistrer dans mes favoris")
-            if add_fav_btn and new_fav:
-                st.session_state.favoris_list.append(new_fav)
-                st.success("Ajouté aux favoris avec succès !")
-
-        st.divider()
-        fav_container = st.container(height=240)
-        with fav_container:
-            if st.session_state.favoris_list:
-                for idx, fav in enumerate(st.session_state.favoris_list):
-                    col_f1, col_f2 = st.columns([5, 1])
-                    with col_f1:
-                        st.write(f"⭐ {fav}")
-                    with col_f2:
-                        if st.button("❌", key=f"del_fav_{idx}"):
-                            st.session_state.favoris_list.pop(idx)
-                            st.rerun()
-            else:
-                st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
-
-    # 4. ONGLET : SALONS
-    else:
-        if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = "Général"
-
-        if "is_chatting_in_salon" not in st.session_state:
-            st.session_state.is_chatting_in_salon = False
-
-        if not st.session_state.is_chatting_in_salon:
-            st.subheader("📌 Vos Salons Disponibles")
-            st.write("Sélectionnez le salon dans lequel vous souhaitez tchater :")
-            
-            for salon in salons_accessibles:
-                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
-                    st.session_state.salon_actif = salon
-                    st.session_state.is_chatting_in_salon = True
-                    st.rerun()
-        else:
-            if st.button("⬅️ Retour à la liste des salons"):
-                st.session_state.is_chatting_in_salon = False
-                st.rerun()
-
-            salon_choisi = st.session_state.salon_actif
-            st.markdown(f"### 🗣️ {salon_choisi}")
-
-            is_photo_salon = ("Photos" in salon_choisi)
-            can_post = True
-            if is_photo_salon and not user.get("is_admin"):
-                can_post = False
-                st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
-
-            # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON
-            chat_container = st.container(height=260)
-            with chat_container:
-                try:
-                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-                    messages = messages_res.data if messages_res.data else []
-                    
-                    for msg in messages:
-                        if not msg.get("is_blocked", False):
-                            sender = msg.get('sender_prenom', 'Anonyme')
-                            is_me = (sender == user["prenom"])
-                            
-                            with st.chat_message("user" if not is_me else "assistant"):
-                                st.write(f"**{sender}** : {msg.get('content', '')}")
-                                if msg.get("file_url"):
-                                    st.image(msg["file_url"])
-                except Exception:
-                    st.info("Espace de discussion initialisé. Aucun message pour le moment.")
-
-            # ZONE DE SAISIE FIXE DU SALON EN BAS
-            if can_post:
-                st.divider()
-                with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload")
-                    st.caption("200MB per file • PNG, JPG, PDF")
-                    
-                    col1, col2 = st.columns([1, 4])
-                    with col1:
-                        voice_btn = st.form_submit_button("🎙️ Voice")
-                    with col2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur lors de l'envoi du message : {err}")
-                    elif voice_btn:
-                        st.toast("Fonction vocale bientôt active !")
-
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
+            add_fav_btn = st
