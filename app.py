@@ -188,7 +188,7 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
+    # En-tête fixe
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
@@ -221,10 +221,10 @@ else:
                     del st.session_state.active_dm
                 st.rerun()
 
-    # Zone de recherche
+    # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons/onglets principaux
+    # Les 4 boutons/onglets principaux fixes
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
@@ -307,8 +307,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES
-        chat_container = st.container(height=350)
+        # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES (Hauteur fixe de 320px)
+        chat_container = st.container(height=320)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -326,7 +326,7 @@ else:
             except Exception:
                 st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
 
-        # ZONE DE SAISIE FIXE EN BAS (Hors du scroll des messages)
+        # ZONE DE SAISIE FIXE EN BAS (Hors du scroll)
         st.divider()
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
@@ -357,7 +357,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
-        chat_container = st.container(height=380)
+        chat_container = st.container(height=350)
         with chat_container:
             try:
                 unread_messages = []
@@ -443,7 +443,7 @@ else:
                 st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
             # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES DU SALON
-            chat_container = st.container(height=350)
+            chat_container = st.container(height=320)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
