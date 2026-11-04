@@ -479,4 +479,22 @@ else:
                         try:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
-                                "sender_phone
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur lors de l'envoi du message : {err}")
+                    elif voice_btn:
+                        st.toast("Fonction vocale bientôt active !")
+
+    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
+    if user.get("is_admin"):
+        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
+            st.write("Contrôle total de l'application familiale :")
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
+                st.info("Module de réinitialisation actif.")
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
+                st.info("Module de modération actif.")
