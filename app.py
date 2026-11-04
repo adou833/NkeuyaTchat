@@ -45,11 +45,11 @@ if not st.session_state.user and "logged_user" in query_params:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# CORRECTION EXACTE : WhatsApp Classic = Vert (#075E54) / Bleu Nkeuya = Bleu (#0084FF)
+# Association des couleurs avec inversion des noms demandée
 theme_colors = {
-    "WhatsApp Classic": "#075E54",
-    "Bleu Nkeuya": "#0084FF",
-    "Vert Sombre": "#128C7E"
+    "WhatsApp Classic": "#075E54",  # Vert WhatsApp classique
+    "Bleu Nkeuya": "#128C7E",       # Anciennement "Vert Sombre", garde la couleur verte
+    "Vert Sombre": "#0084FF"        # Anciennement "Bleu Nkeuya", garde la couleur bleue
 }
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
@@ -274,6 +274,7 @@ else:
         
         st.divider()
         st.subheader("🎨 Thème WhatsApp")
+        # Noms inversés pour les thèmes tel que demandé
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
         # --- LISTE DES MEMBRES ---
