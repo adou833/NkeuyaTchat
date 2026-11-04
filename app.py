@@ -26,10 +26,24 @@ def init_supabase() -> Client:
 supabase = init_supabase()
 
 # ---------------------------------------------------------
-# 3. Initialisation de la session et du thème
+# 3. Gestion de la session persistante via les paramètres URL
 # ---------------------------------------------------------
+query_params = st.query_params
+
 if "user" not in st.session_state:
     st.session_state.user = None
+
+# Si la session est vide mais qu'on a un prénom dans l'URL après un rafraîchissement
+if not st.session_state.user and "logged_user" in query_params:
+    saved_prenom = query_params["logged_user"]
+    try:
+        # On va rechercher rapidement le profil dans Supabase pour le reconnecter
+        res = supabase.table("profiles").select("*").eq("prenom", saved_prenom).execute()
+        if res.data:
+            st.session_state.user = res.data[0]
+    except Exception:
+        pass
+
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
@@ -127,6 +141,8 @@ if not st.session_state.user:
                         res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
                         if res.data:
                             st.session_state.user = res.data[0]
+                            # On enregistre l'utilisateur dans l'URL pour persister après rafraîchissement
+                            st.query_params["logged_user"] = st.session_state.user["prenom"]
                             st.success(f"Bienvenue {st.session_state.user['prenom']} !")
                             st.rerun()
                         else:
@@ -141,7 +157,6 @@ if not st.session_state.user:
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
             phone = st.text_input("Le Numéro de téléphone *")
-            # Tous les groupes d'inscription inclus
             groupe = st.selectbox(
                 "Choisir votre salon familial *", 
                 ["Femmes", "Garçons", "Filles", "Petits fils/filles"]
@@ -186,11 +201,10 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
-        # --- GESTION ET FILTRAGE DES SALONS (TOUS INCLUS) ---
+        # --- GESTION ET FILTRAGE DES SALONS ---
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         
-        # Ajout systématique de TOUS les salons de groupe pour que tout le monde y ait accès
         salons_accessibles.extend([
             "Salon : Femmes",
             "Salon : Garçons",
@@ -213,7 +227,10 @@ else:
 
         st.divider()
         if st.button("🚪 Déconnexion Complète", key="btn_logout"):
+            # On nettoie la session et les paramètres URL lors de la déconnexion
             st.session_state.user = None
+            if "logged_user" in st.query_params:
+                del st.query_params["logged_user"]
             st.rerun()
 
     # --- ESPACE DE CHAT ---
