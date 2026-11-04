@@ -4,10 +4,8 @@ from supabase import create_client, Client
 # ---------------------------------------------------------
 # 0. CONFIGURATION STREAMLIT (Masquage barre d'outils / Manage app)
 # ---------------------------------------------------------
-# Pour masquer définitivement le bouton "Manage app" en bas à gauche, 
-# assure-toi aussi d'avoir un fichier `.streamlit/config.toml` à la racine 
-# de ton projet contenant exactement ces deux lignes :
-#
+# N'oublie pas de placer aussi un fichier `.streamlit/config.toml` 
+# contenant :
 # [client]
 # toolbarMode = "minimal"
 # ---------------------------------------------------------
@@ -64,7 +62,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict (Masquage total de la barre d'outils et verrouillage de la page)
+# 4. Style CSS strict (Masquage total de la barre d'outils, Manage app, et verrouillage du scroll)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -279,7 +277,7 @@ else:
         st.session_state.chat_filter = "Salons"
         st.session_state.is_chatting_in_salon = False
 
-    # Salons secondaires (Général est exclu d'ici)
+    # Salons secondaires (Général exclu d'ici car déjà sur l'onglet principal)
     salons_accessibles = ["Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
@@ -334,7 +332,7 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : GÉNÉRAL
+    # 1. ONGLET : GÉNÉRAL (Avec panneau d'administration uniquement ici pour Eric)
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
@@ -378,6 +376,15 @@ else:
                     st.rerun()
                 except Exception as err:
                     st.error(f"Erreur : {err}")
+
+        # Panneau d'administration (Uniquement visible dans le salon Général pour Eric)
+        if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
+            with st.expander("🛠️ Panneau d'Administration (Général)"):
+                st.write("Contrôle total de l'application familiale :")
+                if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd_gen"):
+                    st.info("Module de réinitialisation actif.")
+                if st.button("🚫 Gérer les messages indésirables", key="admin_mod_gen"):
+                    st.info("Module de modération actif.")
 
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
@@ -434,7 +441,7 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS
+    # 4. ONGLET : SALONS (Sans le salon Général et sans panneau d'admin)
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
@@ -488,7 +495,6 @@ else:
                     
                     col_send1, col_send2 = st.columns([3, 1])
                     with col_send1:
-                    # Correction ici : fermeture correcte de la parenthèse et des accolades
                         st.caption("PNG, JPG, PDF, MP3, MP4")
                     with col_send2:
                         send_btn = st.form_submit_button("📤 Envoyer")
