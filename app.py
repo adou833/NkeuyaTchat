@@ -53,33 +53,42 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé
+# 4. Style CSS personnalisé (Verrouillage du scroll global + Scroll messages uniquement)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
+    /* Empêche le scroll sur toute la page principale */
+    html, body, [data-testid="stAppViewContainer"] {{
+        overflow: hidden !important;
+        height: 100vh !important;
+    }}
+
     .stApp {{
         background-color: #ECE5DD;
     }}
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 20px;
-        padding: 1.5rem 1rem;
+        padding: 1.2rem 1rem;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-top: 15px;
-        margin-bottom: 15px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
     }}
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 10px 15px;
+        padding: 8px 12px;
         border-radius: 12px;
         text-align: center;
         font-weight: bold;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.2rem !important;
+        font-size: 1.1rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
@@ -91,7 +100,7 @@ st.markdown(f"""
         color: white;
         border-radius: 16px;
         border: none;
-        padding: 8px 16px;
+        padding: 6px 14px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -106,10 +115,10 @@ st.markdown(f"""
         padding: 2px 4px !important;
         font-size: 0.72rem !important;
         border-radius: 8px !important;
-        min-height: 24px !important;
-        height: 28px !important;
+        min-height: 22px !important;
+        height: 26px !important;
         line-height: 1 !important;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
     }}
 
     .stTextInput input, .stSelectbox select {{
@@ -307,8 +316,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES (Hauteur fixe de 320px)
-        chat_container = st.container(height=320)
+        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES (Hauteur de 260px ajustée au conteneur fixe)
+        chat_container = st.container(height=260)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -357,7 +366,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
-        chat_container = st.container(height=350)
+        chat_container = st.container(height=280)
         with chat_container:
             try:
                 unread_messages = []
@@ -397,7 +406,7 @@ else:
                 st.success("Ajouté aux favoris avec succès !")
 
         st.divider()
-        fav_container = st.container(height=300)
+        fav_container = st.container(height=240)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -442,8 +451,8 @@ else:
                 can_post = False
                 st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-            # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES DU SALON
-            chat_container = st.container(height=320)
+            # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON
+            chat_container = st.container(height=260)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
