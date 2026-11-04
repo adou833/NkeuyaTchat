@@ -148,7 +148,6 @@ if not st.session_state.user:
 
             if submit_signup:
                 if nom and prenom and phone and password:
-                    # Attribution automatique du rôle administrateur à Eric
                     is_admin = True if prenom.strip().lower() == "eric" else False
                     new_user = {
                         "nom": nom.strip(), 
@@ -221,4 +220,56 @@ else:
     can_post = True
     if is_photo_salon and not user.get("is_admin"):
         can_post = False
-        st.info("🔒 Ce salon est en lecture seule. Seul l
+        st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
+
+    # Affichage des messages depuis Supabase
+    try:
+        messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+        messages = messages_res.data if messages_res.data else []
+        
+        for msg in messages:
+            if not msg.get("is_blocked", False):
+                is_me = (msg.get("sender_prenom") == user["prenom"])
+                with st.chat_message("user" if not is_me else "assistant"):
+                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
+                    if msg.get("file_url"):
+                        st.image(msg["file_url"])
+    except Exception as e:
+        st.info("Espace de discussion initialisé. Aucun message pour le moment.")
+
+    # Zone de saisie des messages
+    if can_post:
+        st.divider()
+        with st.form("form_message", clear_on_submit=True):
+            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+            
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                voice_btn = st.form_submit_button("🎙️ Voice")
+            with col2:
+                send_btn = st.form_submit_button("📤 Envoyer")
+
+            if send_btn and (msg_text or uploaded_file):
+                try:
+                    supabase.table("messages").insert({
+                        "sender_prenom": user["prenom"],
+                        "sender_phone": user["phone"],
+                        "salon": salon_choisi,
+                        "content": msg_text if msg_text else "",
+                        "is_blocked": False
+                    }).execute()
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"Erreur lors de l'envoi du message : {err}")
+            elif voice_btn:
+                st.toast("Fonction vocale bientôt active !")
+
+    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
+    if user.get("is_admin"):
+        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
+            st.write("Contrôle total de l'application familiale :")
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
+                st.info("Module de réinitialisation actif.")
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
+                st.info("Module de modération actif.")
