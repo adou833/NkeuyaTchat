@@ -190,22 +190,22 @@ else:
     # 2. Zone de recherche de membres
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # 3. Les 4 boutons principaux (Toutes, Non Lues, Favoris, Salons)
+    # 3. Les 4 boutons principaux (Général, Non Lues, Favoris, Salons)
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
-        btn_toutes = st.button("📋 Toutes")
+        btn_general = st.button("💬 Général")
     with filter_col2:
         btn_non_lues = st.button("📬 Non Lues")
     with filter_col3:
         btn_favoris = st.button("⭐ Favoris")
     with filter_col4:
-        btn_salons = st.button("💬 Salons")
+        btn_salons = st.button("📌 Salons")
 
     if "chat_filter" not in st.session_state:
-        st.session_state.chat_filter = "Toutes"
+        st.session_state.chat_filter = "Général"
 
-    if btn_toutes:
-        st.session_state.chat_filter = "Toutes"
+    if btn_general:
+        st.session_state.chat_filter = "Général"
     elif btn_non_lues:
         st.session_state.chat_filter = "Non Lues"
     elif btn_favoris:
@@ -299,39 +299,30 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : TOUTES
-    if st.session_state.chat_filter == "Toutes":
-        st.subheader("📋 Toutes les discussions (Tous salons confondus)")
+    # 1. ONGLET : GÉNÉRAL
+    if st.session_state.chat_filter == "Général":
+        st.subheader("💬 Salon Général")
         try:
-            all_messages = []
-            for s in salons_accessibles:
-                res = supabase.table("messages").select("*").eq("salon", s).execute()
-                if res.data:
-                    for m in res.data:
-                        m["current_salon"] = s
-                        all_messages.append(m)
+            messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
+            messages = messages_res.data if messages_res.data else []
             
-            if all_messages:
-                for msg in all_messages:
-                    if not msg.get("is_blocked", False):
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        is_me = (sender == user["prenom"])
-                        salon_tag = f"📂 *{msg.get('current_salon')}*"
-                        
-                        with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(f"{salon_tag}\n\n**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
-            else:
-                st.info("Aucun message dans vos salons pour le moment.")
+            for msg in messages:
+                if not msg.get("is_blocked", False):
+                    sender = msg.get('sender_prenom', 'Anonyme')
+                    is_me = (sender == user["prenom"])
+                    
+                    with st.chat_message("user" if not is_me else "assistant"):
+                        st.write(f"**{sender}** : {msg.get('content', '')}")
+                        if msg.get("file_url"):
+                            st.image(msg["file_url"])
         except Exception:
-            st.info("Chargement global des messages...")
+            st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
 
-        # Zone d'écriture et d'envoi pour l'onglet "Toutes" (avec rappel des 200MB et formats)
+        # Zone d'écriture et d'envoi pour le salon Général
         st.divider()
-        with st.form("form_message_toutes", clear_on_submit=True):
-            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg_toutes")
-            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_toutes")
+        with st.form("form_message_general", clear_on_submit=True):
+            msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg_general")
+            uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "pdf"], key="file_upload_general")
             st.caption("200MB per file • PNG, JPG, PDF")
             
             col1, col2 = st.columns([1, 4])
