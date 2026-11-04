@@ -270,9 +270,6 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
-        st.divider()
-        salon_choisi = st.selectbox("📌 Choisir un salon / discussion", salons_accessibles, key="select_salon")
-
         # --- LISTE DES MEMBRES ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
@@ -301,7 +298,6 @@ else:
     if st.session_state.chat_filter == "Toutes":
         st.subheader("📋 Toutes les discussions (Tous salons confondus)")
         try:
-            # Récupérer les messages de tous les salons auxquels l'utilisateur a accès
             all_messages = []
             for s in salons_accessibles:
                 res = supabase.table("messages").select("*").eq("salon", s).execute()
@@ -323,7 +319,7 @@ else:
                                 st.image(msg["file_url"])
             else:
                 st.info("Aucun message dans vos salons pour le moment.")
-        except Exception as e:
+        except Exception:
             st.info("Chargement global des messages...")
 
     # 2. ONGLET : NON LUES (Messages récents ou non lus des salons accessibles)
@@ -335,7 +331,6 @@ else:
                 res = supabase.table("messages").select("*").eq("salon", s).execute()
                 if res.data:
                     for m in res.data:
-                        # On filtre les messages qui ne sont pas de l'utilisateur connecté
                         if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
                             m["current_salon"] = s
                             unread_messages.append(m)
@@ -357,11 +352,9 @@ else:
     elif st.session_state.chat_filter == "Favoris":
         st.subheader("⭐ Vos messages et éléments favoris")
         
-        # Récupération des favoris depuis Supabase (table dédiée ou stockage local de session)
         if "favoris_list" not in st.session_state:
             st.session_state.favoris_list = []
 
-        # Formulaire d'ajout rapide dans les favoris
         with st.form("form_add_favori", clear_on_submit=True):
             new_fav = st.text_input("➕ Ajouter un texte ou une information importante en favori...")
             add_fav_btn = st.form_submit_button("Enregistrer dans mes favoris")
@@ -382,9 +375,14 @@ else:
         else:
             st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
 
-    # 4. ONGLET : SALONS (Mode salon standard avec écriture de messages)
+    # 4. ONGLET : SALONS (Sélection du salon et espace de discussion)
     else:
-        st.subheader(f"🗣️ {salon_choisi}")
+        st.subheader("📌 Choisissez votre salon de discussion")
+        
+        # Le sélecteur de salon se trouve désormais ici, au centre de l'écran dans l'onglet Salons
+        salon_choisi = st.selectbox("Sélectionnez un salon :", salons_accessibles, key="select_salon_main")
+
+        st.markdown(f"### 🗣️ {salon_choisi}")
 
         is_photo_salon = "Photos" in salon_choisi
         can_post = True
@@ -406,7 +404,7 @@ else:
                         st.write(f"**{sender}** : {msg.get('content', '')}")
                         if msg.get("file_url"):
                             st.image(msg["file_url"])
-        except Exception as e:
+        except Exception:
             st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
         # Zone de saisie des messages
