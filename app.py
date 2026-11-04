@@ -212,22 +212,21 @@ else:
         st.session_state.chat_filter = "Favoris"
     elif btn_salons:
         st.session_state.chat_filter = "Salons"
-        # Réinitialisation pour afficher la liste des salons au clic sur l'onglet Salons
         st.session_state.is_chatting_in_salon = False
 
-    # Salons accessibles par l'utilisateur
-    salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
+    # Salons accessibles (sans le préfixe "Salon : ")
+    salons_accessibles = ["Général", "Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
-        salons_accessibles.append("Salon : Hommes")
+        salons_accessibles.append("Hommes")
     elif groupe_usr == "Femmes":
-        salons_accessibles.append("Salon : Femmes")
+        salons_accessibles.append("Femmes")
     elif groupe_usr == "Garçons":
-        salons_accessibles.append("Salon : Garçons")
+        salons_accessibles.append("Garçons")
     elif groupe_usr == "Filles":
-        salons_accessibles.append("Salon : Filles")
+        salons_accessibles.append("Filles")
     elif groupe_usr == "Petits fils/filles":
-        salons_accessibles.append("Salon : Petits fils/filles")
+        salons_accessibles.append("Petits fils/filles")
 
     if "active_dm" in st.session_state and st.session_state.active_dm:
         if st.session_state.active_dm not in salons_accessibles:
@@ -381,10 +380,10 @@ else:
         else:
             st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
 
-    # 4. ONGLET : SALONS (C'est ici que s'affiche la liste des salons accessibles au clic)
+    # 4. ONGLET : SALONS (Affichage de la liste des salons autorisés sans "Salon :")
     else:
         if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = "Salon : Général"
+            st.session_state.salon_actif = "Général"
 
         if "is_chatting_in_salon" not in st.session_state:
             st.session_state.is_chatting_in_salon = False
@@ -406,7 +405,7 @@ else:
             salon_choisi = st.session_state.salon_actif
             st.markdown(f"### 🗣️ {salon_choisi}")
 
-            is_photo_salon = "Photos" in salon_choisi
+            is_photo_salon = ("Photos" in salon_choisi)
             can_post = True
             if is_photo_salon and not user.get("is_admin"):
                 can_post = False
