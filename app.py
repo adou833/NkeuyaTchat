@@ -186,6 +186,7 @@ else:
         st.divider()
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         groupe_usr = user.get("groupe", "")
+        
         if groupe_usr == "Femmes":
             salons_accessibles.append("Salon : Femmes")
         elif groupe_usr == "Hommes":
