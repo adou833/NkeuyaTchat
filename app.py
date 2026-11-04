@@ -229,6 +229,10 @@ else:
         if st.session_state.active_dm not in salons_accessibles:
             salons_accessibles.insert(0, st.session_state.active_dm)
 
+    # Initialisation du salon actif s'il n'existe pas
+    if "salon_actif" not in st.session_state:
+        st.session_state.salon_actif = "Salon : Général"
+
     if search_query:
         try:
             all_profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
@@ -249,6 +253,7 @@ else:
                             if st.button(f"💬 {m['prenom']} {m['nom']}", key=f"btn_dm_{m['prenom']}"):
                                 st.session_state.active_dm = f"Chat avec {m['prenom']} {m['nom']}"
                                 st.session_state.chat_filter = "Salons"
+                                st.session_state.salon_actif = st.session_state.active_dm
                                 st.rerun()
                     else:
                         with cols[idx % len(cols)]:
@@ -294,7 +299,7 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : TOUTES (Fil centralisé de tous les salons accessibles)
+    # 1. ONGLET : TOUTES
     if st.session_state.chat_filter == "Toutes":
         st.subheader("📋 Toutes les discussions (Tous salons confondus)")
         try:
@@ -322,7 +327,7 @@ else:
         except Exception:
             st.info("Chargement global des messages...")
 
-    # 2. ONGLET : NON LUES (Messages récents ou non lus des salons accessibles)
+    # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus de vos salons")
         try:
@@ -348,7 +353,7 @@ else:
         except Exception:
             st.info("Vérification des messages non lus...")
 
-    # 3. ONGLET : FAVORIS (Éléments enregistrés personnellement)
+    # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
         st.subheader("⭐ Vos messages et éléments favoris")
         
@@ -375,65 +380,84 @@ else:
         else:
             st.info("Aucun favori enregistré pour l'instant. Utilisez le champ ci-dessus pour en ajouter.")
 
-    # 4. ONGLET : SALONS (Sélection du salon et espace de discussion)
+    # 4. ONGLET : SALONS (Affichage de la liste des salons accessibles sous forme de boutons cliquables)
     else:
-        st.subheader("📌 Choisissez votre salon de discussion")
-        
-        # Le sélecteur de salon se trouve désormais ici, au centre de l'écran dans l'onglet Salons
-        salon_choisi = st.selectbox("Sélectionnez un salon :", salons_accessibles, key="select_salon_main")
+        # Si aucun salon n'est sélectionné ou s'il n'est plus dans la liste, on met le Général par défaut
+        if st.session_state.salon_actif not in salons_accessibles:
+            st.session_state.salon_actif = "Salon : Général"
 
-        st.markdown(f"### 🗣️ {salon_choisi}")
+        # Si l'utilisateur est en train de visionner un salon spécifique
+        if "is_chatting_in_salon" not in st.session_state:
+            st.session_state.is_chatting_in_salon = False
 
-        is_photo_salon = "Photos" in salon_choisi
-        can_post = True
-        if is_photo_salon and not user.get("is_admin"):
-            can_post = False
-            st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
-
-        # Affichage des messages du salon choisi
-        try:
-            messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-            messages = messages_res.data if messages_res.data else []
+        if not st.session_state.is_chatting_in_salon:
+            st.subheader("📌 Vos Salons Disponibles")
+            st.write("Cliquez sur le salon dans lequel vous souhaitez tchater :")
             
-            for msg in messages:
-                if not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    is_me = (sender == user["prenom"])
-                    
-                    with st.chat_message("user" if not is_me else "assistant"):
-                        st.write(f"**{sender}** : {msg.get('content', '')}")
-                        if msg.get("file_url"):
-                            st.image(msg["file_url"])
-        except Exception:
-            st.info("Espace de discussion initialisé. Aucun message pour le moment.")
+            for salon in salons_accessibles:
+                if st.button(f"💬 {salon}", key=f"btn_salon_{salon}"):
+                    st.session_state.salon_actif = salon
+                    st.session_state.is_chatting_in_salon = True
+                    st.rerun()
+        else:
+            # Bouton de retour en arrière pour changer de salon
+            if st.button("⬅️ Retour à la liste des salons"):
+                st.session_state.is_chatting_in_salon = False
+                st.rerun()
 
-        # Zone de saisie des messages
-        if can_post:
-            st.divider()
-            with st.form("form_message", clear_on_submit=True):
-                msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
-                uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+            salon_choisi = st.session_state.salon_actif
+            st.markdown(f"### 🗣️ {salon_choisi}")
+
+            is_photo_salon = "Photos" in salon_choisi
+            can_post = True
+            if is_photo_salon and not user.get("is_admin"):
+                can_post = False
+                st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
+
+            # Affichage des messages du salon choisi
+            try:
+                messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+                messages = messages_res.data if messages_res.data else []
                 
-                col1, col2 = st.columns([1, 4])
-                with col1:
-                    voice_btn = st.form_submit_button("🎙️ Voice")
-                with col2:
-                    send_btn = st.form_submit_button("📤 Envoyer")
+                for msg in messages:
+                    if not msg.get("is_blocked", False):
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        is_me = (sender == user["prenom"])
+                        
+                        with st.chat_message("user" if not is_me else "assistant"):
+                            st.write(f"**{sender}** : {msg.get('content', '')}")
+                            if msg.get("file_url"):
+                                st.image(msg["file_url"])
+            except Exception:
+                st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-                if send_btn and (msg_text or uploaded_file):
-                    try:
-                        supabase.table("messages").insert({
-                            "sender_prenom": user["prenom"],
-                            "sender_phone": user["phone"],
-                            "salon": salon_choisi,
-                            "content": msg_text if msg_text else "",
-                            "is_blocked": False
-                        }).execute()
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Erreur lors de l'envoi du message : {err}")
-                elif voice_btn:
-                    st.toast("Fonction vocale bientôt active !")
+            # Zone de saisie des messages
+            if can_post:
+                st.divider()
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
+                    
+                    col1, col2 = st.columns([1, 4])
+                    with col1:
+                        voice_btn = st.form_submit_button("🎙️ Voice")
+                    with col2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur lors de l'envoi du message : {err}")
+                    elif voice_btn:
+                        st.toast("Fonction vocale bientôt active !")
 
     # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
     if user.get("is_admin"):
