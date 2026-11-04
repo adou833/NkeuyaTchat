@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé
+# 4. Style CSS personnalisé (avec réduction de la taille des boutons)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -84,6 +84,8 @@ st.markdown(f"""
         padding: 0 !important;
         color: white !important;
     }}
+    
+    /* Boutons généraux standard */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -98,6 +100,15 @@ st.markdown(f"""
         opacity: 0.9;
         color: white;
     }}
+
+    /* STYLE SPÉCIFIQUE POUR RENDRE LES 4 ONGLETS DE FILTRE PLUS PETITS */
+    div[data-testid="column"] button {{
+        padding: 4px 8px !important;
+        font-size: 0.8rem !important;
+        border-radius: 12px !important;
+        min-height: unset !important;
+    }}
+
     .stTextInput input, .stSelectbox select {{
         border-radius: 18px !important;
     }}
@@ -180,7 +191,7 @@ else:
     # 2. Zone de recherche de membres
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # 3. Onglets de filtres (Toutes, Non Lues, Favoris, Salons) sous la recherche
+    # 3. Onglets de filtres plus compacts sous la recherche
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_toutes = st.button("📋 Toutes")
@@ -191,7 +202,6 @@ else:
     with filter_col4:
         btn_salons = st.button("💬 Salons")
 
-    # Gestion basique de l'état des filtres
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Toutes"
 
@@ -257,7 +267,6 @@ else:
             "Salon : Petits fils/filles"
         ])
 
-        # Si un DM a été sélectionné via la recherche sous le bandeau, on l'ajoute aux choix
         if "active_dm" in st.session_state and st.session_state.active_dm:
             if st.session_state.active_dm not in salons_accessibles:
                 salons_accessibles.insert(0, st.session_state.active_dm)
