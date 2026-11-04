@@ -141,7 +141,11 @@ if not st.session_state.user:
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
             phone = st.text_input("Le Numéro de téléphone *")
-            groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"])
+            # Liste complète des groupes mise à jour
+            groupe = st.selectbox(
+                "Choisir votre salon familial *", 
+                ["Femmes", "Garçons", "Filles", "Petits fils/filles"]
+            )
             password = st.text_input("Créer un mot de passe fort *", type="password")
             
             submit_signup = st.form_submit_button("✨ S'inscrire")
@@ -187,14 +191,15 @@ else:
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         groupe_usr = user.get("groupe", "")
         
+        # Correspondance exacte avec les options d'inscription
         if groupe_usr == "Femmes":
             salons_accessibles.append("Salon : Femmes")
-        elif groupe_usr == "Hommes":
-            salons_accessibles.append("Salon : Hommes")
+        elif groupe_usr == "Garçons":
+            salons_accessibles.append("Salon : Garçons")
         elif groupe_usr == "Filles":
             salons_accessibles.append("Salon : Filles")
-        elif groupe_usr == "Petits fils et filles":
-            salons_accessibles.append("Salon : Petits fils et filles")
+        elif groupe_usr == "Petits fils/filles":
+            salons_accessibles.append("Salon : Petits fils/filles")
             
         salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
@@ -230,7 +235,7 @@ else:
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom") == user["prenom"])
+                is_me = (msg.get("sender_prenom"] == user["prenom"])
                 with st.chat_message("user" if not is_me else "assistant"):
                     st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
                     if msg.get("file_url"):
