@@ -176,6 +176,7 @@ if not st.session_state.user:
 
             if submit_signup:
                 if nom and prenom and phone and password:
+                    # Seul Eric est défini comme administrateur de l'application
                     is_admin = True if prenom.strip().lower() == "eric" else False
                     new_user = {
                         "nom": nom.strip(), 
@@ -206,7 +207,9 @@ else:
     with col_head2:
         with st.popover("⚙️ Options", use_container_width=True):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
-            if user.get("is_admin"):
+            
+            # SÉCURITÉ : Le badge Admin n'apparaît dans le menu popover QUE pour Eric
+            if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
             
             st.divider()
@@ -318,7 +321,7 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # Zone de messages défilante (hauteur ajustée pour libérer de la place en bas)
+        # Zone de messages défilante
         chat_container = st.container(height=140)
         with chat_container:
             try:
@@ -337,7 +340,7 @@ else:
             except Exception:
                 st.info("Aucun message pour le moment.")
 
-        # Formulaire de saisie avec le sélecteur de fichiers (photos/documents/audio)
+        # Formulaire de saisie
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
@@ -350,7 +353,6 @@ else:
 
             if send_btn and (msg_text or uploaded_file):
                 try:
-                    # Gestion basique de l'enregistrement du message
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
@@ -487,8 +489,11 @@ else:
                         except Exception as err:
                             st.error(f"Erreur : {err}")
 
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Administration"):
-            if st.button("⚙️ Réinitialiser un mot de passe", key="admin_pwd"):
-                st.info("Actif.")
+    # --- PANNEAU D'ADMINISTRATION (SÉCURISÉ : APPARAÎT UNIQUEMENT POUR ERIC) ---
+    if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
+        with st.expander("🛠️ Panneau d'Administration (Accès exclusif Eric)"):
+            st.write("Contrôle total de l'application familiale :")
+            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
+                st.info("Module de réinitialisation actif.")
+            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
+                st.info("Module de modération actif.")
