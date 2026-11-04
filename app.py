@@ -176,7 +176,6 @@ if not st.session_state.user:
 
             if submit_signup:
                 if nom and prenom and phone and password:
-                    # Seul Eric est défini comme administrateur de l'application
                     is_admin = True if prenom.strip().lower() == "eric" else False
                     new_user = {
                         "nom": nom.strip(), 
@@ -208,7 +207,6 @@ else:
         with st.popover("⚙️ Options", use_container_width=True):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             
-            # SÉCURITÉ : Le badge Admin n'apparaît dans le menu popover QUE pour Eric
             if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
             
@@ -317,11 +315,11 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : GÉNÉRAL
+    # 1. ONGLET : GÉNÉRAL (Strictement filtré sur "Général")
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # Zone de messages défilante
+        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON "Général"
         chat_container = st.container(height=140)
         with chat_container:
             try:
@@ -340,7 +338,7 @@ else:
             except Exception:
                 st.info("Aucun message pour le moment.")
 
-        # Formulaire de saisie
+        # Formulaire d'envoi pour le salon "Général"
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
@@ -356,7 +354,7 @@ else:
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
-                        "salon": "Général",
+                        "salon": "Général",  # <--- ISOLATION GARANTIE SUR GÉNÉRAL
                         "content": msg_text if msg_text else "",
                         "is_blocked": False
                     }).execute()
@@ -418,7 +416,7 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS
+    # 4. ONGLET : SALONS (Strictement filtré sur le salon sélectionné)
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = "Général"
@@ -447,9 +445,11 @@ else:
                 can_post = False
                 st.info("🔒 Salon en lecture seule.")
 
+            # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON ACTIF
             chat_container = st.container(height=140)
             with chat_container:
                 try:
+                    # FILTRE EXCLUSIF SUR LE SALON CHOISI
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
                     messages = messages_res.data if messages_res.data else []
                     
@@ -481,7 +481,7 @@ else:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
-                                "salon": salon_choisi,
+                                "salon": salon_choisi,  # <--- ENREGISTREMENT STRICTEMENT LIÉ AU SALON ACTIF
                                 "content": msg_text if msg_text else "",
                                 "is_blocked": False
                             }).execute()
@@ -489,7 +489,7 @@ else:
                         except Exception as err:
                             st.error(f"Erreur : {err}")
 
-    # --- PANNEAU D'ADMINISTRATION (SÉCURISÉ : APPARAÎT UNIQUEMENT POUR ERIC) ---
+    # --- PANNEAU D'ADMINISTRATION (SÉCURISÉ) ---
     if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
         with st.expander("🛠️ Panneau d'Administration (Accès exclusif Eric)"):
             st.write("Contrôle total de l'application familiale :")
