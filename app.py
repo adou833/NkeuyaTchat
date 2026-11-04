@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé (Onglets ultra-compacts et épurés)
+# 4. Style CSS personnalisé
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -101,7 +101,7 @@ st.markdown(f"""
         color: white;
     }}
 
-    /* STYLE ULTRA-FIN ET COMPACT POUR LES 4 ONGLETS DE FILTRE */
+    /* Onglets de filtres ultra-fins et compacts */
     div[data-testid="column"] button {{
         padding: 2px 4px !important;
         font-size: 0.72rem !important;
@@ -188,8 +188,40 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # 1. Le grand bandeau principal
-    st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
+    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "⋮" (Popover) à droite
+    col_head1, col_head2 = st.columns([5, 1])
+    with col_head1:
+        st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
+    with col_head2:
+        # Menu 3 points contextuel en haut à droite
+        with st.popover("⋮", use_container_width=True):
+            st.write(f"👤 **{user['prenom']} {user['nom']}**")
+            if user.get("is_admin"):
+                st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
+            
+            st.divider()
+            st.subheader("🎨 Thème WhatsApp")
+            st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio_popover")
+
+            # --- LISTE DES MEMBRES ---
+            st.divider()
+            with st.expander("👥 Membres de la Famille"):
+                try:
+                    profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
+                    profiles = profiles_res.data if profiles_res.data else []
+                    for p in profiles:
+                        st.write(f"• **{p['prenom']} {p['nom']}** ({p['groupe']})")
+                except Exception:
+                    st.write("Chargement des membres...")
+
+            st.divider()
+            if st.button("🚪 Déconnexion Complète", key="btn_logout_popover"):
+                st.session_state.user = None
+                if "logged_user" in st.query_params:
+                    del st.query_params["logged_user"]
+                if "active_dm" in st.session_state:
+                    del st.session_state.active_dm
+                st.rerun()
 
     # 2. Zone de recherche de membres
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
@@ -268,36 +300,6 @@ else:
             st.warning("Erreur lors de la recherche des membres.")
 
     st.divider()
-
-    # --- BARRE LATÉRALE (SIDEBAR) ---
-    with st.sidebar:
-        st.write(f"👤 **{user['prenom']} {user['nom']}**")
-        if user.get("is_admin"):
-            st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
-        
-        st.divider()
-        st.subheader("🎨 Thème WhatsApp")
-        st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
-
-        # --- LISTE DES MEMBRES ---
-        st.divider()
-        with st.expander("👥 Membres de la Famille"):
-            try:
-                profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
-                profiles = profiles_res.data if profiles_res.data else []
-                for p in profiles:
-                    st.write(f"• **{p['prenom']} {p['nom']}** ({p['groupe']})")
-            except Exception:
-                st.write("Chargement des membres...")
-
-        st.divider()
-        if st.button("🚪 Déconnexion Complète", key="btn_logout"):
-            st.session_state.user = None
-            if "logged_user" in st.query_params:
-                del st.query_params["logged_user"]
-            if "active_dm" in st.session_state:
-                del st.session_state.active_dm
-            st.rerun()
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
