@@ -188,13 +188,13 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "⋮" (Popover) à droite
-    col_head1, col_head2 = st.columns([5, 1])
+    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
+    col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
     with col_head2:
-        # Menu 3 points contextuel en haut à droite
-        with st.popover("⋮", use_container_width=True):
+        # Menu Options en haut à droite
+        with st.popover("⚙️ Options", use_container_width=True):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             if user.get("is_admin"):
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
