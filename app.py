@@ -260,8 +260,8 @@ else:
         st.session_state.chat_filter = "Salons"
         st.session_state.is_chatting_in_salon = False
 
-    # Salons accessibles
-    salons_accessibles = ["Général", "Photos de la famille Nkeuya"]
+    # Salons secondaires (Général est exclu d'ici car déjà présent sur l'onglet principal)
+    salons_accessibles = ["Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
         salons_accessibles.append("Hommes")
@@ -319,7 +319,6 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # Zone de messages défilante du Général
         chat_container = st.container(height=140)
         with chat_container:
             try:
@@ -338,7 +337,6 @@ else:
             except Exception:
                 st.info("Aucun message pour le moment.")
 
-        # Formulaire d'envoi pour le salon "Général"
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
@@ -362,7 +360,7 @@ else:
                 except Exception as err:
                     st.error(f"Erreur : {err}")
 
-        # --- PANNEAU D'ADMINISTRATION (UNIQUEMENT VISIBLE DANS LE SALON GÉNÉRAL POUR ERIC) ---
+        # Panneau d'administration (Uniquement dans le salon Général pour Eric)
         if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
             with st.expander("🛠️ Panneau d'Administration (Général)"):
                 st.write("Contrôle total de l'application familiale :")
@@ -378,7 +376,9 @@ else:
         with chat_container:
             try:
                 unread_messages = []
-                for s in salons_accessibles:
+                # On vérifie l'ensemble des salons existants pour les non lus
+                tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
+                for s in tous_les_salons:
                     res = supabase.table("messages").select("*").eq("salon", s).execute()
                     if res.data:
                         for m in res.data:
@@ -425,10 +425,10 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS (Sans panneau d'administration ici)
+    # 4. ONGLET : SALONS (Sans le salon Général)
     else:
         if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = "Général"
+            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
 
         if "is_chatting_in_salon" not in st.session_state:
             st.session_state.is_chatting_in_salon = False
@@ -478,20 +478,3 @@ else:
                     uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
                     
                     col_send1, col_send2 = st.columns([3, 1])
-                    with col_send1:
-                        st.caption("PNG, JPG, PDF, MP3, MP4")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
