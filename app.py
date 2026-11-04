@@ -270,15 +270,13 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages depuis Supabase
+    # Affichage des messages depuis Supabase (Correction de la syntaxe de la ligne 280)
     try:
         messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
         messages = messages_res.data if messages_res.data else []
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom"] == user["prenom"] if "sender_prenom" in msg else False)
-                # Correction de sécurité pour le nom de l'expéditeur
                 sender = msg.get('sender_prenom', 'Anonyme')
                 is_me = (sender == user["prenom"])
                 
