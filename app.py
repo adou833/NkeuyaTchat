@@ -315,11 +315,11 @@ else:
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
-    # 1. ONGLET : GÉNÉRAL (Strictement filtré sur "Général")
+    # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON "Général"
+        # Zone de messages défilante du Général
         chat_container = st.container(height=140)
         with chat_container:
             try:
@@ -354,13 +354,22 @@ else:
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
-                        "salon": "Général",  # <--- ISOLATION GARANTIE SUR GÉNÉRAL
+                        "salon": "Général",
                         "content": msg_text if msg_text else "",
                         "is_blocked": False
                     }).execute()
                     st.rerun()
                 except Exception as err:
                     st.error(f"Erreur : {err}")
+
+        # --- PANNEAU D'ADMINISTRATION (UNIQUEMENT VISIBLE DANS LE SALON GÉNÉRAL POUR ERIC) ---
+        if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
+            with st.expander("🛠️ Panneau d'Administration (Général)"):
+                st.write("Contrôle total de l'application familiale :")
+                if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd_gen"):
+                    st.info("Module de réinitialisation actif.")
+                if st.button("🚫 Gérer les messages indésirables", key="admin_mod_gen"):
+                    st.info("Module de modération actif.")
 
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
@@ -416,7 +425,7 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS (Strictement filtré sur le salon sélectionné)
+    # 4. ONGLET : SALONS (Sans panneau d'administration ici)
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = "Général"
@@ -445,11 +454,9 @@ else:
                 can_post = False
                 st.info("🔒 Salon en lecture seule.")
 
-            # ZONE DE SCROLL STRICTEMENT LIMITÉE AUX MESSAGES DU SALON ACTIF
             chat_container = st.container(height=140)
             with chat_container:
                 try:
-                    # FILTRE EXCLUSIF SUR LE SALON CHOISI
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
                     messages = messages_res.data if messages_res.data else []
                     
@@ -481,19 +488,10 @@ else:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
-                                "salon": salon_choisi,  # <--- ENREGISTREMENT STRICTEMENT LIÉ AU SALON ACTIF
+                                "salon": salon_choisi,
                                 "content": msg_text if msg_text else "",
                                 "is_blocked": False
                             }).execute()
                             st.rerun()
                         except Exception as err:
                             st.error(f"Erreur : {err}")
-
-    # --- PANNEAU D'ADMINISTRATION (SÉCURISÉ) ---
-    if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
-        with st.expander("🛠️ Panneau d'Administration (Accès exclusif Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
