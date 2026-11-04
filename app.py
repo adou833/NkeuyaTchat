@@ -53,10 +53,20 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict pour bloquer le scroll global et optimiser l'affichage
+# 4. Style CSS strict (Masquage menu 3 points, bouton stylo, et verrouillage du scroll)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
+    /* Masque les 3 points en haut à droite (menu principal Streamlit) */
+    #MainMenu {{visibility: hidden;}}
+    
+    /* Masque le pied de page 'Made with Streamlit' */
+    footer {{visibility: hidden;}}
+    
+    /* Masque le bouton crayon / stylo d'édition en haut */
+    .stAppToolbar {{display: none !important;}}
+    header[data-testid="stHeader"] {{display: none !important;}}
+
     /* Bloque complètement le défilement de la page principale */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         overflow: hidden !important;
