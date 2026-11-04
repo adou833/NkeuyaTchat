@@ -33,11 +33,9 @@ query_params = st.query_params
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# Si la session est vide mais qu'on a un prénom dans l'URL après un rafraîchissement
 if not st.session_state.user and "logged_user" in query_params:
     saved_prenom = query_params["logged_user"]
     try:
-        # On va rechercher rapidement le profil dans Supabase pour le reconnecter
         res = supabase.table("profiles").select("*").eq("prenom", saved_prenom).execute()
         if res.data:
             st.session_state.user = res.data[0]
@@ -47,7 +45,6 @@ if not st.session_state.user and "logged_user" in query_params:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# Couleurs dynamiques selon le thème choisi
 theme_colors = {
     "WhatsApp Classic": "#075E54",
     "Bleu Nkeuya": "#0084FF",
@@ -56,16 +53,13 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé (Theme WhatsApp & Arrondis)
+# 4. Style CSS personnalisé
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
-    /* Fond général de la page */
     .stApp {{
         background-color: #ECE5DD;
     }}
-    
-    /* Conteneur principal arrondi */
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 20px;
@@ -74,8 +68,6 @@ st.markdown(f"""
         margin-top: 15px;
         margin-bottom: 15px;
     }}
-    
-    /* En-tête style WhatsApp */
     .main-header {{
         background-color: {primary_color};
         color: white;
@@ -92,8 +84,6 @@ st.markdown(f"""
         padding: 0 !important;
         color: white !important;
     }}
-
-    /* Boutons arrondis */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -108,8 +98,6 @@ st.markdown(f"""
         opacity: 0.9;
         color: white;
     }}
-
-    /* Champs de saisie */
     .stTextInput input, .stSelectbox select {{
         border-radius: 18px !important;
     }}
@@ -123,13 +111,11 @@ if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
-    # --- ONGLET 1 : CONNEXION ---
     with tab1:
         st.subheader("Connexion à votre espace")
         with st.form("form_connexion"):
             prenom_login = st.text_input("Prénom *")
             pwd_login = st.text_input("Mot de passe *", type="password")
-            
             submit_login = st.form_submit_button("🚀 Se Connecter")
 
             if submit_login:
@@ -141,7 +127,6 @@ if not st.session_state.user:
                         res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
                         if res.data:
                             st.session_state.user = res.data[0]
-                            # On enregistre l'utilisateur dans l'URL pour persister après rafraîchissement
                             st.query_params["logged_user"] = st.session_state.user["prenom"]
                             st.success(f"Bienvenue {st.session_state.user['prenom']} !")
                             st.rerun()
@@ -150,7 +135,6 @@ if not st.session_state.user:
                     except Exception as e:
                         st.error(f"Erreur de connexion à la base de données : {e}")
 
-    # --- ONGLET 2 : INSCRIPTION ---
     with tab2:
         st.subheader("Créer son compte familial")
         with st.form("form_inscription"):
@@ -201,20 +185,62 @@ else:
         st.subheader("🎨 Thème WhatsApp")
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
+        # --- NOUVEAU : RECHERCHE DE MEMBRES ---
+        st.divider()
+        st.subheader("🔍 Rechercher un membre")
+        search_query = st.text_input("Taper un prénom ou nom...", key="search_member_input")
+
+        # Si l'utilisateur tape une recherche, on filtre les membres
+        selected_dm_salon = None
+        if search_query:
+            try:
+                # Recherche insensible à la casse dans Supabase (ou filtrage en Python)
+                all_profiles_res = supabase.table("profiles").select("prenom", "nom", "groupe").execute()
+                all_profiles = all_profiles_res.data if all_profiles_res.data else []
+                
+                matched_members = [
+                    p for p in all_profiles 
+                    if search_query.lower() in p["prenom"].lower() or search_query.lower() in p["nom"].lower()
+                ]
+                
+                if matched_members:
+                    st.write(f"Résultats ({len(matched_members)}) :")
+                    for m in matched_members:
+                        # On évite de se chercher soi-même pour un chat direct
+                        if m["prenom"].lower() != user["prenom"].lower():
+                            dm_name = f"💬 Chat avec {m['prenom']} {m['nom']}"
+                            if st.button(f"👤 {m['prenom']} {m['nom']}", key=f"btn_dm_{m['prenom']}"):
+                                st.session_state.active_dm = dm_name
+                        else:
+                            st.caption(f"• {m['prenom']} {m['nom']} (Vous)")
+                else:
+                    st.info("Aucun membre trouvé.")
+            except Exception:
+                st.write("Erreur lors de la recherche.")
+
         # --- GESTION ET FILTRAGE DES SALONS ---
         st.divider()
-        salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         
+        # Si un DM a été sélectionné via la recherche, on l'ajoute ou le met en avant
+        salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         salons_accessibles.extend([
             "Salon : Femmes",
             "Salon : Garçons",
             "Salon : Filles",
             "Salon : Petits fils/filles"
         ])
-            
-        salon_choisi = st.selectbox("📌 Choisir un salon", salons_accessibles, key="select_salon")
 
-        # --- LISTE DES MEMBRES ---
+        # Si l'utilisateur a cliqué sur un profil pour tchater en privé, on l'ajoute aux choix
+        if "active_dm" in st.session_state and st.session_state.active_dm:
+            if st.session_state.active_dm not in salons_accessibles:
+                salons_accessibles.insert(0, st.session_state.active_dm)
+            default_index = 0
+        else:
+            default_index = 0
+            
+        salon_choisi = st.selectbox("📌 Choisir un salon / discussion", salons_accessibles, index=default_index, key="select_salon")
+
+        # --- LISTE DES MEMBRES CLASSIQUE ---
         st.divider()
         with st.expander("👥 Membres de la Famille"):
             try:
@@ -227,10 +253,11 @@ else:
 
         st.divider()
         if st.button("🚪 Déconnexion Complète", key="btn_logout"):
-            # On nettoie la session et les paramètres URL lors de la déconnexion
             st.session_state.user = None
             if "logged_user" in st.query_params:
                 del st.query_params["logged_user"]
+            if "active_dm" in st.session_state:
+                del st.session_state.active_dm
             st.rerun()
 
     # --- ESPACE DE CHAT ---
