@@ -151,9 +151,10 @@ if not st.session_state.user:
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
             phone = st.text_input("Le Numéro de téléphone *")
+            # Ajout de "Hommes" dans les groupes d'inscription
             groupe = st.selectbox(
                 "Choisir votre salon familial *", 
-                ["Femmes", "Garçons", "Filles", "Petits fils/filles"]
+                ["Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
             )
             password = st.text_input("Créer un mot de passe fort *", type="password")
             
@@ -213,10 +214,12 @@ else:
     elif btn_salons:
         st.session_state.chat_filter = "Salons"
 
-    # Salons accessibles par l'utilisateur
+    # Salons accessibles par l'utilisateur (avec le Salon : Hommes ajouté)
     salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
-    if groupe_usr == "Femmes":
+    if groupe_usr == "Hommes":
+        salons_accessibles.append("Salon : Hommes")
+    elif groupe_usr == "Femmes":
         salons_accessibles.append("Salon : Femmes")
     elif groupe_usr == "Garçons":
         salons_accessibles.append("Salon : Garçons")
@@ -228,10 +231,6 @@ else:
     if "active_dm" in st.session_state and st.session_state.active_dm:
         if st.session_state.active_dm not in salons_accessibles:
             salons_accessibles.insert(0, st.session_state.active_dm)
-
-    # Initialisation du salon actif s'il n'existe pas
-    if "salon_actif" not in st.session_state:
-        st.session_state.salon_actif = "Salon : Général"
 
     if search_query:
         try:
@@ -382,11 +381,12 @@ else:
 
     # 4. ONGLET : SALONS (Affichage de la liste des salons accessibles sous forme de boutons cliquables)
     else:
-        # Si aucun salon n'est sélectionné ou s'il n'est plus dans la liste, on met le Général par défaut
+        if "salon_actif" not in st.session_state:
+            st.session_state.salon_actif = "Salon : Général"
+
         if st.session_state.salon_actif not in salons_accessibles:
             st.session_state.salon_actif = "Salon : Général"
 
-        # Si l'utilisateur est en train de visionner un salon spécifique
         if "is_chatting_in_salon" not in st.session_state:
             st.session_state.is_chatting_in_salon = False
 
@@ -400,7 +400,6 @@ else:
                     st.session_state.is_chatting_in_salon = True
                     st.rerun()
         else:
-            # Bouton de retour en arrière pour changer de salon
             if st.button("⬅️ Retour à la liste des salons"):
                 st.session_state.is_chatting_in_salon = False
                 st.rerun()
