@@ -475,4 +475,33 @@ else:
                             is_me = (sender == user["prenom"])
                             
                             with st.chat_message("user" if not is_me else "assistant"):
-                                st.write(f"**{sender}** : {msg.get('content', '')
+                                st.write(f"**{sender}** : {msg.get('content', '')}")
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
+                except Exception:
+                    st.info("Aucun message pour le moment.")
+
+            if can_post:
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
+                    
+                    col_send1, col_send2 = st.columns([3, 1])
+                    with col_send1:
+                    # Correction ici : fermeture correcte de la parenthèse et des accolades
+                        st.caption("PNG, JPG, PDF, MP3, MP4")
+                    with col_send2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
