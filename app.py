@@ -141,7 +141,6 @@ if not st.session_state.user:
             nom = st.text_input("Le Nom *")
             prenom = st.text_input("Prénom *")
             phone = st.text_input("Le Numéro de téléphone *")
-            # Liste complète des groupes mise à jour
             groupe = st.selectbox(
                 "Choisir votre salon familial *", 
                 ["Femmes", "Garçons", "Filles", "Petits fils/filles"]
@@ -191,7 +190,6 @@ else:
         salons_accessibles = ["Salon : Général", "Salon : Photos de la famille Nkeuya"]
         groupe_usr = user.get("groupe", "")
         
-        # Correspondance exacte avec les options d'inscription
         if groupe_usr == "Femmes":
             salons_accessibles.append("Salon : Femmes")
         elif groupe_usr == "Garçons":
@@ -228,14 +226,14 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages depuis Supabase
+    # Affichage des messages depuis Supabase (Correction de la syntaxe de la ligne 238)
     try:
         messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
         messages = messages_res.data if messages_res.data else []
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom"] == user["prenom"])
+                is_me = (msg.get("sender_prenom") == user["prenom"])
                 with st.chat_message("user" if not is_me else "assistant"):
                     st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
                     if msg.get("file_url"):
