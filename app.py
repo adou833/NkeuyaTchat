@@ -70,7 +70,7 @@ st.markdown(f"""
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 16px;
-        padding: 0.6rem 0.8rem !important;
+        padding: 0.5rem 0.8rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         max-height: 98vh !important;
         margin-top: 2px;
@@ -318,8 +318,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # Zone de messages défilante (hauteur optimisée pour tout voir)
-        chat_container = st.container(height=160)
+        # Zone de messages défilante (hauteur ajustée pour libérer de la place en bas)
+        chat_container = st.container(height=140)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -332,25 +332,30 @@ else:
                         
                         with st.chat_message("user" if not is_me else "assistant"):
                             st.write(f"**{sender}** : {msg.get('content', '')}")
+                            if msg.get("file_url"):
+                                st.image(msg["file_url"])
             except Exception:
                 st.info("Aucun message pour le moment.")
 
-        # Zone de saisie compacte et parfaitement visible
+        # Formulaire de saisie avec le sélecteur de fichiers (photos/documents/audio)
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
+            uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
+            
             col_send1, col_send2 = st.columns([3, 1])
             with col_send1:
-                st.caption("Tapez votre message ci-dessus")
+                st.caption("PNG, JPG, PDF, MP3, MP4")
             with col_send2:
                 send_btn = st.form_submit_button("📤 Envoyer")
 
-            if send_btn and msg_text:
+            if send_btn and (msg_text or uploaded_file):
                 try:
+                    # Gestion basique de l'enregistrement du message
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
                         "salon": "Général",
-                        "content": msg_text,
+                        "content": msg_text if msg_text else "",
                         "is_blocked": False
                     }).execute()
                     st.rerun()
@@ -360,7 +365,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=240)
+        chat_container = st.container(height=220)
         with chat_container:
             try:
                 unread_messages = []
@@ -440,7 +445,7 @@ else:
                 can_post = False
                 st.info("🔒 Salon en lecture seule.")
 
-            chat_container = st.container(height=160)
+            chat_container = st.container(height=140)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
@@ -453,25 +458,29 @@ else:
                             
                             with st.chat_message("user" if not is_me else "assistant"):
                                 st.write(f"**{sender}** : {msg.get('content', '')}")
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
                 except Exception:
                     st.info("Aucun message pour le moment.")
 
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
+                    
                     col_send1, col_send2 = st.columns([3, 1])
                     with col_send1:
-                        st.caption("Tapez votre message ci-dessus")
+                        st.caption("PNG, JPG, PDF, MP3, MP4")
                     with col_send2:
                         send_btn = st.form_submit_button("📤 Envoyer")
 
-                    if send_btn and msg_text:
+                    if send_btn and (msg_text or uploaded_file):
                         try:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
                                 "salon": salon_choisi,
-                                "content": msg_text,
+                                "content": msg_text if msg_text else "",
                                 "is_blocked": False
                             }).execute()
                             st.rerun()
