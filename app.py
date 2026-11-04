@@ -177,8 +177,34 @@ else:
     # 1. Le grand bandeau principal
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
-    # 2. Zone de recherche de membres DIRECTEMENT SOUS LE BANDEAU
+    # 2. Zone de recherche de membres
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
+
+    # 3. Onglets de filtres (Toutes, Non Lues, Favoris, Salons) sous la recherche
+    filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+    with filter_col1:
+        btn_toutes = st.button("📋 Toutes")
+    with filter_col2:
+        btn_non_lues = st.button("📬 Non Lues")
+    with filter_col3:
+        btn_favoris = st.button("⭐ Favoris")
+    with filter_col4:
+        btn_salons = st.button("💬 Salons")
+
+    # Gestion basique de l'état des filtres
+    if "chat_filter" not in st.session_state:
+        st.session_state.chat_filter = "Toutes"
+
+    if btn_toutes:
+        st.session_state.chat_filter = "Toutes"
+    elif btn_non_lues:
+        st.session_state.chat_filter = "Non Lues"
+    elif btn_favoris:
+        st.session_state.chat_filter = "Favoris"
+    elif btn_salons:
+        st.session_state.chat_filter = "Salons"
+
+    st.caption(f"Filtre actif : **{st.session_state.chat_filter}**")
 
     if search_query:
         try:
