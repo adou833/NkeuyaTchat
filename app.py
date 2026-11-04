@@ -36,7 +36,7 @@ st.markdown(f"""
         background-color: #ECE5DD;
     }}
     
-    /* Arrondir les angles de toute l'interface principale (haut et bas) */
+    /* Arrondir les angles de toute l'interface principale */
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 20px;
@@ -46,11 +46,11 @@ st.markdown(f"""
         margin-bottom: 15px;
     }}
     
-    /* En-tête aminci et épuré style WhatsApp */
+    /* En-tête style WhatsApp */
     .main-header {{
         background-color: {primary_color};
         color: white;
-        padding: 8px 12px;
+        padding: 10px 15px;
         border-radius: 12px;
         text-align: center;
         font-weight: bold;
@@ -58,37 +58,32 @@ st.markdown(f"""
         margin-bottom: 15px;
     }}
     .main-header h1, .main-header h2 {{
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
         margin: 0 !important;
         padding: 0 !important;
         color: white !important;
     }}
 
-    /* Boutons arrondis propres et harmonisés */
+    /* Boutons arrondis propres et visibles */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
         border-radius: 20px;
         border: none;
-        padding: 6px 14px;
-        font-weight: 500;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        padding: 8px 16px;
+        font-weight: bold;
+        width: 100%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }}
     .stButton>button:hover {{
         opacity: 0.9;
+        background-color: {primary_color};
+        color: white;
     }}
 
-    /* Champs de saisie aux bordures parfaitement alignées */
+    /* Champs de saisie */
     .stTextInput input, .stSelectbox select {{
         border-radius: 18px !important;
-    }}
-
-    /* Bulles de messages et conteneurs arrondis */
-    .stChatMessage {{
-        border-radius: 12px !important;
-        padding: 8px;
-        margin-bottom: 6px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -99,50 +94,60 @@ if not st.session_state.user:
     tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
-        st.subheader("Connexion")
-        prenom_login = st.text_input("Prénom *", key="login_prenom")
-        pwd_login = st.text_input("Mot de passe *", type="password", key="login_pwd")
-        if st.button("🚀 Se Connecter", key="btn_login"):
-            clean_prenom = prenom_login.strip() if prenom_login else ""
+        st.subheader("Connexion à votre espace")
+        # Utilisation d'un formulaire pour que la touche Entrée ou le bouton fonctionnent parfaitement
+        with st.form("form_connexion"):
+            prenom_login = st.text_input("Prénom *")
+            pwd_login = st.text_input("Mot de passe *", type="password")
             
-            try:
-                res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
-                if res.data:
-                    st.session_state.user = res.data[0]
-                    st.success(f"Bienvenue {st.session_state.user['prenom']} !")
-                    st.rerun()
+            # Bouton de soumission du formulaire (joue le rôle de "Se connecter")
+            submit_login = st.form_submit_button("🚀 Se Connecter")
+
+            if submit_login:
+                clean_prenom = prenom_login.strip() if prenom_login else ""
+                if not clean_prenom or not pwd_login:
+                    st.warning("Veuillez remplir tous les champs.")
                 else:
-                    st.error("Prénom ou mot de passe incorrect.")
-            except Exception as e:
-                st.error(f"Erreur de connexion à la base de données : {e}")
+                    try:
+                        res = supabase.table("profiles").select("*").eq("prenom", clean_prenom).eq("password", pwd_login).execute()
+                        if res.data:
+                            st.session_state.user = res.data[0]
+                            st.success(f"Bienvenue {st.session_state.user['prenom']} !")
+                            st.rerun()
+                        else:
+                            st.error("Prénom ou mot de passe incorrect.")
+                    except Exception as e:
+                        st.error(f"Erreur de connexion à la base de données : {e}")
 
     with tab2:
         st.subheader("CREER SON COMPTE")
-        nom = st.text_input("Le Nom *", key="signup_nom")
-        prenom = st.text_input("Prénom *", key="signup_prenom")
-        phone = st.text_input("Le Numéro de téléphone *", key="signup_phone")
-        groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"], key="signup_groupe")
-        password = st.text_input("Créer un mot de passe fort *", type="password", key="signup_pwd")
-        
-        is_admin = True if prenom.strip().lower() == "eric" else False
+        with st.form("form_inscription"):
+            nom = st.text_input("Le Nom *")
+            prenom = st.text_input("Prénom *")
+            phone = st.text_input("Le Numéro de téléphone *")
+            groupe = st.selectbox("Choisir votre salon familial *", ["Femmes", "Hommes", "Filles", "Petits fils et filles"])
+            password = st.text_input("Créer un mot de passe fort *", type="password")
+            
+            submit_signup = st.form_submit_button("✨ S'inscrire")
 
-        if st.button("✨ S'inscrire", key="btn_signup"):
-            if nom and prenom and phone and password:
-                new_user = {
-                    "nom": nom.strip(), 
-                    "prenom": prenom.strip(), 
-                    "phone": phone.strip(),
-                    "groupe": groupe, 
-                    "password": password, 
-                    "is_admin": is_admin
-                }
-                try:
-                    supabase.table("profiles").insert(new_user).execute()
-                    st.success("Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
-                except Exception as e:
-                    st.error("Erreur : Ce numéro de téléphone ou cet utilisateur existe déjà.")
-            else:
-                st.warning("Tous les champs sont obligatoires.")
+            if submit_signup:
+                if nom and prenom and phone and password:
+                    is_admin = True if prenom.strip().lower() == "eric" else False
+                    new_user = {
+                        "nom": nom.strip(), 
+                        "prenom": prenom.strip(), 
+                        "phone": phone.strip(),
+                        "groupe": groupe, 
+                        "password": password, 
+                        "is_admin": is_admin
+                    }
+                    try:
+                        supabase.table("profiles").insert(new_user).execute()
+                        st.success("Compte créé avec succès ! Connectez-vous dans l'onglet 'Se Connecter'.")
+                    except Exception as e:
+                        st.error("Erreur : Ce numéro de téléphone ou cet utilisateur existe déjà.")
+                else:
+                    st.warning("Tous les champs sont obligatoires.")
 
 # --- INTERFACE PRINCIPALE DE MESSAGERIE ---
 else:
@@ -204,46 +209,4 @@ else:
         
         for msg in messages:
             if not msg.get("is_blocked", False):
-                is_me = (msg.get("sender_prenom") == user["prenom"])
-                with st.chat_message("user" if not is_me else "assistant"):
-                    st.write(f"**{msg.get('sender_prenom', 'Anonyme')}** : {msg.get('content', '')}")
-                    if msg.get("file_url"):
-                        st.image(msg["file_url"])
-    except Exception as e:
-        st.info("Espace de discussion initialisé. Aucun message pour le moment.")
-
-    # Zone de saisie des messages
-    if can_post:
-        st.divider()
-        
-        msg_text = st.text_input("💬 Écris ton message ici...", key="input_msg")
-        uploaded_file = st.file_uploader("📎 Partager une photo ou un document", type=["png", "jpg", "jpeg", "pdf"], key="file_upload")
-        
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            if st.button("🎙️ Voice", key="btn_voice"):
-                st.toast("Fonction vocale bientôt active !")
-        with col2:
-            if st.button("📤 Envoyer", key="btn_send"):
-                if msg_text or uploaded_file:
-                    try:
-                        # Gestion simple de l'envoi (vous pourrez y lier le stockage de fichiers Supabase Storage plus tard)
-                        supabase.table("messages").insert({
-                            "sender_prenom": user["prenom"],
-                            "sender_phone": user["phone"],
-                            "salon": salon_choisi,
-                            "content": msg_text if msg_text else "",
-                            "is_blocked": False
-                        }).execute()
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Erreur lors de l'envoi du message : {err}")
-
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
+                is_me = (msg
