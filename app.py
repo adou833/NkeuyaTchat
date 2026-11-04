@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict (Masquage menu 3 points, stylo, footer, badge bas-droite)
+# 4. Style CSS strict (Masquage menu 3 points, stylo, footer, badge et "Manage app")
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -69,6 +69,9 @@ st.markdown(f"""
 
     /* Masque le badge / indicateur en bas à droite */
     [data-testid="stStatusWidget"] {{display: none !important;}}
+
+    /* Masque le bouton "Gérer l'application" / Manage app en bas à gauche */
+    [data-testid="stToolbar"] {{display: none !important;}}
 
     /* Bloque complètement le défilement de la page principale */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
