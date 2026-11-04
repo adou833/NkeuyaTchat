@@ -45,16 +45,15 @@ if not st.session_state.user and "logged_user" in query_params:
 if "theme_color" not in st.session_state:
     st.session_state.theme_color = "WhatsApp Classic"
 
-# Association des couleurs avec inversion des noms demandée
 theme_colors = {
-    "WhatsApp Classic": "#075E54",  # Vert WhatsApp classique
-    "Bleu Nkeuya": "#128C7E",       # Anciennement "Vert Sombre", garde la couleur verte
-    "Vert Sombre": "#0084FF"        # Anciennement "Bleu Nkeuya", garde la couleur bleue
+    "WhatsApp Classic": "#075E54",
+    "Bleu Nkeuya": "#128C7E",
+    "Vert Sombre": "#0084FF"
 }
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé
+# 4. Style CSS personnalisé (Onglets ultra-compacts et épurés)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -86,10 +85,11 @@ st.markdown(f"""
         color: white !important;
     }}
     
+    /* Boutons généraux standard */
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 20px;
+        border-radius: 16px;
         border: none;
         padding: 8px 16px;
         font-weight: bold;
@@ -101,12 +101,15 @@ st.markdown(f"""
         color: white;
     }}
 
-    /* Onglets de filtres compacts */
+    /* STYLE ULTRA-FIN ET COMPACT POUR LES 4 ONGLETS DE FILTRE */
     div[data-testid="column"] button {{
-        padding: 4px 8px !important;
-        font-size: 0.8rem !important;
-        border-radius: 12px !important;
-        min-height: unset !important;
+        padding: 2px 4px !important;
+        font-size: 0.72rem !important;
+        border-radius: 8px !important;
+        min-height: 24px !important;
+        height: 28px !important;
+        line-height: 1 !important;
+        margin-bottom: 5px;
     }}
 
     .stTextInput input, .stSelectbox select {{
@@ -191,7 +194,7 @@ else:
     # 2. Zone de recherche de membres
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # 3. Les 4 boutons principaux (Général, Non Lues, Favoris, Salons)
+    # 3. Les 4 boutons/onglets principaux ultra-compacts et bien alignés
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
@@ -274,7 +277,6 @@ else:
         
         st.divider()
         st.subheader("🎨 Thème WhatsApp")
-        # Noms inversés pour les thèmes tel que demandé
         st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio")
 
         # --- LISTE DES MEMBRES ---
