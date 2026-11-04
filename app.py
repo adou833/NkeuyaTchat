@@ -178,7 +178,7 @@ else:
     st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
 
     # 2. Zone de recherche de membres DIRECTEMENT SOUS LE BANDEAU
-    search_query = st.text_input("🔍 Rechercher un membre pour tchater...", key="search_member_main")
+    search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
     if search_query:
         try:
@@ -270,7 +270,7 @@ else:
         can_post = False
         st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-    # Affichage des messages depuis Supabase (Correction de la syntaxe de la ligne 280)
+    # Affichage des messages depuis Supabase
     try:
         messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
         messages = messages_res.data if messages_res.data else []
