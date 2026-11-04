@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS personnalisé (Zone de chat défilante / Scrollbar)
+# 4. Style CSS personnalisé
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -85,26 +85,6 @@ st.markdown(f"""
         color: white !important;
     }}
     
-    /* Zone défilante pour les messages comme sur WhatsApp */
-    div[data-testid="stVerticalBlock"] > div.chat-scroll-container {{
-        max-height: 400px;
-        overflow-y: auto;
-        padding-right: 8px;
-        border-radius: 10px;
-        background-color: #F7F5F2;
-        padding: 10px;
-        margin-bottom: 15px;
-    }}
-
-    /* Personnalisation de la barre de défilement (Scrollbar) */
-    div[data-testid="stVerticalBlock"] > div.chat-scroll-container::-webkit-scrollbar {{
-        width: 6px;
-    }}
-    div[data-testid="stVerticalBlock"] > div.chat-scroll-container::-webkit-scrollbar-thumb {{
-        background-color: #CCCCCC;
-        border-radius: 10px;
-    }}
-
     /* Boutons généraux standard */
     .stButton>button {{
         background-color: {primary_color};
@@ -208,7 +188,7 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête FIXE avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
+    # En-tête avec disposition sur deux colonnes : Titre à gauche, Menu "Options" à droite
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
@@ -241,10 +221,10 @@ else:
                     del st.session_state.active_dm
                 st.rerun()
 
-    # Zone de recherche FIXE
+    # Zone de recherche
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons/onglets principaux FIXES
+    # Les 4 boutons/onglets principaux
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
@@ -327,8 +307,8 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # ZONE DÉFILANTE (SCROLL) POUR LES MESSAGES
-        chat_container = st.container(height=380)
+        # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES
+        chat_container = st.container(height=350)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -346,7 +326,7 @@ else:
             except Exception:
                 st.info("Espace de discussion général initialisé. Aucun message pour le moment.")
 
-        # Zone d'écriture FIXE en bas de page
+        # ZONE DE SAISIE FIXE EN BAS (Hors du scroll des messages)
         st.divider()
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
@@ -462,8 +442,8 @@ else:
                 can_post = False
                 st.info("🔒 Ce salon est en lecture seule. Seul l'administrateur (Eric) peut y ajouter des photos.")
 
-            # ZONE DÉFILANTE (SCROLL) POUR LE SALON SÉLECTIONNÉ
-            chat_container = st.container(height=380)
+            # ZONE DE SCROLL UNIQUEMENT SUR LES MESSAGES DU SALON
+            chat_container = st.container(height=350)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
@@ -481,7 +461,7 @@ else:
                 except Exception:
                     st.info("Espace de discussion initialisé. Aucun message pour le moment.")
 
-            # Zone de saisie FIXE du salon
+            # ZONE DE SAISIE FIXE DU SALON EN BAS
             if can_post:
                 st.divider()
                 with st.form("form_message", clear_on_submit=True):
@@ -499,22 +479,4 @@ else:
                         try:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur lors de l'envoi du message : {err}")
-                    elif voice_btn:
-                        st.toast("Fonction vocale bientôt active !")
-
-    # --- PANNEAU D'ADMINISTRATION (POUR ERIC) ---
-    if user.get("is_admin"):
-        with st.expander("🛠️ Panneau d'Administration (Accès Eric)"):
-            st.write("Contrôle total de l'application familiale :")
-            if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd"):
-                st.info("Module de réinitialisation actif.")
-            if st.button("🚫 Gérer les messages indésirables", key="admin_mod"):
-                st.info("Module de modération actif.")
+                                "sender_phone
