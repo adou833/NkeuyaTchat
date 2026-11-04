@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS strict (Masquage menu 3 points, bouton stylo, et verrouillage du scroll)
+# 4. Style CSS strict (Masquage menu 3 points, stylo, footer, badge bas-droite)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -66,6 +66,9 @@ st.markdown(f"""
     /* Masque le bouton crayon / stylo d'édition en haut */
     .stAppToolbar {{display: none !important;}}
     header[data-testid="stHeader"] {{display: none !important;}}
+
+    /* Masque le badge / indicateur en bas à droite */
+    [data-testid="stStatusWidget"] {{display: none !important;}}
 
     /* Bloque complètement le défilement de la page principale */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
