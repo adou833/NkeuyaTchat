@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Bouton 3 points épuré et alignement du popover à droite)
+# 4. Style CSS Global (Correction de l'alignement du popover à droite)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -99,25 +99,30 @@ st.markdown(f"""
         border: none !important;
         box-shadow: none !important;
         color: {primary_color} !important;
-        font-size: 1.5rem !important;
+        font-size: 1.6rem !important;
         font-weight: bold !important;
-        padding: 0px 4px !important;
+        padding: 0px !important;
         min-height: unset !important;
         float: right !important;
     }}
     [data-testid="stPopover"] > button:hover {{
-        background: rgba(0,0,0,0.05) !important;
+        background: transparent !important;
         color: {primary_color} !important;
+        opacity: 0.8;
     }}
     [data-testid="stPopover"] > button svg {{
         display: none !important;
     }}
 
-    /* Aligne et décale le contenu du menu déroulant (popover) vers la droite pour qu'il ne dépasse pas */
+    /* FORCE LE MENU DÉROULANT À S'ALIGNER PARFAITEMENT SUR LE BORD DROIT */
+    div[data-baseweb="popover"] {{
+        transform: translate3d(-20px, 45px, 0px) !important;
+    }}
     div[data-testid="stPopoverBody"] {{
-        right: 0 !important;
-        left: auto !important;
-        min-width: 250px !important;
+        width: 260px !important;
+        background-color: #FFFFFF !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
     }}
 
     .stButton>button {{
@@ -211,7 +216,6 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec les 3 points alignés parfaitement à droite
     col_head1, col_head2 = st.columns([6, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
