@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global
+# 4. Style CSS Global (Bouton 3 points natif et propre)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -88,6 +88,23 @@ st.markdown(f"""
     div[data-testid="stRadio"] label p {{
         font-weight: 800 !important;
         font-size: 0.85rem !important;
+        color: {primary_color} !important;
+    }}
+
+    /* Style spécifique pour transformer le bouton 3 points en bouton minimaliste parfaitement aligné */
+    div[data-testid="column"]:nth-child(2) button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: {primary_color} !important;
+        font-size: 1.8rem !important;
+        font-weight: bold !important;
+        padding: 0px !important;
+        min-height: unset !important;
+        float: right !important;
+    }}
+    div[data-testid="column"]:nth-child(2) button:hover {{
+        background: rgba(0,0,0,0.05) !important;
         color: {primary_color} !important;
     }}
 
@@ -185,33 +202,16 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    if "toggle_menu_triggered" in query_params and query_params["toggle_menu_triggered"] == "true":
-        st.session_state.show_menu = not st.session_state.show_menu
-        del query_params["toggle_menu_triggered"]
-        st.rerun()
-
-    # En-tête avec titre à gauche et bouton 3 points HTML natif ancré à droite
+    # En-tête : Titre à gauche, et bouton Streamlit natif "⋮" à droite
     col_t, col_b = st.columns([6, 1])
     with col_t:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_b:
-        menu_html = f"""
-        <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">
-            <a href="?toggle_menu_triggered=true" target="_self" style="
-                color: {primary_color};
-                font-size: 2rem;
-                font-weight: bold;
-                text-decoration: none;
-                padding: 0px 8px;
-                line-height: 1;
-                -webkit-tap-highlight-color: transparent;
-                user-select: none;
-            ">⋮</a>
-        </div>
-        """
-        st.components.v1.html(menu_html, height=40, scrolling=False)
+        if st.button("⋮", key="toggle_menu_btn"):
+            st.session_state.show_menu = not st.session_state.show_menu
+            st.rerun()
 
-    # Panneau d'options (affiché si on clique sur les 3 points)
+    # Panneau d'options affiché proprement si activé
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -514,20 +514,4 @@ else:
                     uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
                     
                     col_send1, col_send2 = st.columns([2, 1])
-                    with col_send1:
-                        st.caption("Photo, Doc, Son")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
+                    with col
