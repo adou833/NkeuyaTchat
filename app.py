@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Boutons compacts, coulissants et rapprochés de la recherche)
+# 4. Style CSS (Boutons rapprochés, compacts et collés sous la recherche)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -104,19 +104,19 @@ st.markdown(f"""
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 12px;
+        border-radius: 10px;
         border: none;
-        padding: 5px 8px;
+        padding: 4px 6px;
         font-weight: bold;
         width: 100%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }}
     .stButton>button:hover {{
         opacity: 0.9;
         color: white;
     }}
 
-    /* --- CONTENEUR COULISSANT COLLÉ SOUS LA RECHERCHE --- */
+    /* --- RESSERREMENT ET COULISSEMENT MOBILE DES 4 BOUTONS --- */
     @media (max-width: 768px) {{
         div[data-testid="stHorizontalBlock"] {{
             display: flex !important;
@@ -125,17 +125,22 @@ st.markdown(f"""
             overflow-x: auto !important;
             scroll-behavior: smooth !important;
             -webkit-overflow-scrolling: touch !important;
-            gap: 4px !important;
-            margin-top: -12px !important;
+            gap: 2px !important;
+            margin-top: -10px !important;
             margin-bottom: 2px !important;
-            padding-bottom: 2px !important;
+            padding-bottom: 4px !important;
         }}
         div[data-testid="stHorizontalBlock"]::-webkit-scrollbar {{
             display: none !important;
         }}
+        /* Force chaque colonne à être serrée et compacte */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
-            min-width: 85px !important;
+            width: auto !important;
             flex: 0 0 auto !important;
+            min-width: 75px !important;
+            max-width: 90px !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }}
     }}
 
@@ -252,7 +257,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons principaux coulissants rapprochés de la recherche
+    # Les 4 boutons principaux rapprochés et coulissants
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
