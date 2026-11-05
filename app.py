@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Blocage strict du scroll de la page principale)
+# 4. Style CSS (Ajusté pour garder le bouton d'envoi visible)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -62,12 +62,6 @@ st.markdown(f"""
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
-    }}
-
-    /* Bloque complètement le défilement de la page principale et du navigateur */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        overflow: hidden !important;
-        height: 100vh !important;
     }}
 
     .stApp {{
@@ -80,10 +74,7 @@ st.markdown(f"""
         padding: 0.4rem 0.6rem !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         margin-top: 5px;
-        height: 94vh !important;
-        overflow: hidden !important;
-        display: flex;
-        flex-direction: column;
+        margin-bottom: 10px;
     }}
 
     .whatsapp-app-title {{
@@ -128,7 +119,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
+    tab1, tab2 = tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"]) if 'tab1' in locals() else st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
         st.subheader("Connexion à votre espace")
@@ -303,7 +294,7 @@ else:
 
     st.divider()
 
-    # Fonction utilitaire d'affichage des messages alignés à gauche en flux scrollable
+    # Fonction d'affichage des messages (flux scrollable sans cadre, aligné à gauche)
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
         
@@ -333,7 +324,7 @@ else:
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
-                height: 250px;
+                height: 220px;
                 overflow-y: auto;
                 padding: 10px;
                 background-color: transparent;
@@ -355,7 +346,7 @@ else:
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
         """
-        st.components.v1.html(chat_css_html, height=270, scrolling=False)
+        st.components.v1.html(chat_css_html, height=235, scrolling=False)
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
@@ -367,7 +358,7 @@ else:
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            uploaded_file = st.file_uploader("📎 Fichier (200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
+            uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
             
             col_send1, col_send2 = st.columns([2, 1])
             with col_send1:
