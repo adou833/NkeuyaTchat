@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global
+# 4. Style CSS Global (Alignement parfait à droite)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -93,26 +93,11 @@ st.markdown(f"""
         color: {primary_color} !important;
     }}
 
-    /* Bouton 3 points totalement épuré sans cadre, sans fond, aligné à droite */
-    .stButton > button.btn-three-dots {{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: {primary_color} !important;
-        font-size: 1.8rem !important;
-        font-weight: bold !important;
-        padding: 0px !important;
-        min-height: unset !important;
-        height: auto !important;
-        float: right !important;
+    /* Bouton 3 points calé parfaitement sur l'alignement de la barre de recherche */
+    div.row-widget.stButton {{
+        text-align: right !important;
     }}
-    .stButton > button.btn-three-dots:hover {{
-        background: transparent !important;
-        color: {primary_color} !important;
-        opacity: 0.7;
-    }}
-
-    .stButton>button {{
+    .stButton > button {{
         background-color: {primary_color};
         color: white;
         border-radius: 8px;
@@ -122,7 +107,7 @@ st.markdown(f"""
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }}
-    .stButton>button:hover {{
+    .stButton > button:hover {{
         opacity: 0.9;
         color: white;
     }}
@@ -206,8 +191,8 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    # En-tête principal avec le titre à gauche et le bouton 3 points pur à droite
-    col_head1, col_head2 = st.columns([6, 1])
+    # En-tête : Titre à gauche, et les 3 points resserrés et alignés à droite (sur la largeur de la recherche)
+    col_head1, col_head2 = st.columns([7, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
@@ -215,7 +200,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options affiché proprement en bas de l'en-tête si activé (évite les bugs de popover Streamlit)
+    # Panneau d'options affiché proprement sous l'en-tête
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -255,6 +240,7 @@ else:
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
+    # La barre de recherche (qui définit le bord droit de référence)
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
     if "chat_filter" not in st.session_state:
