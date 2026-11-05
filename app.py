@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Correction stricte des espaces et marges sur mobile)
+# 4. Style CSS (Boutons ultra-resserrés et collés sur mobile)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -106,7 +106,7 @@ st.markdown(f"""
         color: white;
         border-radius: 8px;
         border: none;
-        padding: 4px 4px;
+        padding: 3px 2px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -116,7 +116,7 @@ st.markdown(f"""
         color: white;
     }}
 
-    /* --- CORRECTION Ciblée POUR COLLER ET RESSERRER LES BOUTONS SUR ANDROID --- */
+    /* --- RESSERREMENT MAXIMAL DES 4 BOUTONS SUR ANDROID --- */
     @media (max-width: 768px) {{
         div[data-testid="stHorizontalBlock"] {{
             display: flex !important;
@@ -126,6 +126,7 @@ st.markdown(f"""
             scroll-behavior: smooth !important;
             -webkit-overflow-scrolling: touch !important;
             gap: 1px !important;
+            justify-content: flex-start !important;
             margin-top: -10px !important;
             margin-bottom: 2px !important;
             padding-bottom: 2px !important;
@@ -136,9 +137,9 @@ st.markdown(f"""
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
             flex: 0 0 auto !important;
             width: auto !important;
-            min-width: 70px !important;
-            max-width: 85px !important;
-            padding: 0 1px !important;
+            min-width: 60px !important;
+            max-width: 75px !important;
+            padding: 0 !important;
             margin: 0 !important;
         }}
     }}
@@ -154,7 +155,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
+    tab1, tab2 = tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
         st.subheader("Connexion à votre espace")
@@ -256,7 +257,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons principaux resserrés et coulissants
+    # Les 4 boutons principaux ultraresserés
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
