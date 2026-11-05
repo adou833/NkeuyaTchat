@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Personnalisation du popover pour n'afficher que les 3 points sans cadre)
+# 4. Style CSS Global (Bouton 3 points épuré et alignement du popover à droite)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -93,7 +93,7 @@ st.markdown(f"""
         color: {primary_color} !important;
     }}
 
-    /* Supprime le cadre et la flèche du popover pour en faire un bouton 3 points épuré */
+    /* Bouton des 3 points pur, sans cadre ni flèche */
     [data-testid="stPopover"] > button {{
         background: transparent !important;
         border: none !important;
@@ -101,16 +101,23 @@ st.markdown(f"""
         color: {primary_color} !important;
         font-size: 1.5rem !important;
         font-weight: bold !important;
-        padding: 0px 8px !important;
+        padding: 0px 4px !important;
         min-height: unset !important;
+        float: right !important;
     }}
     [data-testid="stPopover"] > button:hover {{
         background: rgba(0,0,0,0.05) !important;
         color: {primary_color} !important;
     }}
-    /* Cache la petite flèche du popover */
     [data-testid="stPopover"] > button svg {{
         display: none !important;
+    }}
+
+    /* Aligne et décale le contenu du menu déroulant (popover) vers la droite pour qu'il ne dépasse pas */
+    div[data-testid="stPopoverBody"] {{
+        right: 0 !important;
+        left: auto !important;
+        min-width: 250px !important;
     }}
 
     .stButton>button {{
@@ -204,12 +211,11 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec les 3 points purs (⋮) alignés à droite
+    # En-tête avec les 3 points alignés parfaitement à droite
     col_head1, col_head2 = st.columns([6, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
-        # Popover épuré sans bordure, sans fond et sans flèche affichant "⋮"
         with st.popover("⋮"):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             
