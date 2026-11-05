@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré)
+    # Panneau d'options (Menu déroulant intégré avec Thème, Membres, Admin et Déconnexion)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -244,6 +244,7 @@ else:
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
+    # Barre de navigation avec l'onglet Télécharger placé après Vidéo
     selected_filter = st.radio(
         "Navigation",
         ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo", "📥 Télécharger"],
@@ -330,27 +331,19 @@ else:
         except Exception:
             messages = []
 
-        # Conteneur des messages textuels
         html_msgs = '<div class="whatsapp-chat-box">'
-        text_messages_to_render = []
-        
         if messages:
             for msg in messages:
                 if not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
                     content = msg.get('content', '')
-                    file_url = msg.get('file_url', None)
                     
-                    # Si le message contient un fichier audio ou image enregistré en base
-                    if file_url:
-                        text_messages_to_render.append((sender, content, file_url))
-                    else:
-                        html_msgs += f'''
-                        <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
-                            <b style="color: {primary_color}; font-size: 0.8rem;">{sender}</b><br>
-                            <span style="color: #333333;">{content}</span>
-                        </div>
-                        '''
+                    html_msgs += f'''
+                    <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                        <b style="color: {primary_color}; font-size: 0.8rem;">{sender}</b><br>
+                        <span style="color: #333333;">{content}</span>
+                    </div>
+                    '''
         else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
         html_msgs += '</div>'
@@ -359,49 +352,4 @@ else:
         <style>
             .whatsapp-chat-box {{
                 height: 200px;
-                overflow-y: auto;
-                padding: 10px;
-                background-color: transparent;
-                display: flex;
-                flex-direction: column;
-                scrollbar-width: thin;
-            }}
-            .whatsapp-chat-box::-webkit-scrollbar {{
-                width: 4px;
-            }}
-            .whatsapp-chat-box::-webkit-scrollbar-thumb {{
-                background-color: rgba(0,0,0,0.2);
-                border-radius: 4px;
-            }}
-        </style>
-        {html_msgs}
-        <script>
-            var box = document.querySelector('.whatsapp-chat-box');
-            if(box) {{ box.scrollTop = box.scrollHeight; }}
-        </script>
-        """
-        st.components.v1.html(chat_css_html, height=215, scrolling=False)
-
-        # Affichage natif des lecteurs audio/vidéo/images pour les messages multimédias
-        if messages:
-            for msg in messages:
-                if not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    content = msg.get('content', '')
-                    file_url = msg.get('file_url', None)
-                    file_type = msg.get('file_type', '')
-
-                    if file_url:
-                        st.markdown(f"**{sender}** : {content}")
-                        if "audio" in file_type or file_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                            st.audio(file_url)
-                        elif "video" in file_type or file_url.endswith(('.mp4', '.mov')):
-                            st.video(file_url)
-                        elif "image" in file_type or file_url.endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                            st.image(file_url, width=250)
-                        else:
-                            st.markdown(f"📄 [Télécharger le fichier]({file_url})")
-                        st.divider()
-
-    # ---------------------------------------------------------
-    # GEST
+                overflow-y
