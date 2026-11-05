@@ -53,11 +53,10 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Textes des options en gras et plus visibles)
+# 4. Style CSS
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
-    /* Masquage de la barre d'outils et du menu Streamlit */
     div[data-testid="stToolbar"], header[data-testid="stHeader"], div.stAppToolbar, button[kind="header"], #MainMenu, footer, [data-testid="stStatusWidget"] {{
         display: none !important;
         visibility: hidden !important;
@@ -99,7 +98,6 @@ st.markdown(f"""
         color: white !important;
     }}
     
-    /* Rend les textes des boutons radios (navigation) bien visibles et en gras */
     div[data-testid="stRadio"] label p {{
         font-weight: 800 !important;
         font-size: 0.95rem !important;
@@ -197,7 +195,6 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête fixe
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='main-header'><h2>💬 NkeuyaTchat - Salut {user['prenom']} !</h2></div>", unsafe_allow_html=True)
@@ -231,10 +228,8 @@ else:
                     del st.session_state.active_dm
                 st.rerun()
 
-    # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Barre de navigation horizontale fluide mise à jour (Favoris, Salons, Appels, Vidéo inclus)
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
@@ -260,7 +255,6 @@ else:
     elif selected_filter == "📹 Vidéo":
         st.session_state.chat_filter = "Vidéo"
 
-    # Salons secondaires
     salons_accessibles = ["Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
     if groupe_usr == "Hommes":
@@ -360,7 +354,6 @@ else:
                 except Exception as err:
                     st.error(f"Erreur : {err}")
 
-        # Panneau d'administration (Uniquement dans le salon Général pour Eric)
         if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
             with st.expander("🛠️ Panneau d'Administration (Général)"):
                 st.write("Contrôle total de l'application familiale :")
@@ -476,4 +469,31 @@ else:
                             
                             with st.chat_message("user" if not is_me else "assistant"):
                                 st.write(f"**{sender}** : {msg.get('content', '')}")
-                                if msg.get("
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
+                except Exception:
+                    st.info("Aucun message pour le moment.")
+
+            if can_post:
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
+                    
+                    col_send1, col_send2 = st.columns([3, 1])
+                    with col_send1:
+                        st.caption("PNG, JPG, PDF, MP3, MP4")
+                    with col_send2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
