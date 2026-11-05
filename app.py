@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Correction de l'alignement du popover à droite)
+# 4. Style CSS Global
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -93,36 +93,23 @@ st.markdown(f"""
         color: {primary_color} !important;
     }}
 
-    /* Bouton des 3 points pur, sans cadre ni flèche */
-    [data-testid="stPopover"] > button {{
+    /* Bouton 3 points totalement épuré sans cadre, sans fond, aligné à droite */
+    .stButton > button.btn-three-dots {{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         color: {primary_color} !important;
-        font-size: 1.6rem !important;
+        font-size: 1.8rem !important;
         font-weight: bold !important;
         padding: 0px !important;
         min-height: unset !important;
+        height: auto !important;
         float: right !important;
     }}
-    [data-testid="stPopover"] > button:hover {{
+    .stButton > button.btn-three-dots:hover {{
         background: transparent !important;
         color: {primary_color} !important;
-        opacity: 0.8;
-    }}
-    [data-testid="stPopover"] > button svg {{
-        display: none !important;
-    }}
-
-    /* FORCE LE MENU DÉROULANT À S'ALIGNER PARFAITEMENT SUR LE BORD DROIT */
-    div[data-baseweb="popover"] {{
-        transform: translate3d(-20px, 45px, 0px) !important;
-    }}
-    div[data-testid="stPopoverBody"] {{
-        width: 260px !important;
-        background-color: #FFFFFF !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
+        opacity: 0.7;
     }}
 
     .stButton>button {{
@@ -216,12 +203,25 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
+    if "show_menu" not in st.session_state:
+        st.session_state.show_menu = False
+
+    # En-tête principal avec le titre à gauche et le bouton 3 points pur à droite
     col_head1, col_head2 = st.columns([6, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
-        with st.popover("⋮"):
-            st.write(f"👤 **{user['prenom']} {user['nom']}**")
+        if st.button("⋮", key="toggle_menu_btn"):
+            st.session_state.show_menu = not st.session_state.show_menu
+            st.rerun()
+
+    # Panneau d'options affiché proprement en bas de l'en-tête si activé (évite les bugs de popover Streamlit)
+    if st.session_state.show_menu:
+        with st.container():
+            st.markdown(f"""
+                <div style="background-color: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
+                    <b>👤 {user['prenom']} {user['nom']}</b>
+            """, unsafe_allow_html=True)
             
             if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
@@ -243,11 +243,17 @@ else:
             st.divider()
             if st.button("🚪 Déconnexion Complète", key="btn_logout_popover"):
                 st.session_state.user = None
+                st.session_state.show_menu = False
                 if "logged_user" in st.query_params:
                     del st.query_params["logged_user"]
                 if "active_dm" in st.session_state:
                     del st.session_state.active_dm
                 st.rerun()
+            
+            if st.button("✖️ Fermer le menu", key="close_menu_btn"):
+                st.session_state.show_menu = False
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
