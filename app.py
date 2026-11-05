@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS général
+# 4. Style CSS (Textes des options en gras et plus visibles)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -99,6 +99,13 @@ st.markdown(f"""
         color: white !important;
     }}
     
+    /* Rend les textes des boutons radios (navigation) bien visibles et en gras */
+    div[data-testid="stRadio"] label p {{
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        color: {primary_color} !important;
+    }}
+
     .stButton>button {{
         background-color: {primary_color};
         color: white;
@@ -227,7 +234,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Barre de navigation horizontale fluide et compacte (Radio horizontal natif)
+    # Barre de navigation horizontale fluide et compacte avec textes en gras
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
