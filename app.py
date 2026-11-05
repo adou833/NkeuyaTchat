@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré)
+    # Panneau d'options (Menu déroulant intégré avec section Télécharger / Fichiers)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -202,15 +202,20 @@ else:
                     <b>👤 {user['prenom']} {user['nom']}</b>
             """, unsafe_allow_html=True)
             
-            # Vérification de l'administrateur (Eric)
+            # Option Admin si Eric
             is_user_admin = user.get("is_admin") or user.get("prenom", "").strip().lower() == "eric"
-            
             if is_user_admin:
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
                 st.divider()
                 st.markdown("🛠️ **Panneau d'administration**")
                 if st.button("⚙️ Réinitialiser les données", key="admin_pwd_gen_menu"):
                     st.info("Action d'administration active.")
+
+            st.divider()
+            st.subheader("📥 Télécharger / Partager un fichier")
+            uploaded_file_menu = st.file_uploader("📂 Joindre un média", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_menu")
+            if uploaded_file_menu is not None:
+                st.success(f"Fichier '{uploaded_file_menu.name}' prêt pour le partage !")
 
             st.divider()
             st.subheader("🎨 Thème WhatsApp")
@@ -382,21 +387,17 @@ else:
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
             
-            col_send1, col_send2 = st.columns(2)
-            with col_send1:
-                st.caption("Photo, Doc, Son")
-            with col_send2:
-                send_btn = st.form_submit_button("📤 Envoyer")
+            # Envoi du message (le file_uploader est maintenant dans les options du menu)
+            send_btn = st.form_submit_button("📤 Envoyer")
 
-            if send_btn and (msg_text or uploaded_file):
+            if send_btn and msg_text:
                 try:
                     supabase.table("messages").insert({
                         "sender_prenom": user["prenom"],
                         "sender_phone": user["phone"],
                         "salon": "Général",
-                        "content": msg_text if msg_text else "",
+                        "content": msg_text,
                         "is_blocked": False
                     }).execute()
                     st.rerun()
@@ -496,21 +497,17 @@ else:
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
                     
-                    col_send1, col_send2 = st.columns(2)
-                    with col_send1:
-                        st.caption("Photo, Doc, Son")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
+                    # Envoi du message (le file_uploader est maintenant dans les options du menu)
+                    send_btn = st.form_submit_button("📤 Envoyer")
 
-                    if send_btn and (msg_text or uploaded_file):
+                    if send_btn and msg_text:
                         try:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
                                 "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
+                                "content": msg_text,
                                 "is_blocked": False
                             }).execute()
                             st.rerun()
