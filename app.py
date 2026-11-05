@@ -328,7 +328,6 @@ else:
         except Exception:
             messages = []
 
-        # Construction du conteneur HTML avec le défilement automatique
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
@@ -469,7 +468,7 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : TÉLÉCHARGER (Envoi direct de fichiers vers le fil des messages)
+    # 6. ONGLET : TÉLÉCHARGER
     elif st.session_state.chat_filter == "Télécharger":
         st.subheader("📥 Partager un média (MP3, Image, Vidéo)")
         
@@ -495,3 +494,64 @@ else:
                         public_url = supabase.storage.from_("media").get_public_url(storage_path)
 
                         supabase.table("messages").insert({
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "salon": target_salon,
+                            "content": caption_file if caption_file else f"Fichier partagé : {file_name}",
+                            "media_url": public_url,
+                            "is_blocked": False
+                        }).execute()
+                        
+                        st.success(f"Fichier partagé avec succès dans '{target_salon}' !")
+                        st.rerun()
+                    except Exception as err:
+                        st.error(f"Erreur lors de l'envoi du fichier : {err}")
+                else:
+                    st.warning("Veuillez sélectionner un fichier avant d'envoyer.")
+
+    # 7. ONGLET : SALONS
+    else:
+        if "salon_actif" not in st.session_state:
+            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
+
+        if "is_chatting_in_salon" not in st.session_state:
+            st.session_state.is_chatting_in_salon = False
+
+        if not st.session_state.is_chatting_in_salon:
+            st.subheader("📌 Salons Disponibles")
+            for salon in salons_accessibles:
+                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
+                    st.session_state.salon_actif = salon
+                    st.session_state.is_chatting_in_salon = True
+                    st.rerun()
+        else:
+            if st.button("⬅️ Retour"):
+                st.session_state.is_chatting_in_salon = False
+                st.rerun()
+
+            salon_choisi = st.session_state.salon_actif
+            is_photo_salon = ("Photos" in salon_choisi)
+            can_post = True
+            if is_photo_salon and not user.get("is_admin"):
+                can_post = False
+                st.info("🔒 Lecture seule.")
+
+            render_chat_stream(salon_choisi)
+
+            if can_post:
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
+                    send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and msg_text:
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text,
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
