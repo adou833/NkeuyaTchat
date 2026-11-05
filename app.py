@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Interface remontée et compacte sans scroll)
+# 4. Style CSS (Ultra-compact pour Android sans scroll)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -64,7 +64,7 @@ st.markdown(f"""
         pointer-events: none !important;
     }}
 
-    /* Désactivation totale du scroll et recentrage vers le haut */
+    /* Verrouillage strict du scroll sur mobile/desktop */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         overflow: hidden !important;
         height: 100vh !important;
@@ -75,41 +75,41 @@ st.markdown(f"""
         overflow: hidden !important;
     }}
     
-    /* Conteneur principal remonté au maximum */
+    /* Conteneur principal ultracompact pour laisser de la place au clavier Android */
     .main .block-container {{
         background-color: #FFFFFF;
-        border-radius: 14px;
-        padding: 0.2rem 0.6rem !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-top: -10px !important;
+        border-radius: 12px;
+        padding: 0.1rem 0.5rem !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        margin-top: -15px !important;
         margin-bottom: 0px !important;
-        max-height: 99vh !important;
+        max-height: 100vh !important;
         overflow: hidden !important;
     }}
 
-    /* Titre NkeuyaTchat grossi et aligné à gauche façon WhatsApp */
+    /* Titre NkeuyaTchat aligné à gauche façon WhatsApp */
     .whatsapp-app-title {{
         color: {primary_color};
-        font-size: 1.8rem !important;
+        font-size: 1.6rem !important;
         font-weight: 800 !important;
         margin-top: 0px;
-        margin-bottom: 2px;
+        margin-bottom: 0px;
         padding-left: 2px;
         letter-spacing: -0.5px;
     }}
     
     div[data-testid="stRadio"] label p {{
         font-weight: 800 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.85rem !important;
         color: {primary_color} !important;
     }}
 
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 8px;
+        border-radius: 6px;
         border: none;
-        padding: 5px 10px;
+        padding: 4px 8px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -120,9 +120,10 @@ st.markdown(f"""
     }}
 
     .stTextInput input, .stSelectbox select {{
-        border-radius: 14px !important;
-        padding-top: 4px !important;
-        padding-bottom: 4px !important;
+        border-radius: 10px !important;
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        min-height: 32px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -315,7 +316,7 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        chat_container = st.container(height=200) # Hauteur légèrement réduite pour faire remonter le tout
+        chat_container = st.container(height=130) # Hauteur réduite pour s'adapter à Android
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -335,11 +336,11 @@ else:
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
+            uploaded_file = st.file_uploader("📎 Fichier (200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
             
-            col_send1, col_send2 = st.columns([3, 1])
+            col_send1, col_send2 = st.columns([2, 1])
             with col_send1:
-                st.caption("PNG, JPG, PDF, MP3, MP4")
+                st.caption("Photo, Doc, Son")
             with col_send2:
                 send_btn = st.form_submit_button("📤 Envoyer")
 
@@ -357,17 +358,14 @@ else:
                     st.error(f"Erreur : {err}")
 
         if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
-            with st.expander("🛠️ Panneau d'Administration (Général)"):
-                st.write("Contrôle total de l'application familiale :")
-                if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd_gen"):
-                    st.info("Module de réinitialisation actif.")
-                if st.button("🚫 Gérer les messages indésirables", key="admin_mod_gen"):
-                    st.info("Module de modération actif.")
+            with st.expander("🛠️ Admin"):
+                if st.button("⚙️ Réinitialiser", key="admin_pwd_gen"):
+                    st.info("Actif.")
 
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=230)
+        chat_container = st.container(height=160)
         with chat_container:
             try:
                 unread_messages = []
@@ -389,7 +387,7 @@ else:
                 else:
                     st.info("Aucun nouveau message non lu.")
             except Exception:
-                st.info("Vérification en cours...")
+                st.info("Vérification...")
 
     # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
@@ -399,13 +397,13 @@ else:
             st.session_state.favoris_list = []
 
         with st.form("form_add_favori", clear_on_submit=True):
-            new_fav = st.text_input("➕ Ajouter un favori...")
+            new_fav = st.text_input("➕ Ajouter...")
             add_fav_btn = st.form_submit_button("Enregistrer")
             if add_fav_btn and new_fav:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=200)
+        fav_container = st.container(height=130)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -417,17 +415,17 @@ else:
                             st.session_state.favoris_list.pop(idx)
                             st.rerun()
             else:
-                st.info("Aucun favori enregistré.")
+                st.info("Aucun favori.")
 
     # 4. ONGLET : APPELS
     elif st.session_state.chat_filter == "Appels":
         st.subheader("📞 Appels Audio")
-        st.info("Interface des appels audio familiaux en cours de configuration.")
+        st.info("En cours de configuration.")
 
     # 5. ONGLET : VIDÉO
     elif st.session_state.chat_filter == "Vidéo":
         st.subheader("📹 Appels Vidéo")
-        st.info("Interface des salons vidéo en cours de configuration.")
+        st.info("En cours de configuration.")
 
     # 6. ONGLET : SALONS
     else:
@@ -445,7 +443,7 @@ else:
                     st.session_state.is_chatting_in_salon = True
                     st.rerun()
         else:
-            if st.button("⬅️ Retour aux salons"):
+            if st.button("⬅️ Retour"):
                 st.session_state.is_chatting_in_salon = False
                 st.rerun()
 
@@ -456,9 +454,9 @@ else:
             can_post = True
             if is_photo_salon and not user.get("is_admin"):
                 can_post = False
-                st.info("🔒 Salon en lecture seule.")
+                st.info("🔒 Lecture seule.")
 
-            chat_container = st.container(height=200)
+            chat_container = st.container(height=130)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
@@ -474,16 +472,16 @@ else:
                                 if msg.get("file_url"):
                                     st.image(msg["file_url"])
                 except Exception:
-                    st.info("Aucun message pour le moment.")
+                    st.info("Aucun message.")
 
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
+                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
                     
-                    col_send1, col_send2 = st.columns([3, 1])
+                    col_send1, col_send2 = st.columns([2, 1])
                     with col_send1:
-                        st.caption("PNG, JPG, PDF, MP3, MP4")
+                        st.caption("Photo, Doc, Son")
                     with col_send2:
                         send_btn = st.form_submit_button("📤 Envoyer")
 
