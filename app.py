@@ -81,7 +81,6 @@ st.markdown(f"""
         margin-bottom: 30px;
     }}
 
-    /* Style du titre façon WhatsApp aligné à gauche au-dessus de la recherche */
     .whatsapp-app-title {{
         color: {primary_color};
         font-size: 1.4rem !important;
@@ -191,7 +190,6 @@ else:
     
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
-        # Titre NkeuyaTchat aligné à gauche au-dessus de la recherche, plus gros et avec la couleur du thème
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
         with st.popover("⚙️ Options", use_container_width=True):
@@ -223,7 +221,6 @@ else:
                     del st.session_state.active_dm
                 st.rerun()
 
-    # Barre de recherche placée juste en dessous du titre NkeuyaTchat
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
     if "chat_filter" not in st.session_state:
@@ -307,18 +304,4 @@ else:
     
     # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
-        st.subheader("💬 Salon Général")
-        
-        chat_container = st.container(height=250)
-        with chat_container:
-            try:
-                messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
-                messages = messages_res.data if messages_res.data else []
-                
-                for msg in messages:
-                    if not msg.get("is_blocked", False):
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        is_me = (sender == user["prenom"])
-                        
-                        with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(
+        st.subheader("💬 Salon
