@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Boutons ultra-resserrés et collés sur mobile)
+# 4. Style CSS (Forçage compact et serré des boutons sur Android)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -106,7 +106,7 @@ st.markdown(f"""
         color: white;
         border-radius: 8px;
         border: none;
-        padding: 3px 2px;
+        padding: 4px 8px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -116,31 +116,37 @@ st.markdown(f"""
         color: white;
     }}
 
-    /* --- RESSERREMENT MAXIMAL DES 4 BOUTONS SUR ANDROID --- */
+    /* --- CORRECTION RADICALE POUR RESSERRER LES BOUTONS SUR MOBILE --- */
     @media (max-width: 768px) {{
-        div[data-testid="stHorizontalBlock"] {{
+        /* Force le conteneur des 4 boutons à se comporter en ligne compacte serrée */
+        div.row-widget.stHorizontal, div[data-testid="stHorizontalBlock"] {{
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            gap: 1px !important;
             justify-content: flex-start !important;
-            margin-top: -10px !important;
+            gap: 4px !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            margin-top: -8px !important;
             margin-bottom: 2px !important;
-            padding-bottom: 2px !important;
         }}
         div[data-testid="stHorizontalBlock"]::-webkit-scrollbar {{
             display: none !important;
         }}
+        /* Annule l'élasticité et la largeur forcée des colonnes Streamlit */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
             flex: 0 0 auto !important;
             width: auto !important;
-            min-width: 60px !important;
-            max-width: 75px !important;
+            min-width: unset !important;
+            max-width: unset !important;
             padding: 0 !important;
             margin: 0 !important;
+        }}
+        /* Donne une taille de bouton compacte et fixe adaptée au texte */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] button {{
+            white-space: nowrap !important;
+            padding: 4px 10px !important;
+            font-size: 0.75rem !important;
         }}
     }}
 
@@ -155,7 +161,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown("<div class='main-header'><h1>💬 NkeuyaTchat Familial</h1></div>", unsafe_allow_html=True)
-    tab1, tab2 = tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
+    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
         st.subheader("Connexion à votre espace")
@@ -257,7 +263,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons principaux ultraresserés
+    # Les 4 boutons principaux resserrés et coulissants
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
@@ -352,166 +358,4 @@ else:
                         is_me = (sender == user["prenom"])
                         
                         with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(f"**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
-            except Exception:
-                st.info("Aucun message pour le moment.")
-
-        with st.form("form_message_general", clear_on_submit=True):
-            msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
-            
-            col_send1, col_send2 = st.columns([3, 1])
-            with col_send1:
-                st.caption("PNG, JPG, PDF, MP3, MP4")
-            with col_send2:
-                send_btn = st.form_submit_button("📤 Envoyer")
-
-            if send_btn and (msg_text or uploaded_file):
-                try:
-                    supabase.table("messages").insert({
-                        "sender_prenom": user["prenom"],
-                        "sender_phone": user["phone"],
-                        "salon": "Général",
-                        "content": msg_text if msg_text else "",
-                        "is_blocked": False
-                    }).execute()
-                    st.rerun()
-                except Exception as err:
-                    st.error(f"Erreur : {err}")
-
-        # Panneau d'administration (Uniquement dans le salon Général pour Eric)
-        if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
-            with st.expander("🛠️ Panneau d'Administration (Général)"):
-                st.write("Contrôle total de l'application familiale :")
-                if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd_gen"):
-                    st.info("Module de réinitialisation actif.")
-                if st.button("🚫 Gérer les messages indésirables", key="admin_mod_gen"):
-                    st.info("Module de modération actif.")
-
-    # 2. ONGLET : NON LUES
-    elif st.session_state.chat_filter == "Non Lues":
-        st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=300)
-        with chat_container:
-            try:
-                unread_messages = []
-                tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
-                for s in tous_les_salons:
-                    res = supabase.table("messages").select("*").eq("salon", s).execute()
-                    if res.data:
-                        for m in res.data:
-                            if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
-                                m["current_salon"] = s
-                                unread_messages.append(m)
-                
-                if unread_messages:
-                    for msg in unread_messages:
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        salon_tag = f"📂 *{msg.get('current_salon')}*"
-                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                        st.divider()
-                else:
-                    st.info("Aucun nouveau message non lu.")
-            except Exception:
-                st.info("Vérification en cours...")
-
-    # 3. ONGLET : FAVORIS
-    elif st.session_state.chat_filter == "Favoris":
-        st.subheader("⭐ Vos Favoris")
-        
-        if "favoris_list" not in st.session_state:
-            st.session_state.favoris_list = []
-
-        with st.form("form_add_favori", clear_on_submit=True):
-            new_fav = st.text_input("➕ Ajouter un favori...")
-            add_fav_btn = st.form_submit_button("Enregistrer")
-            if add_fav_btn and new_fav:
-                st.session_state.favoris_list.append(new_fav)
-                st.success("Ajouté !")
-
-        fav_container = st.container(height=250)
-        with fav_container:
-            if st.session_state.favoris_list:
-                for idx, fav in enumerate(st.session_state.favoris_list):
-                    col_f1, col_f2 = st.columns([5, 1])
-                    with col_f1:
-                        st.write(f"⭐ {fav}")
-                    with col_f2:
-                        if st.button("❌", key=f"del_fav_{idx}"):
-                            st.session_state.favoris_list.pop(idx)
-                            st.rerun()
-            else:
-                st.info("Aucun favori enregistré.")
-
-    # 4. ONGLET : SALONS
-    else:
-        if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
-
-        if "is_chatting_in_salon" not in st.session_state:
-            st.session_state.is_chatting_in_salon = False
-
-        if not st.session_state.is_chatting_in_salon:
-            st.subheader("📌 Salons Disponibles")
-            for salon in salons_accessibles:
-                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
-                    st.session_state.salon_actif = salon
-                    st.session_state.is_chatting_in_salon = True
-                    st.rerun()
-        else:
-            if st.button("⬅️ Retour aux salons"):
-                st.session_state.is_chatting_in_salon = False
-                st.rerun()
-
-            salon_choisi = st.session_state.salon_actif
-            st.markdown(f"### 🗣️ {salon_choisi}")
-
-            is_photo_salon = ("Photos" in salon_choisi)
-            can_post = True
-            if is_photo_salon and not user.get("is_admin"):
-                can_post = False
-                st.info("🔒 Salon en lecture seule.")
-
-            chat_container = st.container(height=250)
-            with chat_container:
-                try:
-                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-                    messages = messages_res.data if messages_res.data else []
-                    
-                    for msg in messages:
-                        if not msg.get("is_blocked", False):
-                            sender = msg.get('sender_prenom', 'Anonyme')
-                            is_me = (sender == user["prenom"])
-                            
-                            with st.chat_message("user" if not is_me else "assistant"):
-                                st.write(f"**{sender}** : {msg.get('content', '')}")
-                                if msg.get("file_url"):
-                                    st.image(msg["file_url"])
-                except Exception:
-                    st.info("Aucun message pour le moment.")
-
-            if can_post:
-                with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
-                    
-                    col_send1, col_send2 = st.columns([3, 1])
-                    with col_send1:
-                        st.caption("PNG, JPG, PDF, MP3, MP4")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
+                            st.write(f"**{sender}
