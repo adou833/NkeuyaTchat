@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Ajusté pour garder le bouton d'envoi visible)
+# 4. Style CSS Global
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -119,7 +119,7 @@ st.markdown(f"""
 # ---------------------------------------------------------
 if not st.session_state.user:
     st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
-    tab1, tab2 = tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"]) if 'tab1' in locals() else st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
+    tab1, tab2 = st.tabs(["🔑 Se Connecter", "📝 Créer son compte"])
 
     with tab1:
         st.subheader("Connexion à votre espace")
@@ -184,11 +184,13 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    col_head1, col_head2 = st.columns([4, 1])
+    # En-tête avec les 3 points (⋮) alignés à droite
+    col_head1, col_head2 = st.columns([5, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
-        with st.popover("⚙️ Options", use_container_width=True):
+        # Menu déroulant façon WhatsApp avec les 3 points
+        with st.popover("⋮", use_container_width=True):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             
             if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
