@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS
+# 4. Style CSS (Page fixe, seule la zone de messages défile sans cadre)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -62,6 +62,12 @@ st.markdown(f"""
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
+    }}
+
+    /* Empêche la page principale du navigateur de bouger/scroller */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
+        overflow: hidden !important;
+        height: 100vh !important;
     }}
 
     .stApp {{
@@ -74,7 +80,10 @@ st.markdown(f"""
         padding: 0.4rem 0.6rem !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         margin-top: 5px;
-        margin-bottom: 40px;
+        height: 94vh !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden !important;
     }}
 
     .whatsapp-app-title {{
@@ -110,6 +119,17 @@ st.markdown(f"""
 
     .stTextInput input, .stSelectbox select {{
         border-radius: 10px !important;
+    }}
+
+    /* --- ASTUCE WHATSAPP : Zone de messages scrollable SANS AUCUN CADRE --- */
+    /* Cible spécifiquement le conteneur Streamlit des messages pour le rendre scrollable en interne mais invisible/sans bordure */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"] {{
+        overflow-y: auto !important;
+        max-height: 42vh !important;
+        scrollbar-width: none !important; /* Masque la barre de défilement sur Firefox */
+    }}
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"]::-webkit-scrollbar {{
+        display: none !important; /* Masque la barre de défilement sur Chrome/Safari/Edge */
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -295,28 +315,31 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF (SANS CADRE)
+    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF (SCROLL INTERNE SANS CADRE)
     # ---------------------------------------------------------
     
     # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        try:
-            messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
-            messages = messages_res.data if messages_res.data else []
-            
-            for msg in messages:
-                if not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    is_me = (sender == user["prenom"])
-                    
-                    with st.chat_message("user" if not is_me else "assistant"):
-                        st.write(f"**{sender}** : {msg.get('content', '')}")
-                        if msg.get("file_url"):
-                            st.image(msg["file_url"])
-        except Exception:
-            st.info("Aucun message pour le moment.")
+        # Le conteneur interne gère le défilement des messages sans afficher de bordure / cadre
+        chat_container = st.container(height=320)
+        with chat_container:
+            try:
+                messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
+                messages = messages_res.data if messages_res.data else []
+                
+                for msg in messages:
+                    if not msg.get("is_blocked", False):
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        is_me = (sender == user["prenom"])
+                        
+                        with st.chat_message("user" if not is_me else "assistant"):
+                            st.write(f"**{sender}** : {msg.get('content', '')}")
+                            if msg.get("file_url"):
+                                st.image(msg["file_url"])
+            except Exception:
+                st.info("Aucun message pour le moment.")
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
@@ -349,27 +372,29 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        try:
-            unread_messages = []
-            tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
-            for s in tous_les_salons:
-                res = supabase.table("messages").select("*").eq("salon", s).execute()
-                if res.data:
-                    for m in res.data:
-                        if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
-                            m["current_salon"] = s
-                            unread_messages.append(m)
-            
-            if unread_messages:
-                for msg in unread_messages:
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    salon_tag = f"📂 *{msg.get('current_salon')}*"
-                    st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                    st.divider()
-            else:
-                st.info("Aucun nouveau message non lu.")
-        except Exception:
-            st.info("Vérification...")
+        chat_container = st.container(height=350)
+        with chat_container:
+            try:
+                unread_messages = []
+                tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
+                for s in tous_les_salons:
+                    res = supabase.table("messages").select("*").eq("salon", s).execute()
+                    if res.data:
+                        for m in res.data:
+                            if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
+                                m["current_salon"] = s
+                                unread_messages.append(m)
+                
+                if unread_messages:
+                    for msg in unread_messages:
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        salon_tag = f"📂 *{msg.get('current_salon')}*"
+                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                        st.divider()
+                else:
+                    st.info("Aucun nouveau message non lu.")
+            except Exception:
+                st.info("Vérification...")
 
     # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
@@ -385,17 +410,19 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        if st.session_state.favoris_list:
-            for idx, fav in enumerate(st.session_state.favoris_list):
-                col_f1, col_f2 = st.columns([5, 1])
-                with col_f1:
-                    st.write(f"⭐ {fav}")
-                with col_f2:
-                    if st.button("❌", key=f"del_fav_{idx}"):
-                        st.session_state.favoris_list.pop(idx)
-                        st.rerun()
-        else:
-            st.info("Aucun favori.")
+        fav_container = st.container(height=300)
+        with fav_container:
+            if st.session_state.favoris_list:
+                for idx, fav in enumerate(st.session_state.favoris_list):
+                    col_f1, col_f2 = st.columns([5, 1])
+                    with col_f1:
+                        st.write(f"⭐ {fav}")
+                    with col_f2:
+                        if st.button("❌", key=f"del_fav_{idx}"):
+                            st.session_state.favoris_list.pop(idx)
+                            st.rerun()
+            else:
+                st.info("Aucun favori.")
 
     # 4. ONGLET : APPELS
     elif st.session_state.chat_filter == "Appels":
@@ -436,21 +463,23 @@ else:
                 can_post = False
                 st.info("🔒 Lecture seule.")
 
-            try:
-                messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-                messages = messages_res.data if messages_res.data else []
-                
-                for msg in messages:
-                    if not msg.get("is_blocked", False):
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        is_me = (sender == user["prenom"])
-                        
-                        with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(f"**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
-            except Exception:
-                st.info("Aucun message.")
+            chat_container = st.container(height=320)
+            with chat_container:
+                try:
+                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+                    messages = messages_res.data if messages_res.data else []
+                    
+                    for msg in messages:
+                        if not msg.get("is_blocked", False):
+                            sender = msg.get('sender_prenom', 'Anonyme')
+                            is_me = (sender == user["prenom"])
+                            
+                            with st.chat_message("user" if not is_me else "assistant"):
+                                st.write(f"**{sender}** : {msg.get('content', '')}")
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
+                except Exception:
+                    st.info("Aucun message.")
 
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
