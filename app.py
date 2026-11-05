@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Ultra-compact pour Android sans scroll)
+# 4. Style CSS (Scroll naturel activé pour voir le bouton Envoyer sur Android)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -64,27 +64,22 @@ st.markdown(f"""
         pointer-events: none !important;
     }}
 
-    /* Verrouillage strict du scroll sur mobile/desktop */
+    /* Autorise le défilement vertical pour que tout soit visible sur mobile */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        overflow: hidden !important;
-        height: 100vh !important;
+        overflow-y: auto !important;
     }}
 
     .stApp {{
         background-color: #ECE5DD;
-        overflow: hidden !important;
     }}
     
-    /* Conteneur principal ultracompact pour laisser de la place au clavier Android */
     .main .block-container {{
         background-color: #FFFFFF;
         border-radius: 12px;
-        padding: 0.1rem 0.5rem !important;
+        padding: 0.4rem 0.6rem !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-        margin-top: -15px !important;
-        margin-bottom: 0px !important;
-        max-height: 100vh !important;
-        overflow: hidden !important;
+        margin-top: 5px;
+        margin-bottom: 40px !important;
     }}
 
     /* Titre NkeuyaTchat aligné à gauche façon WhatsApp */
@@ -93,7 +88,7 @@ st.markdown(f"""
         font-size: 1.6rem !important;
         font-weight: 800 !important;
         margin-top: 0px;
-        margin-bottom: 0px;
+        margin-bottom: 2px;
         padding-left: 2px;
         letter-spacing: -0.5px;
     }}
@@ -107,9 +102,9 @@ st.markdown(f"""
     .stButton>button {{
         background-color: {primary_color};
         color: white;
-        border-radius: 6px;
+        border-radius: 8px;
         border: none;
-        padding: 4px 8px;
+        padding: 8px 12px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -121,9 +116,6 @@ st.markdown(f"""
 
     .stTextInput input, .stSelectbox select {{
         border-radius: 10px !important;
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
-        min-height: 32px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -316,7 +308,7 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        chat_container = st.container(height=130) # Hauteur réduite pour s'adapter à Android
+        chat_container = st.container(height=180)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -365,7 +357,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=160)
+        chat_container = st.container(height=200)
         with chat_container:
             try:
                 unread_messages = []
@@ -403,7 +395,7 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=130)
+        fav_container = st.container(height=160)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -456,7 +448,7 @@ else:
                 can_post = False
                 st.info("🔒 Lecture seule.")
 
-            chat_container = st.container(height=130)
+            chat_container = st.container(height=180)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
