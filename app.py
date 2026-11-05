@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Page fixe sans scroll principal)
+# 4. Style CSS (Interface remontée et compacte sans scroll)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -64,7 +64,7 @@ st.markdown(f"""
         pointer-events: none !important;
     }}
 
-    /* Désactivation totale du scroll sur toute la page principale */
+    /* Désactivation totale du scroll et recentrage vers le haut */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         overflow: hidden !important;
         height: 100vh !important;
@@ -75,14 +75,15 @@ st.markdown(f"""
         overflow: hidden !important;
     }}
     
+    /* Conteneur principal remonté au maximum */
     .main .block-container {{
         background-color: #FFFFFF;
-        border-radius: 16px;
-        padding: 0.4rem 0.8rem !important;
+        border-radius: 14px;
+        padding: 0.2rem 0.6rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-top: 2px;
-        margin-bottom: 5px;
-        max-height: 98vh !important;
+        margin-top: -10px !important;
+        margin-bottom: 0px !important;
+        max-height: 99vh !important;
         overflow: hidden !important;
     }}
 
@@ -91,15 +92,15 @@ st.markdown(f"""
         color: {primary_color};
         font-size: 1.8rem !important;
         font-weight: 800 !important;
-        margin-top: 2px;
-        margin-bottom: 4px;
+        margin-top: 0px;
+        margin-bottom: 2px;
         padding-left: 2px;
         letter-spacing: -0.5px;
     }}
     
     div[data-testid="stRadio"] label p {{
         font-weight: 800 !important;
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
         color: {primary_color} !important;
     }}
 
@@ -108,7 +109,7 @@ st.markdown(f"""
         color: white;
         border-radius: 8px;
         border: none;
-        padding: 6px 12px;
+        padding: 5px 10px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 1px 2px rgba(0,0,0,0.2);
@@ -119,7 +120,9 @@ st.markdown(f"""
     }}
 
     .stTextInput input, .stSelectbox select {{
-        border-radius: 16px !important;
+        border-radius: 14px !important;
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -312,7 +315,7 @@ else:
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        chat_container = st.container(height=250)
+        chat_container = st.container(height=200) # Hauteur légèrement réduite pour faire remonter le tout
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -364,7 +367,7 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=300)
+        chat_container = st.container(height=230)
         with chat_container:
             try:
                 unread_messages = []
@@ -402,7 +405,7 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=250)
+        fav_container = st.container(height=200)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -455,7 +458,7 @@ else:
                 can_post = False
                 st.info("🔒 Salon en lecture seule.")
 
-            chat_container = st.container(height=250)
+            chat_container = st.container(height=200)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
