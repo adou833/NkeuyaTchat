@@ -320,7 +320,7 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # Fonction d'affichage des messages avec défilement automatique
+    # Fonction d'affichage des messages (Flux de chat avec lecteurs intégrés)
     # ---------------------------------------------------------
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
@@ -331,6 +331,7 @@ else:
         except Exception:
             messages = []
 
+        # Conteneur des messages textuels
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
@@ -345,7 +346,7 @@ else:
                         <span style="color: #333333;">{content}</span>
                     '''
                     if media_url:
-                        html_msgs += f'<br><a href="{media_url}" target="_blank" style="color: #007bff; font-size: 0.8rem;">📎 Fichier joint</a>'
+                        html_msgs += f'<br><small style="color: #075E54;">📎 [Média joint ci-dessous]</small>'
                     html_msgs += '</div>'
         else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
@@ -354,7 +355,7 @@ else:
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
-                height: 240px;
+                height: 220px;
                 overflow-y: auto;
                 padding: 10px;
                 background-color: transparent;
@@ -376,19 +377,22 @@ else:
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
         """
-        st.components.v1.html(chat_css_html, height=255, scrolling=False)
+        st.components.v1.html(chat_css_html, height=235, scrolling=False)
 
-        # Lecteurs multimédias natifs sous la boîte
+        # Affichage direct des lecteurs multimédias (MP3, Vidéos, Images) intégrés sous forme de messages natifs
         if messages:
             for msg in messages:
                 media_url = msg.get('media_url')
                 if media_url and not msg.get("is_blocked", False):
+                    sender = msg.get('sender_prenom', 'Anonyme')
+                    st.markdown(f"🔊 **{sender} a partagé un média :**")
                     if media_url.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
                         st.audio(media_url)
                     elif media_url.lower().endswith(('.mp4', '.mov')):
                         st.video(media_url)
                     elif media_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                         st.image(media_url, width=250)
+                    st.divider()
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
@@ -435,7 +439,7 @@ else:
                     salon_tag = f"📂 *{msg.get('current_salon')}*"
                     st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
                     if msg.get('media_url'):
-                        if msg.get('media_url').endswith(('.mp3', '.wav', '.ogg')):
+                        if msg.get('media_url').endswith(('.mp3', '.wav', '.ogg', '.m4a')):
                             st.audio(msg.get('media_url'))
                     st.divider()
             else:
@@ -479,15 +483,15 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : TÉLÉCHARGER (Partage de fichiers et galerie des fichiers partagés)
+    # 6. ONGLET : TÉLÉCHARGER (Envoi direct de fichiers vers les messages du chat)
     elif st.session_state.chat_filter == "Télécharger":
-        st.subheader("📥 Télécharger / Partager un média")
+        st.subheader("📥 Partager un média (MP3, Image, Vidéo)")
         
         with st.form("form_upload_tab", clear_on_submit=True):
-            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier (MP3, WAV, Image, Vidéo)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
+            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
             target_salon = st.selectbox("📌 Choisir le salon de destination", ["Général"] + salons_accessibles)
             caption_file = st.text_input("💬 Ajouter une légende (optionnel)", key="input_file_caption")
-            send_file_btn = st.form_submit_button("📤 Envoyer le fichier")
+            send_file_btn = st.form_submit_button("📤 Envoyer dans le chat")
 
             if send_file_btn:
                 if uploaded_file_tab is not None:
@@ -504,6 +508,7 @@ else:
                         
                         public_url = supabase.storage.from_("media").get_public_url(storage_path)
 
+                        # Enregistrement direct dans le flux des messages de la table messages
                         supabase.table("messages").insert({
                             "sender_prenom": user["prenom"],
                             "sender_phone": user["phone"],
@@ -513,40 +518,12 @@ else:
                             "is_blocked": False
                         }).execute()
                         
-                        st.success(f"Fichier '{file_name}' envoyé avec succès dans '{target_salon}' !")
+                        st.success(f"Fichier partagé avec succès dans '{target_salon}' ! Rendez-vous dans le salon pour l'écouter.")
                         st.rerun()
                     except Exception as err:
                         st.error(f"Erreur lors de l'envoi du fichier : {err}")
                 else:
                     st.warning("Veuillez sélectionner un fichier avant d'envoyer.")
-
-        st.divider()
-        st.subheader("📁 Fichiers partagés dans l'application")
-        try:
-            media_msgs_res = supabase.table("messages").select("*").not_.is_("media_url", "null").execute()
-            media_messages = media_msgs_res.data if media_msgs_res.data else []
-            
-            if media_messages:
-                for m in media_messages:
-                    sender = m.get('sender_prenom', 'Anonyme')
-                    salon = m.get('salon', 'Général')
-                    content = m.get('content', '')
-                    m_url = m.get('media_url')
-                    
-                    st.markdown(f"**{sender}** (dans *{salon}*) : {content}")
-                    if m_url.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                        st.audio(m_url)
-                    elif m_url.lower().endswith(('.mp4', '.mov')):
-                        st.video(m_url)
-                    elif m_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                        st.image(m_url, width=250)
-                    else:
-                        st.markdown(f"📄 [Lien du fichier]({m_url})")
-                    st.divider()
-            else:
-                st.info("Aucun fichier partagé pour le moment.")
-        except Exception:
-            st.info("Chargement des fichiers partagés...")
 
     # 7. ONGLET : SALONS
     else:
