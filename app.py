@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (avec style compact pour les audios)
+# 4. Style CSS Global
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -108,15 +108,6 @@ st.markdown(f"""
 
     .stTextInput input, .stSelectbox select {{
         border-radius: 10px !important;
-    }}
-
-    /* Lecteur audio compact style icône/mini-bulle */
-    audio {{
-        height: 32px;
-        width: 100%;
-        max-width: 280px;
-        border-radius: 20px;
-        margin-top: 4px;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -194,7 +185,6 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    # En-tête : Titre à gauche, et bouton Streamlit natif "⋮" à droite
     col_t, col_b = st.columns([6, 1])
     with col_t:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
@@ -203,7 +193,6 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -253,7 +242,6 @@ else:
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
-    # Barre de navigation
     selected_filter = st.radio(
         "Navigation",
         ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo", "📥 Télécharger"],
@@ -329,7 +317,7 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # Fonction d'affichage des messages (Flux de chat unifié et compact)
+    # Fonction d'affichage unifiée avec intégration des médias dans les messages
     # ---------------------------------------------------------
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
@@ -340,6 +328,7 @@ else:
         except Exception:
             messages = []
 
+        # Construction du conteneur HTML avec le défilement automatique
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
@@ -349,12 +338,17 @@ else:
                     media_url = msg.get('media_url', None)
                     
                     html_msgs += f'''
-                    <div style="margin-bottom: 8px; max-width: 85%; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                    <div style="margin-bottom: 10px; max-width: 85%; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
                         <b style="color: {primary_color}; font-size: 0.8rem;">{sender}</b><br>
                         <span style="color: #333333;">{content}</span>
                     '''
                     if media_url:
-                        html_msgs += f'<br><small style="color: {primary_color}; font-weight: bold;">🎵 Fichier audio/média joint</small>'
+                        if media_url.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+                            html_msgs += f'<br><audio controls src="{media_url}" style="width:100%; max-width:240px; height:30px; margin-top:5px;"></audio>'
+                        elif media_url.lower().endswith(('.mp4', '.mov')):
+                            html_msgs += f'<br><video controls src="{media_url}" style="width:100%; max-width:240px; margin-top:5px;"></video>'
+                        elif media_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                            html_msgs += f'<br><img src="{media_url}" style="width:100%; max-width:200px; border-radius:6px; margin-top:5px;" />'
                     html_msgs += '</div>'
         else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
@@ -363,7 +357,7 @@ else:
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
-                height: 220px;
+                height: 320px;
                 overflow-y: auto;
                 padding: 10px;
                 background-color: transparent;
@@ -385,24 +379,7 @@ else:
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
         """
-        st.components.v1.html(chat_css_html, height=235, scrolling=False)
-
-        # Affichage compact et élégant des lecteurs multimédias intégrés sous forme de bulles
-        if messages:
-            for msg in messages:
-                media_url = msg.get('media_url')
-                if media_url and not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    if media_url.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                        st.markdown(f"🎵 **{sender}** :")
-                        st.audio(media_url)
-                    elif media_url.lower().endswith(('.mp4', '.mov')):
-                        st.markdown(f"📹 **{sender}** :")
-                        st.video(media_url)
-                    elif media_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                        st.markdown(f"🖼️ **{sender}** :")
-                        st.image(media_url, width=220)
-                    st.divider()
+        st.components.v1.html(chat_css_html, height=335, scrolling=False)
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
@@ -492,9 +469,9 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : TÉLÉCHARGER
+    # 6. ONGLET : TÉLÉCHARGER (Envoi direct de fichiers vers le fil des messages)
     elif st.session_state.chat_filter == "Télécharger":
-        st.subheader("📥 Partager un média compact (MP3, Image, Vidéo)")
+        st.subheader("📥 Partager un média (MP3, Image, Vidéo)")
         
         with st.form("form_upload_tab", clear_on_submit=True):
             uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
@@ -518,64 +495,3 @@ else:
                         public_url = supabase.storage.from_("media").get_public_url(storage_path)
 
                         supabase.table("messages").insert({
-                            "sender_prenom": user["prenom"],
-                            "sender_phone": user["phone"],
-                            "salon": target_salon,
-                            "content": caption_file if caption_file else f"Fichier partagé : {file_name}",
-                            "media_url": public_url,
-                            "is_blocked": False
-                        }).execute()
-                        
-                        st.success(f"Fichier partagé avec succès dans '{target_salon}' !")
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Erreur lors de l'envoi du fichier : {err}")
-                else:
-                    st.warning("Veuillez sélectionner un fichier avant d'envoyer.")
-
-    # 7. ONGLET : SALONS
-    else:
-        if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
-
-        if "is_chatting_in_salon" not in st.session_state:
-            st.session_state.is_chatting_in_salon = False
-
-        if not st.session_state.is_chatting_in_salon:
-            st.subheader("📌 Salons Disponibles")
-            for salon in salons_accessibles:
-                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
-                    st.session_state.salon_actif = salon
-                    st.session_state.is_chatting_in_salon = True
-                    st.rerun()
-        else:
-            if st.button("⬅️ Retour"):
-                st.session_state.is_chatting_in_salon = False
-                st.rerun()
-
-            salon_choisi = st.session_state.salon_actif
-            is_photo_salon = ("Photos" in salon_choisi)
-            can_post = True
-            if is_photo_salon and not user.get("is_admin"):
-                can_post = False
-                st.info("🔒 Lecture seule.")
-
-            render_chat_stream(salon_choisi)
-
-            if can_post:
-                with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and msg_text:
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text,
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
