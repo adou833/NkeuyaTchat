@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Correction du blocage de couleur tactile sur Android)
+# 4. Style CSS Global
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -89,28 +89,6 @@ st.markdown(f"""
         font-weight: 800 !important;
         font-size: 0.85rem !important;
         color: {primary_color} !important;
-    }}
-
-    /* Empêche le bouton 3 points de bloquer sa couleur après un appui sur Android */
-    div[data-testid="column"]:nth-child(2) button {{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: {primary_color} !important;
-        font-size: 1.8rem !important;
-        font-weight: bold !important;
-        padding: 0px !important;
-        min-height: unset !important;
-        -webkit-tap-highlight-color: transparent !important;
-    }}
-    div[data-testid="column"]:nth-child(2) button:focus,
-    div[data-testid="column"]:nth-child(2) button:active,
-    div[data-testid="column"]:nth-child(2) button:hover {{
-        background: transparent !important;
-        color: {primary_color} !important;
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
     }}
 
     .stButton>button {{
@@ -207,14 +185,34 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    # En-tête : Titre à gauche, et bouton des 3 points parfaitement aligné à droite
+    # Gestion de la requête de bascule du menu envoyée par le composant HTML tactile
+    if "toggle_menu_triggered" in query_params and query_params["toggle_menu_triggered"] == "true":
+        st.session_state.show_menu = not st.session_state.show_menu
+        # Nettoie le paramètre URL pour éviter les boucles
+        del query_params["toggle_menu_triggered"]
+        st.rerun()
+
+    # En-tête avec titre à gauche et bouton 3 points HTML natif parfaitement aligné à droite
     col_t, col_b = st.columns([6, 1])
     with col_t:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_b:
-        if st.button("⋮", key="toggle_menu_btn"):
-            st.session_state.show_menu = not st.session_state.show_menu
-            st.rerun()
+        # Bouton 3 points en HTML pur (zéro bug de couleur tactile sur Android)
+        menu_html = f"""
+        <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">
+            <a href="?toggle_menu_triggered=true" target="_self" style="
+                color: {primary_color};
+                font-size: 2rem;
+                font-weight: bold;
+                text-decoration: none;
+                padding: 0px 8px;
+                line-height: 1;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+            ">⋮</a>
+        </div>
+        """
+        st.components.v1.html(menu_html, height=40, scrolling=False)
 
     # Panneau d'options affiché proprement sous l'en-tête
     if st.session_state.show_menu:
@@ -499,40 +497,3 @@ else:
                     st.session_state.salon_actif = salon
                     st.session_state.is_chatting_in_salon = True
                     st.rerun()
-        else:
-            if st.button("⬅️ Retour"):
-                st.session_state.is_chatting_in_salon = False
-                st.rerun()
-
-            salon_choisi = st.session_state.salon_actif
-            is_photo_salon = ("Photos" in salon_choisi)
-            can_post = True
-            if is_photo_salon and not user.get("is_admin"):
-                can_post = False
-                st.info("🔒 Lecture seule.")
-
-            render_chat_stream(salon_choisi)
-
-            if can_post:
-                with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
-                    
-                    col_send1, col_send2 = st.columns([2, 1])
-                    with col_send1:
-                        st.caption("Photo, Doc, Son")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
