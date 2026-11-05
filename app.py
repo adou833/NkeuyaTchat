@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Alignement fixe et parfait du header et du bouton)
+# 4. Style CSS Global (Correction du blocage de couleur tactile sur Android)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -77,15 +77,6 @@ st.markdown(f"""
         margin-bottom: 10px;
     }}
 
-    /* Conteneur flex pour l'en-tête (Titre à gauche, 3 points alignés à droite sur la même ligne) */
-    .whatsapp-header-flex {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        margin-bottom: 2px;
-    }}
-
     .whatsapp-app-title {{
         color: {primary_color};
         font-size: 1.6rem !important;
@@ -98,6 +89,28 @@ st.markdown(f"""
         font-weight: 800 !important;
         font-size: 0.85rem !important;
         color: {primary_color} !important;
+    }}
+
+    /* Empêche le bouton 3 points de bloquer sa couleur après un appui sur Android */
+    div[data-testid="column"]:nth-child(2) button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: {primary_color} !important;
+        font-size: 1.8rem !important;
+        font-weight: bold !important;
+        padding: 0px !important;
+        min-height: unset !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }}
+    div[data-testid="column"]:nth-child(2) button:focus,
+    div[data-testid="column"]:nth-child(2) button:active,
+    div[data-testid="column"]:nth-child(2) button:hover {{
+        background: transparent !important;
+        color: {primary_color} !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
     }}
 
     .stButton>button {{
@@ -194,8 +207,8 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    # En-tête strict avec alignement Flexbox pour PC et Android
-    col_t, col_b = st.columns([5, 1])
+    # En-tête : Titre à gauche, et bouton des 3 points parfaitement aligné à droite
+    col_t, col_b = st.columns([6, 1])
     with col_t:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_b:
