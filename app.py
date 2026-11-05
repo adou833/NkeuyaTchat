@@ -486,4 +486,23 @@ else:
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 F
+                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
+                    
+                    col_send1, col_send2 = st.columns([2, 1])
+                    with col_send1:
+                        st.caption("Photo, Doc, Son")
+                    with col_send2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
