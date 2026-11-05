@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré avec section Télécharger / Fichiers)
+    # Panneau d'options (Menu déroulant intégré avec Thème, Membres, Admin et Déconnexion)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -210,12 +210,6 @@ else:
                 st.markdown("🛠️ **Panneau d'administration**")
                 if st.button("⚙️ Réinitialiser les données", key="admin_pwd_gen_menu"):
                     st.info("Action d'administration active.")
-
-            st.divider()
-            st.subheader("📥 Télécharger / Partager un fichier")
-            uploaded_file_menu = st.file_uploader("📂 Joindre un média", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_menu")
-            if uploaded_file_menu is not None:
-                st.success(f"Fichier '{uploaded_file_menu.name}' prêt pour le partage !")
 
             st.divider()
             st.subheader("🎨 Thème WhatsApp")
@@ -251,9 +245,10 @@ else:
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
+    # Barre de navigation avec l'onglet Télécharger placé après Vidéo
     selected_filter = st.radio(
         "Navigation",
-        ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo"],
+        ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo", "📥 Télécharger"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -272,6 +267,8 @@ else:
         st.session_state.chat_filter = "Appels"
     elif selected_filter == "📹 Vidéo":
         st.session_state.chat_filter = "Vidéo"
+    elif selected_filter == "📥 Télécharger":
+        st.session_state.chat_filter = "Télécharger"
 
     salons_accessibles = ["Photos de la famille Nkeuya"]
     groupe_usr = user.get("groupe", "")
@@ -387,8 +384,6 @@ else:
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            
-            # Envoi du message (le file_uploader est maintenant dans les options du menu)
             send_btn = st.form_submit_button("📤 Envoyer")
 
             if send_btn and msg_text:
@@ -465,7 +460,14 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : SALONS
+    # 6. ONGLET : TÉLÉCHARGER
+    elif st.session_state.chat_filter == "Télécharger":
+        st.subheader("📥 Télécharger / Partager un fichier")
+        uploaded_file_tab = st.file_uploader("📂 Choisir un média", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
+        if uploaded_file_tab is not None:
+            st.success(f"Fichier '{uploaded_file_tab.name}' sélectionné !")
+
+    # 7. ONGLET : SALONS
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
@@ -497,8 +499,6 @@ else:
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    
-                    # Envoi du message (le file_uploader est maintenant dans les options du menu)
                     send_btn = st.form_submit_button("📤 Envoyer")
 
                     if send_btn and msg_text:
