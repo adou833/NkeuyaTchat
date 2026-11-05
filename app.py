@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Page fixe, seule la zone de messages défile sans cadre)
+# 4. Style CSS Global (Fixe le fond et supprime les en-têtes Streamlit)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -62,12 +62,6 @@ st.markdown(f"""
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
-    }}
-
-    /* Empêche la page principale du navigateur de bouger/scroller */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        overflow: hidden !important;
-        height: 100vh !important;
     }}
 
     .stApp {{
@@ -80,10 +74,7 @@ st.markdown(f"""
         padding: 0.4rem 0.6rem !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         margin-top: 5px;
-        height: 94vh !important;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden !important;
+        margin-bottom: 20px;
     }}
 
     .whatsapp-app-title {{
@@ -119,17 +110,6 @@ st.markdown(f"""
 
     .stTextInput input, .stSelectbox select {{
         border-radius: 10px !important;
-    }}
-
-    /* --- ASTUCE WHATSAPP : Zone de messages scrollable SANS AUCUN CADRE --- */
-    /* Cible spécifiquement le conteneur Streamlit des messages pour le rendre scrollable en interne mais invisible/sans bordure */
-    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"] {{
-        overflow-y: auto !important;
-        max-height: 42vh !important;
-        scrollbar-width: none !important; /* Masque la barre de défilement sur Firefox */
-    }}
-    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"]::-webkit-scrollbar {{
-        display: none !important; /* Masque la barre de défilement sur Chrome/Safari/Edge */
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -314,32 +294,75 @@ else:
 
     st.divider()
 
+    # Fonction utilitaire pour afficher les messages en flux pur HTML/CSS sans cadre
+    def render_chat_stream(salon_name):
+        st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
+        
+        try:
+            messages_res = supabase.table("messages").select("*").eq("salon", salon_name).execute()
+            messages = messages_res.data if messages_res.data else []
+        except Exception:
+            messages = []
+
+        # Construction du HTML pur pour la zone de messages scrollable sans cadre
+        html_msgs = '<div class="whatsapp-chat-box">'
+        if messages:
+            for msg in messages:
+                if not msg.get("is_blocked", False):
+                    sender = msg.get('sender_prenom', 'Anonyme')
+                    content = msg.get('content', '')
+                    is_me = (sender == user["prenom"])
+                    
+                    # Style type bulle WhatsApp (vert si c'est moi, blanc si c'est un autre)
+                    bubble_bg = "#DCF8C6" if is_me else "#FFFFFF"
+                    align_style = "margin-left: auto;" if is_me else "margin-right: auto;"
+                    
+                    html_msgs += f'''
+                    <div style="margin-bottom: 8px; max-width: 80%; {align_style} background-color: {bubble_bg}; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                        <b style="color: #075E54; font-size: 0.8rem;">{sender}</b><br>
+                        <span style="color: #333333;">{content}</span>
+                    </div>
+                    '''
+        else:
+            html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
+        html_msgs += '</div>'
+
+        # CSS spécifique injecté via composant HTML pour un scroll fluide sans cadre
+        chat_css_html = f"""
+        <style>
+            .whatsapp-chat-box {{
+                height: 280px;
+                overflow-y: auto;
+                padding: 10px;
+                background-color: transparent;
+                display: flex;
+                flex-direction: column;
+                scrollbar-width: thin;
+            }}
+            .whatsapp-chat-box::-webkit-scrollbar {{
+                width: 4px;
+            }}
+            .whatsapp-chat-box::-webkit-scrollbar-thumb {{
+                background-color: rgba(0,0,0,0.2);
+                border-radius: 4px;
+            }}
+        </style>
+        {html_msgs}
+        <script>
+            // Auto-scroll automatique vers le bas des messages à l'ouverture
+            var box = document.querySelector('.whatsapp-chat-box');
+            if(box) {{ box.scrollTop = box.scrollHeight; }}
+        </script>
+        """
+        st.components.v1.html(chat_css_html, height=300, scrolling=False)
+
     # ---------------------------------------------------------
-    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF (SCROLL INTERNE SANS CADRE)
+    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
     # ---------------------------------------------------------
     
     # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
-        st.subheader("💬 Salon Général")
-        
-        # Le conteneur interne gère le défilement des messages sans afficher de bordure / cadre
-        chat_container = st.container(height=320)
-        with chat_container:
-            try:
-                messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
-                messages = messages_res.data if messages_res.data else []
-                
-                for msg in messages:
-                    if not msg.get("is_blocked", False):
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        is_me = (sender == user["prenom"])
-                        
-                        with st.chat_message("user" if not is_me else "assistant"):
-                            st.write(f"**{sender}** : {msg.get('content', '')}")
-                            if msg.get("file_url"):
-                                st.image(msg["file_url"])
-            except Exception:
-                st.info("Aucun message pour le moment.")
+        render_chat_stream("Général")
 
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
@@ -372,29 +395,27 @@ else:
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
         st.subheader("📬 Messages non lus")
-        chat_container = st.container(height=350)
-        with chat_container:
-            try:
-                unread_messages = []
-                tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
-                for s in tous_les_salons:
-                    res = supabase.table("messages").select("*").eq("salon", s).execute()
-                    if res.data:
-                        for m in res.data:
-                            if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
-                                m["current_salon"] = s
-                                unread_messages.append(m)
-                
-                if unread_messages:
-                    for msg in unread_messages:
-                        sender = msg.get('sender_prenom', 'Anonyme')
-                        salon_tag = f"📂 *{msg.get('current_salon')}*"
-                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                        st.divider()
-                else:
-                    st.info("Aucun nouveau message non lu.")
-            except Exception:
-                st.info("Vérification...")
+        try:
+            unread_messages = []
+            tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
+            for s in tous_les_salons:
+                res = supabase.table("messages").select("*").eq("salon", s).execute()
+                if res.data:
+                    for m in res.data:
+                        if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
+                            m["current_salon"] = s
+                            unread_messages.append(m)
+            
+            if unread_messages:
+                for msg in unread_messages:
+                    sender = msg.get('sender_prenom', 'Anonyme')
+                    salon_tag = f"📂 *{msg.get('current_salon')}*"
+                    st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                    st.divider()
+            else:
+                st.info("Aucun nouveau message non lu.")
+        except Exception:
+            st.info("Vérification...")
 
     # 3. ONGLET : FAVORIS
     elif st.session_state.chat_filter == "Favoris":
@@ -410,19 +431,17 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=300)
-        with fav_container:
-            if st.session_state.favoris_list:
-                for idx, fav in enumerate(st.session_state.favoris_list):
-                    col_f1, col_f2 = st.columns([5, 1])
-                    with col_f1:
-                        st.write(f"⭐ {fav}")
-                    with col_f2:
-                        if st.button("❌", key=f"del_fav_{idx}"):
-                            st.session_state.favoris_list.pop(idx)
-                            st.rerun()
-            else:
-                st.info("Aucun favori.")
+        if st.session_state.favoris_list:
+            for idx, fav in enumerate(st.session_state.favoris_list):
+                col_f1, col_f2 = st.columns([5, 1])
+                with col_f1:
+                    st.write(f"⭐ {fav}")
+                with col_f2:
+                    if st.button("❌", key=f"del_fav_{idx}"):
+                        st.session_state.favoris_list.pop(idx)
+                        st.rerun()
+        else:
+            st.info("Aucun favori.")
 
     # 4. ONGLET : APPELS
     elif st.session_state.chat_filter == "Appels":
@@ -455,31 +474,13 @@ else:
                 st.rerun()
 
             salon_choisi = st.session_state.salon_actif
-            st.markdown(f"### 🗣️ {salon_choisi}")
-
             is_photo_salon = ("Photos" in salon_choisi)
             can_post = True
             if is_photo_salon and not user.get("is_admin"):
                 can_post = False
                 st.info("🔒 Lecture seule.")
 
-            chat_container = st.container(height=320)
-            with chat_container:
-                try:
-                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
-                    messages = messages_res.data if messages_res.data else []
-                    
-                    for msg in messages:
-                        if not msg.get("is_blocked", False):
-                            sender = msg.get('sender_prenom', 'Anonyme')
-                            is_me = (sender == user["prenom"])
-                            
-                            with st.chat_message("user" if not is_me else "assistant"):
-                                st.write(f"**{sender}** : {msg.get('content', '')}")
-                                if msg.get("file_url"):
-                                    st.image(msg["file_url"])
-                except Exception:
-                    st.info("Aucun message.")
+            render_chat_stream(salon_choisi)
 
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
