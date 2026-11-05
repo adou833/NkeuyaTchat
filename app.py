@@ -299,29 +299,4 @@ else:
                                 st.session_state.active_dm = f"Chat avec {m['prenom']} {m['nom']}"
                                 st.session_state.chat_filter = "Salons"
                                 st.session_state.salon_actif = st.session_state.active_dm
-                                st.session_state.is_chatting_in_salon = True
-                                st.rerun()
-                    else:
-                        with cols[idx % len(cols)]:
-                            st.caption(f"• {m['prenom']} (Vous)")
-            else:
-                st.info("Aucun membre trouvé.")
-        except Exception:
-            st.warning("Erreur lors de la recherche des membres.")
-
-    st.divider()
-
-    # Fonction d'affichage des messages (flux scrollable sans cadre, aligné à gauche)
-    def render_chat_stream(salon_name):
-        st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
-        
-        try:
-            messages_res = supabase.table("messages").select("*").eq("salon", salon_name).execute()
-            messages = messages_res.data if messages_res.data else []
-        except Exception:
-            messages = []
-
-        html_msgs = '<div class="whatsapp-chat-box">'
-        if messages:
-            for msg in messages:
-                if not msg.
+                                st.session_state
