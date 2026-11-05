@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré avec Thème, Membres, Admin et Déconnexion)
+    # Panneau d'options (Menu déroulant intégré)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -320,7 +320,7 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # Fonction d'affichage des messages avec reconnaissance multimédia
+    # Fonction d'affichage des messages avec lecture audio/vidéo native
     # ---------------------------------------------------------
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
@@ -331,70 +331,47 @@ else:
         except Exception:
             messages = []
 
-        html_msgs = '<div class="whatsapp-chat-box">'
+        # Affichage du flux de messages et des lecteurs multimédias intégrés
         if messages:
             for msg in messages:
                 if not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
                     content = msg.get('content', '')
-                    
-                    html_msgs += f'''
-                    <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                    file_name = msg.get('file_name', '')
+                    file_bytes = msg.get('file_bytes', None)
+                    file_type = msg.get('file_type', '')
+
+                    st.markdown(f"""
+                    <div style="margin-bottom: 8px; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
                         <b style="color: {primary_color}; font-size: 0.8rem;">{sender}</b><br>
                         <span style="color: #333333;">{content}</span>
                     </div>
-                    '''
+                    """, unsafe_allow_html=True)
+
+                    # Reconnaissance stricte du format pour lecture directe (MP3, WAV, Vidéo, Image)
+                    if file_bytes and file_name:
+                        try:
+                            # Conversion des données stockées en bytes si nécessaire
+                            if isinstance(file_bytes, str):
+                                import base64
+                                decoded_bytes = base64.b64decode(file_bytes)
+                            else:
+                                decoded_bytes = file_bytes
+
+                            if file_name.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')) or 'audio' in file_type:
+                                st.audio(decoded_bytes, format='audio/mp3')
+                            elif file_name.lower().endswith(('.mp4', '.mov')) or 'video' in file_type:
+                                st.video(decoded_bytes)
+                            elif file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')) or 'image' in file_type:
+                                st.image(decoded_bytes, width=250)
+                            else:
+                                st.download_button(label=f"📥 Télécharger {file_name}", data=decoded_bytes, file_name=file_name, key=f"dl_{msg.get('id', file_name)}")
+                        except Exception:
+                            st.caption(f"Fichier joint : {file_name}")
+                    
+                    st.divider()
         else:
-            html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
-        html_msgs += '</div>'
-
-        chat_css_html = f"""
-        <style>
-            .whatsapp-chat-box {{
-                height: 200px;
-                overflow-y: auto;
-                padding: 10px;
-                background-color: transparent;
-                display: flex;
-                flex-direction: column;
-                scrollbar-width: thin;
-            }}
-            .whatsapp-chat-box::-webkit-scrollbar {{
-                width: 4px;
-            }}
-            .whatsapp-chat-box::-webkit-scrollbar-thumb {{
-                background-color: rgba(0,0,0,0.2);
-                border-radius: 4px;
-            }}
-        </style>
-        {html_msgs}
-        <script>
-            var box = document.querySelector('.whatsapp-chat-box');
-            if(box) {{ box.scrollTop = box.scrollHeight; }}
-        </script>
-        """
-        st.components.v1.html(chat_css_html, height=215, scrolling=False)
-
-        # Affichage natif des lecteurs audio/vidéo/images si des fichiers sont joints
-        if messages:
-            for msg in messages:
-                if not msg.get("is_blocked", False):
-                    sender = msg.get('sender_prenom', 'Anonyme')
-                    content = msg.get('content', '')
-                    file_url = msg.get('file_url', None)
-                    file_type = msg.get('file_type', '')
-
-                    if file_url:
-                        st.markdown(f"**{sender}** : {content}")
-                        if "audio" in file_type or file_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                            st.audio(file_url)
-                        elif "video" in file_type or file_url.endswith(('.mp4', '.mov')):
-                            st.video(file_url)
-                        elif "image" in file_type or file_url.endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                            st.image(file_url, width=250)
-                        else:
-                            st.markdown(f"📄 [Télécharger le fichier]({file_url})")
-                        st.divider()
+            st.info("Aucun message pour le moment.")
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
@@ -440,11 +417,10 @@ else:
                     sender = msg.get('sender_prenom', 'Anonyme')
                     salon_tag = f"📂 *{msg.get('current_salon')}*"
                     st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                    if msg.get('file_url'):
-                        if msg.get('file_url').endswith(('.mp3', '.wav', '.ogg')):
-                            st.audio(msg.get('file_url'))
-                        elif msg.get('file_url').endswith(('.mp4', '.mov')):
-                            st.video(msg.get('file_url'))
+                    if msg.get('file_bytes') and msg.get('file_name', '').lower().endswith(('.mp3', '.wav', '.ogg')):
+                        import base64
+                        b_data = base64.b64decode(msg.get('file_bytes')) if isinstance(msg.get('file_bytes'), str) else msg.get('file_bytes')
+                        st.audio(b_data, format='audio/mp3')
                     st.divider()
             else:
                 st.info("Aucun nouveau message non lu.")
@@ -487,19 +463,25 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : TÉLÉCHARGER
+    # 6. ONGLET : TÉLÉCHARGER (Gestion et envoi direct avec encodage MP3/Média natif)
     elif st.session_state.chat_filter == "Télécharger":
         st.subheader("📥 Télécharger / Partager un média")
         with st.form("form_upload_tab", clear_on_submit=True):
-            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
+            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier (MP3, WAV, Image, Vidéo)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
             caption_file = st.text_input("💬 Ajouter une légende (optionnel)", key="input_file_caption")
             send_file_btn = st.form_submit_button("📤 Envoyer")
 
             if send_file_btn:
                 if uploaded_file_tab is not None:
                     try:
+                        import base64
                         file_name = uploaded_file_tab.name
                         file_type = uploaded_file_tab.type
+                        file_bytes_raw = uploaded_file_tab.read()
+                        
+                        # Encodage propre en base64 pour un stockage sécurisé dans Supabase
+                        file_bytes_encoded = base64.b64encode(file_bytes_raw).decode('utf-8')
+
                         file_label = f"[Fichier joint : {file_name}]"
                         full_content = f"{caption_file} {file_label}" if caption_file else file_label
                         
@@ -508,12 +490,13 @@ else:
                             "sender_phone": user["phone"],
                             "salon": "Général",
                             "content": full_content,
-                            "file_url": None,
+                            "file_name": file_name,
+                            "file_bytes": file_bytes_encoded,
                             "file_type": file_type,
                             "is_blocked": False
                         }).execute()
                         
-                        st.success(f"Fichier '{file_name}' partagé avec succès !")
+                        st.success(f"Fichier '{file_name}' partagé et reconnu avec succès !")
                     except Exception as err:
                         st.error(f"Erreur lors de l'envoi : {err}")
                 else:
