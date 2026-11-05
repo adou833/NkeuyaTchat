@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global
+# 4. Style CSS Global (avec style compact pour les audios)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -108,6 +108,15 @@ st.markdown(f"""
 
     .stTextInput input, .stSelectbox select {{
         border-radius: 10px !important;
+    }}
+
+    /* Lecteur audio compact style icône/mini-bulle */
+    audio {{
+        height: 32px;
+        width: 100%;
+        max-width: 280px;
+        border-radius: 20px;
+        margin-top: 4px;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -244,7 +253,7 @@ else:
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
-    # Barre de navigation avec l'onglet Télécharger placé après Vidéo
+    # Barre de navigation
     selected_filter = st.radio(
         "Navigation",
         ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo", "📥 Télécharger"],
@@ -320,7 +329,7 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # Fonction d'affichage des messages (Flux de chat avec lecteurs intégrés)
+    # Fonction d'affichage des messages (Flux de chat unifié et compact)
     # ---------------------------------------------------------
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
@@ -331,7 +340,6 @@ else:
         except Exception:
             messages = []
 
-        # Conteneur des messages textuels
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
@@ -346,7 +354,7 @@ else:
                         <span style="color: #333333;">{content}</span>
                     '''
                     if media_url:
-                        html_msgs += f'<br><small style="color: #075E54;">📎 [Média joint ci-dessous]</small>'
+                        html_msgs += f'<br><small style="color: {primary_color}; font-weight: bold;">🎵 Fichier audio/média joint</small>'
                     html_msgs += '</div>'
         else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
@@ -379,19 +387,21 @@ else:
         """
         st.components.v1.html(chat_css_html, height=235, scrolling=False)
 
-        # Affichage direct des lecteurs multimédias (MP3, Vidéos, Images) intégrés sous forme de messages natifs
+        # Affichage compact et élégant des lecteurs multimédias intégrés sous forme de bulles
         if messages:
             for msg in messages:
                 media_url = msg.get('media_url')
                 if media_url and not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
-                    st.markdown(f"🔊 **{sender} a partagé un média :**")
                     if media_url.lower().endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+                        st.markdown(f"🎵 **{sender}** :")
                         st.audio(media_url)
                     elif media_url.lower().endswith(('.mp4', '.mov')):
+                        st.markdown(f"📹 **{sender}** :")
                         st.video(media_url)
                     elif media_url.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                        st.image(media_url, width=250)
+                        st.markdown(f"🖼️ **{sender}** :")
+                        st.image(media_url, width=220)
                     st.divider()
 
     # ---------------------------------------------------------
@@ -438,9 +448,8 @@ else:
                     sender = msg.get('sender_prenom', 'Anonyme')
                     salon_tag = f"📂 *{msg.get('current_salon')}*"
                     st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                    if msg.get('media_url'):
-                        if msg.get('media_url').endswith(('.mp3', '.wav', '.ogg', '.m4a')):
-                            st.audio(msg.get('media_url'))
+                    if msg.get('media_url') and msg.get('media_url').endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+                        st.audio(msg.get('media_url'))
                     st.divider()
             else:
                 st.info("Aucun nouveau message non lu.")
@@ -483,9 +492,9 @@ else:
         st.subheader("📹 Appels Vidéo")
         st.info("En cours de configuration.")
 
-    # 6. ONGLET : TÉLÉCHARGER (Envoi direct de fichiers vers les messages du chat)
+    # 6. ONGLET : TÉLÉCHARGER
     elif st.session_state.chat_filter == "Télécharger":
-        st.subheader("📥 Partager un média (MP3, Image, Vidéo)")
+        st.subheader("📥 Partager un média compact (MP3, Image, Vidéo)")
         
         with st.form("form_upload_tab", clear_on_submit=True):
             uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
@@ -508,7 +517,6 @@ else:
                         
                         public_url = supabase.storage.from_("media").get_public_url(storage_path)
 
-                        # Enregistrement direct dans le flux des messages de la table messages
                         supabase.table("messages").insert({
                             "sender_prenom": user["prenom"],
                             "sender_phone": user["phone"],
@@ -518,7 +526,7 @@ else:
                             "is_blocked": False
                         }).execute()
                         
-                        st.success(f"Fichier partagé avec succès dans '{target_salon}' ! Rendez-vous dans le salon pour l'écouter.")
+                        st.success(f"Fichier partagé avec succès dans '{target_salon}' !")
                         st.rerun()
                     except Exception as err:
                         st.error(f"Erreur lors de l'envoi du fichier : {err}")
