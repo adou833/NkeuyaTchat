@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS optimisé mobile & alignement des boutons en ligne
+# 4. Style CSS strict pour forcer les 4 boutons en ligne sur mobile
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -106,7 +106,7 @@ st.markdown(f"""
         color: white;
         border-radius: 14px;
         border: none;
-        padding: 6px 12px;
+        padding: 4px 6px;
         font-weight: bold;
         width: 100%;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -116,29 +116,22 @@ st.markdown(f"""
         color: white;
     }}
 
-    /* Force l'affichage côte à côte des 4 colonnes sur Android/Mobile */
-    @media (max-width: 768px) {{
-        [data-testid="column"] {{
-            width: 25% !important;
-            flex: 25% !important;
-            min-width: 25% !important;
-            padding: 0 2px !important;
-        }}
-        div[data-testid="horizontal-block"] {{
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-        }}
+    /* --- FORCE L'ALIGNEMENT DES 4 BOUTONS CÔTE À CÔTE SUR ANDROID --- */
+    div[data-testid="stHorizontalBlock"] {{
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+    }}
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
+        width: 25% !important;
+        flex: 1 1 25% !important;
+        min-width: 0 !important;
     }}
 
-    /* Onglets de filtres ultra-fins et compacts */
-    div[data-testid="column"] button {{
-        padding: 2px 2px !important;
-        font-size: 0.65rem !important;
-        border-radius: 6px !important;
-        min-height: 22px !important;
-        height: 28px !important;
-        line-height: 1 !important;
-        margin-bottom: 2px;
+    /* Taille de police réduite pour les boutons pour qu'ils rentrent bien sur mobile */
+    div[data-testid="column"] button p {{
+        font-size: 0.6rem !important;
     }}
 
     .stTextInput input, .stSelectbox select {{
@@ -254,7 +247,7 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Les 4 boutons/onglets principaux alignés sur la même ligne
+    # Les 4 boutons/onglets principaux alignés sur la même ligne (forcés sur Android)
     filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
     with filter_col1:
         btn_general = st.button("💬 Général")
