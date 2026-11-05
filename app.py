@@ -234,13 +234,13 @@ else:
     # Zone de recherche fixe
     search_query = st.text_input("🔍 Rechercher un membre", key="search_member_main")
 
-    # Barre de navigation horizontale fluide et compacte avec textes en gras
+    # Barre de navigation horizontale fluide mise à jour (Favoris, Salons, Appels, Vidéo inclus)
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
     selected_filter = st.radio(
         "Navigation",
-        ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons"],
+        ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -255,6 +255,10 @@ else:
         if st.session_state.chat_filter != "Salons":
             st.session_state.chat_filter = "Salons"
             st.session_state.is_chatting_in_salon = False
+    elif selected_filter == "📞 Appels":
+        st.session_state.chat_filter = "Appels"
+    elif selected_filter == "📹 Vidéo":
+        st.session_state.chat_filter = "Vidéo"
 
     # Salons secondaires
     salons_accessibles = ["Photos de la famille Nkeuya"]
@@ -420,7 +424,17 @@ else:
             else:
                 st.info("Aucun favori enregistré.")
 
-    # 4. ONGLET : SALONS
+    # 4. ONGLET : APPELS
+    elif st.session_state.chat_filter == "Appels":
+        st.subheader("📞 Appels Audio")
+        st.info("Interface des appels audio familiaux en cours de configuration.")
+
+    # 5. ONGLET : VIDÉO
+    elif st.session_state.chat_filter == "Vidéo":
+        st.subheader("📹 Appels Vidéo")
+        st.info("Interface des salons vidéo en cours de configuration.")
+
+    # 6. ONGLET : SALONS
     else:
         if "salon_actif" not in st.session_state:
             st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
@@ -483,10 +497,4 @@ else:
                             supabase.table("messages").insert({
                                 "sender_prenom": user["prenom"],
                                 "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
+                                "salon": salon_choisi
