@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options affiché proprement si activé
+    # Panneau d'options (Menu déroulant intégré)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -202,9 +202,16 @@ else:
                     <b>👤 {user['prenom']} {user['nom']}</b>
             """, unsafe_allow_html=True)
             
-            if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
-                st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
+            # Vérification de l'administrateur (Eric)
+            is_user_admin = user.get("is_admin") or user.get("prenom", "").strip().lower() == "eric"
             
+            if is_user_admin:
+                st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
+                st.divider()
+                st.markdown("🛠️ **Panneau d'administration**")
+                if st.button("⚙️ Réinitialiser les données", key="admin_pwd_gen_menu"):
+                    st.info("Action d'administration active.")
+
             st.divider()
             st.subheader("🎨 Thème WhatsApp")
             st.session_state.theme_color = st.radio("Couleur :", ["WhatsApp Classic", "Bleu Nkeuya", "Vert Sombre"], key="theme_radio_popover")
@@ -395,11 +402,6 @@ else:
                     st.rerun()
                 except Exception as err:
                     st.error(f"Erreur : {err}")
-
-        if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
-            with st.expander("🛠️ Admin"):
-                if st.button("⚙️ Réinitialiser", key="admin_pwd_gen"):
-                    st.info("Actif.")
 
     # 2. ONGLET : NON LUES
     elif st.session_state.chat_filter == "Non Lues":
