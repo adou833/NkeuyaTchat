@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global (Fixe le fond et supprime les en-têtes Streamlit)
+# 4. Style CSS Global
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -294,7 +294,7 @@ else:
 
     st.divider()
 
-    # Fonction utilitaire pour afficher les messages en flux pur HTML/CSS sans cadre
+    # Fonction utilitaire pour afficher les messages alignés à gauche en flux pur HTML/CSS sans cadre
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
         
@@ -304,21 +304,16 @@ else:
         except Exception:
             messages = []
 
-        # Construction du HTML pur pour la zone de messages scrollable sans cadre
+        # Construction du HTML pur : tous les messages sont alignés à gauche (style groupe WhatsApp)
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
                 if not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
                     content = msg.get('content', '')
-                    is_me = (sender == user["prenom"])
-                    
-                    # Style type bulle WhatsApp (vert si c'est moi, blanc si c'est un autre)
-                    bubble_bg = "#DCF8C6" if is_me else "#FFFFFF"
-                    align_style = "margin-left: auto;" if is_me else "margin-right: auto;"
                     
                     html_msgs += f'''
-                    <div style="margin-bottom: 8px; max-width: 80%; {align_style} background-color: {bubble_bg}; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                    <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
                         <b style="color: #075E54; font-size: 0.8rem;">{sender}</b><br>
                         <span style="color: #333333;">{content}</span>
                     </div>
@@ -327,7 +322,7 @@ else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
         html_msgs += '</div>'
 
-        # CSS spécifique injecté via composant HTML pour un scroll fluide sans cadre
+        # CSS spécifique pour le défilement fluide sans cadre
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
@@ -349,7 +344,7 @@ else:
         </style>
         {html_msgs}
         <script>
-            // Auto-scroll automatique vers le bas des messages à l'ouverture
+            // Auto-scroll vers le bas des messages à l'ouverture
             var box = document.querySelector('.whatsapp-chat-box');
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
