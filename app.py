@@ -462,10 +462,29 @@ else:
 
     # 6. ONGLET : TÉLÉCHARGER
     elif st.session_state.chat_filter == "Télécharger":
-        st.subheader("📥 Télécharger / Partager un fichier")
-        uploaded_file_tab = st.file_uploader("📂 Choisir un média", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
-        if uploaded_file_tab is not None:
-            st.success(f"Fichier '{uploaded_file_tab.name}' sélectionné !")
+        st.subheader("📥 Télécharger / Partager un média")
+        with st.form("form_upload_tab", clear_on_submit=True):
+            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
+            caption_file = st.text_input("💬 Ajouter une légende (optionnel)", key="input_file_caption")
+            send_file_btn = st.form_submit_button("📤 Envoyer")
+
+            if send_file_btn:
+                if uploaded_file_tab is not None:
+                    try:
+                        file_label = f"[Fichier joint : {uploaded_file_tab.name}]"
+                        full_content = f"{caption_file} {file_label}" if caption_file else file_label
+                        supabase.table("messages").insert({
+                            "sender_prenom": user["prenom"],
+                            "sender_phone": user["phone"],
+                            "salon": "Général",
+                            "content": full_content,
+                            "is_blocked": False
+                        }).execute()
+                        st.success("Fichier envoyé avec succès dans le Général !")
+                    except Exception as err:
+                        st.error(f"Erreur lors de l'envoi : {err}")
+                else:
+                    st.warning("Veuillez sélectionner un fichier avant d'envoyer.")
 
     # 7. ONGLET : SALONS
     else:
