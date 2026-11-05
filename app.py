@@ -133,7 +133,6 @@ st.markdown(f"""
         div[data-testid="stHorizontalBlock"]::-webkit-scrollbar {{
             display: none !important;
         }}
-        /* Supprime totalement les espaces internes et externes des colonnes Streamlit */
         div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
             flex: 0 0 auto !important;
             width: auto !important;
@@ -311,4 +310,207 @@ else:
             
             if matched_members:
                 st.write(f"**Résultats de recherche ({len(matched_members)}) :**")
-                cols
+                cols = st.columns(min(len(matched_members), 3))
+                for idx, m in enumerate(matched_members):
+                    if m["prenom"].lower() != user["prenom"].lower():
+                        col_idx = idx % len(cols)
+                        with cols[col_idx]:
+                            if st.button(f"💬 {m['prenom']} {m['nom']}", key=f"btn_dm_{m['prenom']}"):
+                                st.session_state.active_dm = f"Chat avec {m['prenom']} {m['nom']}"
+                                st.session_state.chat_filter = "Salons"
+                                st.session_state.salon_actif = st.session_state.active_dm
+                                st.session_state.is_chatting_in_salon = True
+                                st.rerun()
+                    else:
+                        with cols[idx % len(cols)]:
+                            st.caption(f"• {m['prenom']} (Vous)")
+            else:
+                st.info("Aucun membre trouvé.")
+        except Exception:
+            st.warning("Erreur lors de la recherche des membres.")
+
+    st.divider()
+
+    # ---------------------------------------------------------
+    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
+    # ---------------------------------------------------------
+    
+    # 1. ONGLET : GÉNÉRAL
+    if st.session_state.chat_filter == "Général":
+        st.subheader("💬 Salon Général")
+        
+        chat_container = st.container(height=250)
+        with chat_container:
+            try:
+                messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
+                messages = messages_res.data if messages_res.data else []
+                
+                for msg in messages:
+                    if not msg.get("is_blocked", False):
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        is_me = (sender == user["prenom"])
+                        
+                        with st.chat_message("user" if not is_me else "assistant"):
+                            st.write(f"**{sender}** : {msg.get('content', '')}")
+                            if msg.get("file_url"):
+                                st.image(msg["file_url"])
+            except Exception:
+                st.info("Aucun message pour le moment.")
+
+        with st.form("form_message_general", clear_on_submit=True):
+            msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
+            uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
+            
+            col_send1, col_send2 = st.columns([3, 1])
+            with col_send1:
+                st.caption("PNG, JPG, PDF, MP3, MP4")
+            with col_send2:
+                send_btn = st.form_submit_button("📤 Envoyer")
+
+            if send_btn and (msg_text or uploaded_file):
+                try:
+                    supabase.table("messages").insert({
+                        "sender_prenom": user["prenom"],
+                        "sender_phone": user["phone"],
+                        "salon": "Général",
+                        "content": msg_text if msg_text else "",
+                        "is_blocked": False
+                    }).execute()
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"Erreur : {err}")
+
+        # Panneau d'administration (Uniquement dans le salon Général pour Eric)
+        if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
+            with st.expander("🛠️ Panneau d'Administration (Général)"):
+                st.write("Contrôle total de l'application familiale :")
+                if st.button("⚙️ Réinitialiser le mot de passe d'un membre", key="admin_pwd_gen"):
+                    st.info("Module de réinitialisation actif.")
+                if st.button("🚫 Gérer les messages indésirables", key="admin_mod_gen"):
+                    st.info("Module de modération actif.")
+
+    # 2. ONGLET : NON LUES
+    elif st.session_state.chat_filter == "Non Lues":
+        st.subheader("📬 Messages non lus")
+        chat_container = st.container(height=300)
+        with chat_container:
+            try:
+                unread_messages = []
+                tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
+                for s in tous_les_salons:
+                    res = supabase.table("messages").select("*").eq("salon", s).execute()
+                    if res.data:
+                        for m in res.data:
+                            if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
+                                m["current_salon"] = s
+                                unread_messages.append(m)
+                
+                if unread_messages:
+                    for msg in unread_messages:
+                        sender = msg.get('sender_prenom', 'Anonyme')
+                        salon_tag = f"📂 *{msg.get('current_salon')}*"
+                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                        st.divider()
+                else:
+                    st.info("Aucun nouveau message non lu.")
+            except Exception:
+                st.info("Vérification en cours...")
+
+    # 3. ONGLET : FAVORIS
+    elif st.session_state.chat_filter == "Favoris":
+        st.subheader("⭐ Vos Favoris")
+        
+        if "favoris_list" not in st.session_state:
+            st.session_state.favoris_list = []
+
+        with st.form("form_add_favori", clear_on_submit=True):
+            new_fav = st.text_input("➕ Ajouter un favori...")
+            add_fav_btn = st.form_submit_button("Enregistrer")
+            if add_fav_btn and new_fav:
+                st.session_state.favoris_list.append(new_fav)
+                st.success("Ajouté !")
+
+        fav_container = st.container(height=250)
+        with fav_container:
+            if st.session_state.favoris_list:
+                for idx, fav in enumerate(st.session_state.favoris_list):
+                    col_f1, col_f2 = st.columns([5, 1])
+                    with col_f1:
+                        st.write(f"⭐ {fav}")
+                    with col_f2:
+                        if st.button("❌", key=f"del_fav_{idx}"):
+                            st.session_state.favoris_list.pop(idx)
+                            st.rerun()
+            else:
+                st.info("Aucun favori enregistré.")
+
+    # 4. ONGLET : SALONS
+    else:
+        if "salon_actif" not in st.session_state:
+            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
+
+        if "is_chatting_in_salon" not in st.session_state:
+            st.session_state.is_chatting_in_salon = False
+
+        if not st.session_state.is_chatting_in_salon:
+            st.subheader("📌 Salons Disponibles")
+            for salon in salons_accessibles:
+                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
+                    st.session_state.salon_actif = salon
+                    st.session_state.is_chatting_in_salon = True
+                    st.rerun()
+        else:
+            if st.button("⬅️ Retour aux salons"):
+                st.session_state.is_chatting_in_salon = False
+                st.rerun()
+
+            salon_choisi = st.session_state.salon_actif
+            st.markdown(f"### 🗣️ {salon_choisi}")
+
+            is_photo_salon = ("Photos" in salon_choisi)
+            can_post = True
+            if is_photo_salon and not user.get("is_admin"):
+                can_post = False
+                st.info("🔒 Salon en lecture seule.")
+
+            chat_container = st.container(height=250)
+            with chat_container:
+                try:
+                    messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
+                    messages = messages_res.data if messages_res.data else []
+                    
+                    for msg in messages:
+                        if not msg.get("is_blocked", False):
+                            sender = msg.get('sender_prenom', 'Anonyme')
+                            is_me = (sender == user["prenom"])
+                            
+                            with st.chat_message("user" if not is_me else "assistant"):
+                                st.write(f"**{sender}** : {msg.get('content', '')}")
+                                if msg.get("file_url"):
+                                    st.image(msg["file_url"])
+                except Exception:
+                    st.info("Aucun message pour le moment.")
+
+            if can_post:
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier (Photo, Document, Son - 200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload")
+                    
+                    col_send1, col_send2 = st.columns([3, 1])
+                    with col_send1:
+                        st.caption("PNG, JPG, PDF, MP3, MP4")
+                    with col_send2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
