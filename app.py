@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (En-tête fixe façon WhatsApp et messages scrollables sans barre)
+# 4. Style CSS (En-tête fixe et zone de messages scrollables sans barre)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -112,13 +112,12 @@ st.markdown(f"""
         border-radius: 10px !important;
     }}
 
-    /* --- ZONE DE MESSAGES STYLE WHATSAPP (FIXE EN HAUT + SCROLL SANS BARRE) --- */
-    /* Cible le conteneur de hauteur fixe des messages et supprime sa barre de défilement */
+    /* Masquage de la barre de défilement dans les conteneurs de messages tout en gardant le scroll fluide */
     div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"] {{
-        scrollbar-width: none !important; /* Firefox */
+        scrollbar-width: none !important;
     }}
     div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] div[data-baseweb="block"]::-webkit-scrollbar {{
-        display: none !important; /* Chrome, Safari, Edge */
+        display: none !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -193,6 +192,7 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
+    # ---- PARTIE HAUTE FIXE (Titre, Recherche, Navigation) ----
     col_head1, col_head2 = st.columns([4, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
@@ -304,15 +304,15 @@ else:
     st.divider()
 
     # ---------------------------------------------------------
-    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF (PARTIE HAUTE FIXE)
+    # ZONE DES MESSAGES (Défilante sous le haut fixe)
     # ---------------------------------------------------------
     
     # 1. ONGLET : GÉNÉRAL
     if st.session_state.chat_filter == "Général":
         st.subheader("💬 Salon Général")
         
-        # Zone de messages défilante sans barre de scroll (hauteur fixe de 280px)
-        chat_container = st.container(height=280)
+        # Conteneur des messages avec hauteur fixe et scroll interne masqué
+        chat_container = st.container(height=300)
         with chat_container:
             try:
                 messages_res = supabase.table("messages").select("*").eq("salon", "Général").execute()
@@ -330,7 +330,6 @@ else:
             except Exception:
                 st.info("Aucun message pour le moment.")
 
-        # Le formulaire reste fixe en bas et ne perturbe pas le haut
         with st.form("form_message_general", clear_on_submit=True):
             msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
             uploaded_file = st.file_uploader("📎 Fichier (200MB max)", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_general")
@@ -400,7 +399,7 @@ else:
                 st.session_state.favoris_list.append(new_fav)
                 st.success("Ajouté !")
 
-        fav_container = st.container(height=280)
+        fav_container = st.container(height=300)
         with fav_container:
             if st.session_state.favoris_list:
                 for idx, fav in enumerate(st.session_state.favoris_list):
@@ -453,7 +452,7 @@ else:
                 can_post = False
                 st.info("🔒 Lecture seule.")
 
-            chat_container = st.container(height=280)
+            chat_container = st.container(height=300)
             with chat_container:
                 try:
                     messages_res = supabase.table("messages").select("*").eq("salon", salon_choisi).execute()
