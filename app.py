@@ -194,7 +194,7 @@ else:
             st.session_state.show_menu = not st.session_state.show_menu
             st.rerun()
 
-    # Panneau d'options (Menu déroulant intégré avec Thème, Membres, Admin et Déconnexion)
+    # Panneau d'options (Menu déroulant intégré)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -202,7 +202,6 @@ else:
                     <b>👤 {user['prenom']} {user['nom']}</b>
             """, unsafe_allow_html=True)
             
-            # Option Admin si Eric
             is_user_admin = user.get("is_admin") or user.get("prenom", "").strip().lower() == "eric"
             if is_user_admin:
                 st.markdown("⭐ **ADMINISTRATEUR (Eric)**")
@@ -245,7 +244,6 @@ else:
     if "chat_filter" not in st.session_state:
         st.session_state.chat_filter = "Général"
 
-    # Barre de navigation avec l'onglet Télécharger placé après Vidéo
     selected_filter = st.radio(
         "Navigation",
         ["💬 Général", "📬 Non Lues", "⭐ Favoris", "📌 Salons", "📞 Appels", "📹 Vidéo", "📥 Télécharger"],
@@ -320,7 +318,9 @@ else:
 
     st.divider()
 
-    # Fonction d'affichage des messages (flux scrollable sans cadre, aligné à gauche)
+    # ---------------------------------------------------------
+    # Fonction d'affichage des messages avec reconnaissance multimédia
+    # ---------------------------------------------------------
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
         
@@ -330,19 +330,27 @@ else:
         except Exception:
             messages = []
 
+        # Conteneur des messages textuels
         html_msgs = '<div class="whatsapp-chat-box">'
+        text_messages_to_render = []
+        
         if messages:
             for msg in messages:
                 if not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
                     content = msg.get('content', '')
+                    file_url = msg.get('file_url', None)
                     
-                    html_msgs += f'''
-                    <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
-                        <b style="color: #075E54; font-size: 0.8rem;">{sender}</b><br>
-                        <span style="color: #333333;">{content}</span>
-                    </div>
-                    '''
+                    # Si le message contient un fichier audio ou image enregistré en base
+                    if file_url:
+                        text_messages_to_render.append((sender, content, file_url))
+                    else:
+                        html_msgs += f'''
+                        <div style="margin-bottom: 8px; max-width: 80%; margin-right: auto; background-color: #FFFFFF; padding: 8px 12px; border-radius: 8px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); font-size: 0.9rem;">
+                            <b style="color: {primary_color}; font-size: 0.8rem;">{sender}</b><br>
+                            <span style="color: #333333;">{content}</span>
+                        </div>
+                        '''
         else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
         html_msgs += '</div>'
@@ -350,7 +358,7 @@ else:
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
-                height: 220px;
+                height: 200px;
                 overflow-y: auto;
                 padding: 10px;
                 background-color: transparent;
@@ -372,163 +380,28 @@ else:
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
         """
-        st.components.v1.html(chat_css_html, height=235, scrolling=False)
+        st.components.v1.html(chat_css_html, height=215, scrolling=False)
 
-    # ---------------------------------------------------------
-    # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
-    # ---------------------------------------------------------
-    
-    # 1. ONGLET : GÉNÉRAL
-    if st.session_state.chat_filter == "Général":
-        render_chat_stream("Général")
-
-        with st.form("form_message_general", clear_on_submit=True):
-            msg_text = st.text_input("💬 **Écris ton message ici...**", key="input_msg_general")
-            send_btn = st.form_submit_button("📤 Envoyer")
-
-            if send_btn and msg_text:
-                try:
-                    supabase.table("messages").insert({
-                        "sender_prenom": user["prenom"],
-                        "sender_phone": user["phone"],
-                        "salon": "Général",
-                        "content": msg_text,
-                        "is_blocked": False
-                    }).execute()
-                    st.rerun()
-                except Exception as err:
-                    st.error(f"Erreur : {err}")
-
-    # 2. ONGLET : NON LUES
-    elif st.session_state.chat_filter == "Non Lues":
-        st.subheader("📬 Messages non lus")
-        try:
-            unread_messages = []
-            tous_les_salons = ["Général", "Photos de la famille Nkeuya", "Hommes", "Femmes", "Garçons", "Filles", "Petits fils/filles"]
-            for s in tous_les_salons:
-                res = supabase.table("messages").select("*").eq("salon", s).execute()
-                if res.data:
-                    for m in res.data:
-                        if m.get("sender_prenom") != user["prenom"] and not m.get("is_blocked", False):
-                            m["current_salon"] = s
-                            unread_messages.append(m)
-            
-            if unread_messages:
-                for msg in unread_messages:
+        # Affichage natif des lecteurs audio/vidéo/images pour les messages multimédias
+        if messages:
+            for msg in messages:
+                if not msg.get("is_blocked", False):
                     sender = msg.get('sender_prenom', 'Anonyme')
-                    salon_tag = f"📂 *{msg.get('current_salon')}*"
-                    st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
-                    st.divider()
-            else:
-                st.info("Aucun nouveau message non lu.")
-        except Exception:
-            st.info("Vérification...")
+                    content = msg.get('content', '')
+                    file_url = msg.get('file_url', None)
+                    file_type = msg.get('file_type', '')
 
-    # 3. ONGLET : FAVORIS
-    elif st.session_state.chat_filter == "Favoris":
-        st.subheader("⭐ Vos Favoris")
-        
-        if "favoris_list" not in st.session_state:
-            st.session_state.favoris_list = []
+                    if file_url:
+                        st.markdown(f"**{sender}** : {content}")
+                        if "audio" in file_type or file_url.endswith(('.mp3', '.wav', '.ogg', '.m4a')):
+                            st.audio(file_url)
+                        elif "video" in file_type or file_url.endswith(('.mp4', '.mov')):
+                            st.video(file_url)
+                        elif "image" in file_type or file_url.endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                            st.image(file_url, width=250)
+                        else:
+                            st.markdown(f"📄 [Télécharger le fichier]({file_url})")
+                        st.divider()
 
-        with st.form("form_add_favori", clear_on_submit=True):
-            new_fav = st.text_input("➕ Ajouter...")
-            add_fav_btn = st.form_submit_button("Enregistrer")
-            if add_fav_btn and new_fav:
-                st.session_state.favoris_list.append(new_fav)
-                st.success("Ajouté !")
-
-        if st.session_state.favoris_list:
-            for idx, fav in enumerate(st.session_state.favoris_list):
-                col_f1, col_f2 = st.columns([5, 1])
-                with col_f1:
-                    st.write(f"⭐ {fav}")
-                with col_f2:
-                    if st.button("❌", key=f"del_fav_{idx}"):
-                        st.session_state.favoris_list.pop(idx)
-                        st.rerun()
-        else:
-            st.info("Aucun favori.")
-
-    # 4. ONGLET : APPELS
-    elif st.session_state.chat_filter == "Appels":
-        st.subheader("📞 Appels Audio")
-        st.info("En cours de configuration.")
-
-    # 5. ONGLET : VIDÉO
-    elif st.session_state.chat_filter == "Vidéo":
-        st.subheader("📹 Appels Vidéo")
-        st.info("En cours de configuration.")
-
-    # 6. ONGLET : TÉLÉCHARGER
-    elif st.session_state.chat_filter == "Télécharger":
-        st.subheader("📥 Télécharger / Partager un média")
-        with st.form("form_upload_tab", clear_on_submit=True):
-            uploaded_file_tab = st.file_uploader("📂 Choisir un fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_upload_tab")
-            caption_file = st.text_input("💬 Ajouter une légende (optionnel)", key="input_file_caption")
-            send_file_btn = st.form_submit_button("📤 Envoyer")
-
-            if send_file_btn:
-                if uploaded_file_tab is not None:
-                    try:
-                        file_label = f"[Fichier joint : {uploaded_file_tab.name}]"
-                        full_content = f"{caption_file} {file_label}" if caption_file else file_label
-                        supabase.table("messages").insert({
-                            "sender_prenom": user["prenom"],
-                            "sender_phone": user["phone"],
-                            "salon": "Général",
-                            "content": full_content,
-                            "is_blocked": False
-                        }).execute()
-                        st.success("Fichier envoyé avec succès dans le Général !")
-                    except Exception as err:
-                        st.error(f"Erreur lors de l'envoi : {err}")
-                else:
-                    st.warning("Veuillez sélectionner un fichier avant d'envoyer.")
-
-    # 7. ONGLET : SALONS
-    else:
-        if "salon_actif" not in st.session_state:
-            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
-
-        if "is_chatting_in_salon" not in st.session_state:
-            st.session_state.is_chatting_in_salon = False
-
-        if not st.session_state.is_chatting_in_salon:
-            st.subheader("📌 Salons Disponibles")
-            for salon in salons_accessibles:
-                if st.button(f"💬 {salon}", key=f"btn_salon_list_{salon}"):
-                    st.session_state.salon_actif = salon
-                    st.session_state.is_chatting_in_salon = True
-                    st.rerun()
-        else:
-            if st.button("⬅️ Retour"):
-                st.session_state.is_chatting_in_salon = False
-                st.rerun()
-
-            salon_choisi = st.session_state.salon_actif
-            is_photo_salon = ("Photos" in salon_choisi)
-            can_post = True
-            if is_photo_salon and not user.get("is_admin"):
-                can_post = False
-                st.info("🔒 Lecture seule.")
-
-            render_chat_stream(salon_choisi)
-
-            if can_post:
-                with st.form("form_message", clear_on_submit=True):
-                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and msg_text:
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text,
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
+    # ---------------------------------------------------------
+    # GEST
