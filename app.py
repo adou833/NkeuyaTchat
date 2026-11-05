@@ -185,19 +185,16 @@ else:
     if "show_menu" not in st.session_state:
         st.session_state.show_menu = False
 
-    # Gestion de la requête de bascule du menu envoyée par le composant HTML tactile
     if "toggle_menu_triggered" in query_params and query_params["toggle_menu_triggered"] == "true":
         st.session_state.show_menu = not st.session_state.show_menu
-        # Nettoie le paramètre URL pour éviter les boucles
         del query_params["toggle_menu_triggered"]
         st.rerun()
 
-    # En-tête avec titre à gauche et bouton 3 points HTML natif parfaitement aligné à droite
+    # En-tête avec titre à gauche et bouton 3 points HTML natif ancré à droite
     col_t, col_b = st.columns([6, 1])
     with col_t:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_b:
-        # Bouton 3 points en HTML pur (zéro bug de couleur tactile sur Android)
         menu_html = f"""
         <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">
             <a href="?toggle_menu_triggered=true" target="_self" style="
@@ -214,7 +211,7 @@ else:
         """
         st.components.v1.html(menu_html, height=40, scrolling=False)
 
-    # Panneau d'options affiché proprement sous l'en-tête
+    # Panneau d'options (affiché si on clique sur les 3 points)
     if st.session_state.show_menu:
         with st.container():
             st.markdown(f"""
@@ -497,3 +494,40 @@ else:
                     st.session_state.salon_actif = salon
                     st.session_state.is_chatting_in_salon = True
                     st.rerun()
+        else:
+            if st.button("⬅️ Retour"):
+                st.session_state.is_chatting_in_salon = False
+                st.rerun()
+
+            salon_choisi = st.session_state.salon_actif
+            is_photo_salon = ("Photos" in salon_choisi)
+            can_post = True
+            if is_photo_salon and not user.get("is_admin"):
+                can_post = False
+                st.info("🔒 Lecture seule.")
+
+            render_chat_stream(salon_choisi)
+
+            if can_post:
+                with st.form("form_message", clear_on_submit=True):
+                    msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
+                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
+                    
+                    col_send1, col_send2 = st.columns([2, 1])
+                    with col_send1:
+                        st.caption("Photo, Doc, Son")
+                    with col_send2:
+                        send_btn = st.form_submit_button("📤 Envoyer")
+
+                    if send_btn and (msg_text or uploaded_file):
+                        try:
+                            supabase.table("messages").insert({
+                                "sender_prenom": user["prenom"],
+                                "sender_phone": user["phone"],
+                                "salon": salon_choisi,
+                                "content": msg_text if msg_text else "",
+                                "is_blocked": False
+                            }).execute()
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erreur : {err}")
