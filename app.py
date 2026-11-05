@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global
+# 4. Style CSS (Blocage strict du scroll de la page principale)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -62,6 +62,12 @@ st.markdown(f"""
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
+    }}
+
+    /* Bloque complètement le défilement de la page principale et du navigateur */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
+        overflow: hidden !important;
+        height: 100vh !important;
     }}
 
     .stApp {{
@@ -74,7 +80,10 @@ st.markdown(f"""
         padding: 0.4rem 0.6rem !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         margin-top: 5px;
-        margin-bottom: 20px;
+        height: 94vh !important;
+        overflow: hidden !important;
+        display: flex;
+        flex-direction: column;
     }}
 
     .whatsapp-app-title {{
@@ -294,7 +303,7 @@ else:
 
     st.divider()
 
-    # Fonction utilitaire pour afficher les messages alignés à gauche en flux pur HTML/CSS sans cadre
+    # Fonction utilitaire d'affichage des messages alignés à gauche en flux scrollable
     def render_chat_stream(salon_name):
         st.subheader(f"💬 {salon_name}" if salon_name == "Général" else f"🗣️ {salon_name}")
         
@@ -304,7 +313,6 @@ else:
         except Exception:
             messages = []
 
-        # Construction du HTML pur : tous les messages sont alignés à gauche (style groupe WhatsApp)
         html_msgs = '<div class="whatsapp-chat-box">'
         if messages:
             for msg in messages:
@@ -322,11 +330,10 @@ else:
             html_msgs += '<p style="text-align: center; color: #888; font-size: 0.85rem;">Aucun message pour le moment.</p>'
         html_msgs += '</div>'
 
-        # CSS spécifique pour le défilement fluide sans cadre
         chat_css_html = f"""
         <style>
             .whatsapp-chat-box {{
-                height: 280px;
+                height: 250px;
                 overflow-y: auto;
                 padding: 10px;
                 background-color: transparent;
@@ -344,12 +351,11 @@ else:
         </style>
         {html_msgs}
         <script>
-            // Auto-scroll vers le bas des messages à l'ouverture
             var box = document.querySelector('.whatsapp-chat-box');
             if(box) {{ box.scrollTop = box.scrollHeight; }}
         </script>
         """
-        st.components.v1.html(chat_css_html, height=300, scrolling=False)
+        st.components.v1.html(chat_css_html, height=270, scrolling=False)
 
     # ---------------------------------------------------------
     # GESTION DES AFFICHAGES SELON L'ONGLET ACTIF
@@ -480,23 +486,4 @@ else:
             if can_post:
                 with st.form("form_message", clear_on_submit=True):
                     msg_text = st.text_input("💬 **Écris ton message...**", key="input_msg")
-                    uploaded_file = st.file_uploader("📎 Fichier", type=["png", "jpg", "pdf", "mp3", "wav", "mp4"], key="file_uploader")
-                    
-                    col_send1, col_send2 = st.columns([2, 1])
-                    with col_send1:
-                        st.caption("Photo, Doc, Son")
-                    with col_send2:
-                        send_btn = st.form_submit_button("📤 Envoyer")
-
-                    if send_btn and (msg_text or uploaded_file):
-                        try:
-                            supabase.table("messages").insert({
-                                "sender_prenom": user["prenom"],
-                                "sender_phone": user["phone"],
-                                "salon": salon_choisi,
-                                "content": msg_text if msg_text else "",
-                                "is_blocked": False
-                            }).execute()
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"Erreur : {err}")
+                    uploaded_file = st.file_uploader("📎 F
