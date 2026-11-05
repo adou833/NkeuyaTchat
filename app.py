@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS (Boutons rapprochés et alignés sur mobile)
+# 4. Style CSS (Boutons compacts et alignés sur mobile)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -401,4 +401,47 @@ else:
                     for msg in unread_messages:
                         sender = msg.get('sender_prenom', 'Anonyme')
                         salon_tag = f"📂 *{msg.get('current_salon')}*"
-                        st.markdown(f"{salon_tag} -
+                        st.markdown(f"{salon_tag} - **{sender}** : {msg.get('content', '')}")
+                        st.divider()
+                else:
+                    st.info("Aucun nouveau message non lu.")
+            except Exception:
+                st.info("Vérification en cours...")
+
+    # 3. ONGLET : FAVORIS
+    elif st.session_state.chat_filter == "Favoris":
+        st.subheader("⭐ Vos Favoris")
+        
+        if "favoris_list" not in st.session_state:
+            st.session_state.favoris_list = []
+
+        with st.form("form_add_favori", clear_on_submit=True):
+            new_fav = st.text_input("➕ Ajouter un favori...")
+            add_fav_btn = st.form_submit_button("Enregistrer")
+            if add_fav_btn and new_fav:
+                st.session_state.favoris_list.append(new_fav)
+                st.success("Ajouté !")
+
+        fav_container = st.container(height=250)
+        with fav_container:
+            if st.session_state.favoris_list:
+                for idx, fav in enumerate(st.session_state.favoris_list):
+                    col_f1, col_f2 = st.columns([5, 1])
+                    with col_f1:
+                        st.write(f"⭐ {fav}")
+                    with col_f2:
+                        if st.button("❌", key=f"del_fav_{idx}"):
+                            st.session_state.favoris_list.pop(idx)
+                            st.rerun()
+            else:
+                st.info("Aucun favori enregistré.")
+
+    # 4. ONGLET : SALONS
+    else:
+        if "salon_actif" not in st.session_state:
+            st.session_state.salon_actif = salons_accessibles[0] if salons_accessibles else ""
+
+        if "is_chatting_in_salon" not in st.session_state:
+            st.session_state.is_chatting_in_salon = False
+
+        if not st.session_state.is_chatting_in_salon:
