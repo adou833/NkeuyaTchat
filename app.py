@@ -53,7 +53,7 @@ theme_colors = {
 primary_color = theme_colors.get(st.session_state.theme_color, "#075E54")
 
 # ---------------------------------------------------------
-# 4. Style CSS Global
+# 4. Style CSS Global (Personnalisation du popover pour n'afficher que les 3 points sans cadre)
 # ---------------------------------------------------------
 st.markdown(f"""
     <style>
@@ -91,6 +91,26 @@ st.markdown(f"""
         font-weight: 800 !important;
         font-size: 0.85rem !important;
         color: {primary_color} !important;
+    }}
+
+    /* Supprime le cadre et la flèche du popover pour en faire un bouton 3 points épuré */
+    [data-testid="stPopover"] > button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: {primary_color} !important;
+        font-size: 1.5rem !important;
+        font-weight: bold !important;
+        padding: 0px 8px !important;
+        min-height: unset !important;
+    }}
+    [data-testid="stPopover"] > button:hover {{
+        background: rgba(0,0,0,0.05) !important;
+        color: {primary_color} !important;
+    }}
+    /* Cache la petite flèche du popover */
+    [data-testid="stPopover"] > button svg {{
+        display: none !important;
     }}
 
     .stButton>button {{
@@ -184,13 +204,13 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     
-    # En-tête avec les 3 points (⋮) alignés à droite
-    col_head1, col_head2 = st.columns([5, 1])
+    # En-tête avec les 3 points purs (⋮) alignés à droite
+    col_head1, col_head2 = st.columns([6, 1])
     with col_head1:
         st.markdown(f"<div class='whatsapp-app-title'>NkeuyaTchat</div>", unsafe_allow_html=True)
     with col_head2:
-        # Menu déroulant façon WhatsApp avec les 3 points
-        with st.popover("⋮", use_container_width=True):
+        # Popover épuré sans bordure, sans fond et sans flèche affichant "⋮"
+        with st.popover("⋮"):
             st.write(f"👤 **{user['prenom']} {user['nom']}**")
             
             if user.get("is_admin") and user.get("prenom", "").strip().lower() == "eric":
