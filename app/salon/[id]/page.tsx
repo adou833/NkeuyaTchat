@@ -1,6 +1,6 @@
 'use client';
 
-import ChatRoom from '@/components/ChatRoom'; // ou le chemin correct vers votre ChatRoom
+import ChatRoom from '@/components/ChatRoom';
 
 export default function SalonPage() {
   return (
@@ -8,5 +8,4 @@ export default function SalonPage() {
       <ChatRoom />
     </main>
   );
-}
 }
