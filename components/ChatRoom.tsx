@@ -454,7 +454,7 @@ export default function ChatRoom() {
         {/* PANNEAU ADMIN */}
         {isAdmin && showAdminPanel ? (
           <div className="flex-1 bg-[#111b21] text-white overflow-y-auto flex flex-col">
-            <div className="bg-[#1e293b] p-2 flex items-center justify-between border-b border-blue-900 overflow-x-auto shrink-0 gap-2">
+            <div className="bg-[#1e3a8a] p-2 flex items-center justify-between border-b border-blue-900 overflow-x-auto shrink-0 gap-2">
               <div className="flex gap-1 overflow-x-auto flex-1">
                 {[
                   { id: 'users', label: '👥 Membres' },
@@ -671,22 +671,18 @@ export default function ChatRoom() {
               })}
             </div>
 
-            {/* FIL DES MESSAGES */}
+            {/* FIL DES MESSAGES (TOUS ALIGNÉS À GAUCHE) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]">
               {messages.map((msg) => {
                 const authorName = msg.username || msg.sender || 'Inconnu';
-                const isMe = authorName === fullName;
                 const isAnnouncement = String(authorName).includes('ADMIN');
 
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[85%] rounded-lg px-3.5 py-2 text-sm shadow-sm relative ${
-                      isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' :
-                      isMe ? 'bg-[#dbeafe] text-gray-900 rounded-tr-none border border-blue-200' : 'bg-white text-gray-900 rounded-tl-none'
+                  <div key={msg.id} className="flex flex-col items-start">
+                    <div className={`max-w-[85%] rounded-lg rounded-tl-none px-3.5 py-2 text-sm shadow-sm relative ${
+                      isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' : 'bg-white text-gray-900'
                     }`}>
-                      {!isMe && (
-                        <span className="block text-[11px] font-bold mb-0.5 text-blue-700">{authorName}</span>
-                      )}
+                      <span className="block text-[11px] font-bold mb-0.5 text-blue-700">{authorName}</span>
 
                       <p className="break-words leading-relaxed">{msg.content}</p>
 
