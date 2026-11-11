@@ -288,7 +288,7 @@ export default function ChatRoom() {
     router.push('/');
   };
 
-  const updateUserStatus = async (userId: string, status: 'valide' | 'refuse') => {
+  const updateUserStatus = async (userId: string, status: 'valide' | 'refuse' | 'en_attente') => {
     const updatePayload: any = { status };
     if (status === 'valide') {
       updatePayload.salons = ['general', 'photos-familiales'];
@@ -304,9 +304,14 @@ export default function ChatRoom() {
     setAdminUsers((prev) => prev.filter((u) => u.id !== user.id));
   };
 
-  const forceResetUser = async (user: UserRecord) => {
-    await supabase.from('users').update({ status: 'en_attente' }).eq('id', user.id);
-    setAdminUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: 'en_attente' } : u)));
+  const handleSavePasswordFromUsersTab = async (userId: string, userName: string) => {
+    if (!newPasswordInput.trim()) return;
+    const cleanPassword = newPasswordInput.trim();
+    await supabase.from('users').update({ password: cleanPassword }).eq('id', userId);
+    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, password: cleanPassword } : u)));
+    setEditingPasswordUserId(null);
+    setNewPasswordInput('');
+    alert(`Mot de passe réinitialisé pour ${userName} !`);
   };
 
   const handleSavePassword = async (userId: string, userName: string) => {
@@ -489,11 +494,22 @@ export default function ChatRoom() {
             <div className="p-4 flex-1 space-y-4">
               {adminTab === 'users' && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Gestion des Membres et Droits</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-semibold text-blue-400 uppercase">Gestion des Membres et Validations</h3>
+                  </div>
                   {adminUsers.map((u) => (
                     <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-blue-900 space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
+                        <div>
+                          <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
+                          <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                            u.status === 'valide' ? 'bg-emerald-900 text-emerald-300 border border-emerald-700' :
+                            u.status === 'refuse' ? 'bg-red-900 text-red-300 border border-red-700' :
+                            'bg-amber-900 text-amber-300 border border-amber-700'
+                          }`}>
+                            {u.status || 'en_attente'}
+                          </span>
+                        </div>
                         <button
                           onClick={() => deleteUserAccount(u)}
                           className="text-[10px] bg-red-950 text-red-300 px-2 py-1 rounded-lg border border-red-800 font-bold cursor-pointer"
@@ -502,6 +518,7 @@ export default function ChatRoom() {
                         </button>
                       </div>
 
+                      {/* Salons autorisés */}
                       <div className="bg-[#111b21] p-2.5 rounded-lg border border-blue-900 space-y-1.5">
                         <span className="text-[10px] font-bold text-blue-400 uppercase">Salons autorisés :</span>
                         <div className="flex flex-wrap gap-1.5">
@@ -524,14 +541,61 @@ export default function ChatRoom() {
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center pt-2 border-t border-blue-900">
-                        <button onClick={() => forceResetUser(u)} className="text-[10px] text-amber-300 cursor-pointer">🔄 En attente</button>
+                      {/* Section Réinitialisation mot de passe directement dans Membres */}
+                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-blue-900 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-blue-400 uppercase">Mot de passe :</span>
+                          <button
+                            onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
+                            className="text-[10px] bg-blue-700 text-white px-2 py-1 rounded font-semibold cursor-pointer"
+                          >
+                            {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Réinitialiser MDP'}
+                          </button>
+                        </div>
+                        {editingPasswordUserId === u.id && (
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={newPasswordInput}
+                              onChange={(e) => setNewPasswordInput(e.target.value)}
+                              placeholder="Nouveau mot de passe"
+                              className="flex-1 bg-[#1e293b] border border-blue-800 rounded px-2 py-1 text-xs text-white"
+                            />
+                            <button
+                              onClick={() => handleSavePasswordFromUsersTab(u.id, u.full_name)}
+                              className="bg-emerald-600 text-white text-[10px] px-3 py-1 rounded font-bold cursor-pointer"
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Boutons d'action : Validation, Refus, Remise en attente */}
+                      <div className="flex justify-between items-center pt-2 border-t border-blue-900 flex-wrap gap-2">
+                        <button
+                          onClick={() => updateUserStatus(u.id, 'en_attente')}
+                          className="text-[10px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1 rounded border border-amber-900/50 cursor-pointer"
+                        >
+                          🔄 Remettre en attente
+                        </button>
+
                         <div className="flex gap-1.5">
                           {u.status !== 'valide' && (
-                            <button onClick={() => updateUserStatus(u.id, 'valide')} className="bg-emerald-600 text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer">Valider</button>
+                            <button
+                              onClick={() => updateUserStatus(u.id, 'valide')}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
+                            >
+                              ✅ Valider l'inscription
+                            </button>
                           )}
                           {u.status !== 'refuse' && (
-                            <button onClick={() => updateUserStatus(u.id, 'refuse')} className="bg-red-600 text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer">Bloquer</button>
+                            <button
+                              onClick={() => updateUserStatus(u.id, 'refuse')}
+                              className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
+                            >
+                              ❌ Bloquer
+                            </button>
                           )}
                         </div>
                       </div>
@@ -542,7 +606,7 @@ export default function ChatRoom() {
 
               {adminTab === 'passwords' && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Mots de passe</h3>
+                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Gestion des Mots de passe</h3>
                   {adminUsers.map((u) => (
                     <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-blue-900 space-y-3">
                       <div className="flex items-center justify-between">
