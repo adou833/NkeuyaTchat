@@ -55,7 +55,6 @@ export default function ChatRoom() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   const [activeCall, setActiveCall] = useState<'audio' | 'video' | null>(null);
 
@@ -89,6 +88,7 @@ export default function ChatRoom() {
     }
     setFullName(user);
 
+    // Chargement du profil en arrière-plan sans bloquer l'affichage du salon
     const initProfile = async () => {
       const { data: usersData } = await supabase.from('users').select('*');
       if (usersData) {
@@ -116,7 +116,6 @@ export default function ChatRoom() {
           }
         }
       }
-      setIsLoadingProfile(false);
     };
 
     initProfile();
@@ -239,7 +238,7 @@ export default function ChatRoom() {
         }, 50);
       }
     } catch (err: any) {
-      alert("Erreur réseau (Failed to fetch) : Vérifie ta connexion ou tes clés Supabase.");
+      alert("Erreur réseau : Vérifie ta connexion ou tes clés Supabase.");
     }
   };
 
@@ -372,14 +371,6 @@ export default function ChatRoom() {
     setShowAdminPanel(false);
   };
 
-  if (isLoadingProfile) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#111b21] text-blue-500 font-bold text-sm">
-        Chargement du salon NkeuyaTchat... ⏳
-      </div>
-    );
-  }
-
   return (
     <div className="flex items-center justify-center h-screen w-screen bg-[#111b21] p-0 md:p-4 overflow-hidden">
       
@@ -396,7 +387,7 @@ export default function ChatRoom() {
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-current rounded-full"></span>
             </div>
             <div>
-              <h2 className="font-bold text-sm text-white tracking-wide">{fullName}</h2>
+              <h2 className="font-bold text-sm text-white tracking-wide">{fullName || 'Utilisateur'}</h2>
               <div className="text-[11px] text-blue-200 flex items-center gap-1.5 font-medium">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
                 <span>{getSalonLabel(currentSalonKey)}</span>
@@ -541,234 +532,4 @@ export default function ChatRoom() {
                         <button onClick={() => forceResetUser(u)} className="text-[10px] text-amber-300 cursor-pointer">🔄 En attente</button>
                         <div className="flex gap-1.5">
                           {u.status !== 'valide' && (
-                            <button onClick={() => updateUserStatus(u.id, 'valide')} className="bg-emerald-600 text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer">Valider</button>
-                          )}
-                          {u.status !== 'refuse' && (
-                            <button onClick={() => updateUserStatus(u.id, 'refuse')} className="bg-red-600 text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer">Bloquer</button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'passwords' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Mots de passe</h3>
-                  {adminUsers.map((u) => (
-                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-blue-900 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
-                        <button
-                          onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
-                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg cursor-pointer"
-                        >
-                          {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'}
-                        </button>
-                      </div>
-                      {editingPasswordUserId === u.id && (
-                        <div className="pt-2 border-t border-blue-900 flex gap-2">
-                          <input
-                            type="text"
-                            value={newPasswordInput}
-                            onChange={(e) => setNewPasswordInput(e.target.value)}
-                            placeholder="Nouveau mot de passe"
-                            className="flex-1 bg-[#111b21] border border-blue-800 rounded-lg px-3 py-1.5 text-xs text-white"
-                          />
-                          <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'salons' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-blue-900 space-y-3">
-                    <h4 className="text-xs font-bold text-blue-400 uppercase">➕ Créer un salon</h4>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newSalonName}
-                        onChange={(e) => setNewSalonName(e.target.value)}
-                        placeholder="Nom..."
-                        required
-                        className="flex-1 bg-[#111b21] border border-blue-800 rounded-lg px-3 py-2 text-xs text-white"
-                      />
-                      <button type="submit" className="bg-blue-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button>
-                    </div>
-                  </form>
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-blue-400 uppercase">Salons Actifs</h4>
-                    {allSalons.map((sId) => (
-                      <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span>
-                        {sId !== 'general' && sId !== 'photos-familiales' && (
-                          <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {adminTab === 'en_ligne' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Membres connectés ({onlineUsers.length})</h3>
-                  {onlineUsers.map((name, index) => (
-                    <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 text-xs font-bold">{name}</div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'moderation' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Modération</h3>
-                  {adminMessages.map((msg) => (
-                    <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 flex justify-between items-center gap-2">
-                      <div>
-                        <span className="text-[11px] font-bold text-blue-400">{msg.username}</span>
-                        <p className="text-xs text-gray-200 truncate">{msg.content}</p>
-                      </div>
-                      <button onClick={() => deleteMessage(msg.id)} className="bg-red-600 text-white text-[10px] px-2.5 py-1.5 rounded cursor-pointer">Supprimer</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'annonces' && (
-                <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-blue-900 space-y-3">
-                  <h3 className="text-xs font-bold text-blue-400 uppercase">Annonce officielle</h3>
-                  <textarea
-                    value={announcementText}
-                    onChange={(e) => setAnnouncementText(e.target.value)}
-                    placeholder="Message..."
-                    rows={4}
-                    className="w-full bg-[#111b21] border border-blue-800 rounded-lg p-3 text-xs text-white"
-                  />
-                  <button type="submit" className="w-full bg-amber-500 text-gray-900 font-bold py-2.5 rounded-lg text-xs cursor-pointer">Publier</button>
-                </form>
-              )}
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* BARRE DE NAVIGATION DES SALONS */}
-            <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0">
-              {allSalons.map((sId) => {
-                const hasAccess = isAdmin || allowedSalons.includes(sId) || sId === 'general' || sId === 'photos-familiales';
-                if (!hasAccess) return null;
-
-                const isActive = currentSalonKey === sId;
-                const salonTheme = SALON_COLORS[sId] || { bg: '#2563eb', text: '#1d4ed8', lightBg: '#dbeafe', border: '#60a5fa' };
-
-                return (
-                  <button
-                    key={sId}
-                    type="button"
-                    onClick={() => setCurrentSalonKey(sId)}
-                    style={
-                      isActive
-                        ? { backgroundColor: '#1e3a8a', color: '#ffffff', borderColor: '#1e3a8a' }
-                        : { backgroundColor: salonTheme.lightBg, color: salonTheme.text, borderColor: salonTheme.border }
-                    }
-                    className={`px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all duration-200 border cursor-pointer ${
-                      isActive ? 'shadow-md scale-105 font-bold' : 'hover:opacity-85'
-                    }`}
-                  >
-                    {getSalonLabel(sId)}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* FIL DES MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]">
-              {messages.map((msg) => {
-                const authorName = msg.username || msg.sender || 'Inconnu';
-                const isMe = authorName === fullName;
-                const isAnnouncement = String(authorName).includes('ADMIN');
-
-                return (
-                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[85%] rounded-lg px-3.5 py-2 text-sm shadow-sm relative ${
-                      isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' :
-                      isMe ? 'bg-[#dbeafe] text-gray-900 rounded-tr-none border border-blue-200' : 'bg-white text-gray-900 rounded-tl-none'
-                    }`}>
-                      {!isMe && (
-                        <span className="block text-[11px] font-bold mb-0.5 text-blue-700">{authorName}</span>
-                      )}
-
-                      <p className="break-words leading-relaxed">{msg.content}</p>
-
-                      {msg.file_url && msg.file_type === 'audio' && (
-                        <audio controls className="mt-2 w-full max-w-xs">
-                          <source src={msg.file_url} type="audio/mpeg" />
-                        </audio>
-                      )}
-
-                      {msg.file_url && msg.file_type === 'video' && (
-                        <video controls className="mt-2 rounded-lg max-h-48 w-full object-cover">
-                          <source src={msg.file_url} type="video/mp4" />
-                        </video>
-                      )}
-
-                      {msg.file_url && msg.file_type === 'document' && (
-                        <a
-                          href={msg.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-block text-xs text-blue-600 underline font-bold"
-                        >
-                          Télécharger le document
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* ZONE DE SAISIE ET PIÈCES JOINTES */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-[#f0f2f5] flex items-center gap-2 shrink-0 border-t border-gray-300">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-                accept="image/*,audio/*,video/*,application/pdf"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition cursor-pointer text-sm"
-                title="Joindre un fichier"
-              >
-                {uploading ? '⏳' : '📎'}
-              </button>
-
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Tapez un message..."
-                className="flex-1 bg-white rounded-full px-4 py-2.5 text-sm border border-gray-300 focus:outline-none focus:border-blue-500 text-gray-900"
-              />
-              <button
-                type="submit"
-                className="bg-[#1e3a8a] text-white p-2.5 rounded-full hover:bg-blue-900 transition cursor-pointer shadow"
-              >
-                ➤
-              </button>
-            </form>
-          </>
-        )}
-
-      </div>
-    </div>
-  );
-}
+                            <button onClick={() => updateUserStatus(u.id, 'valide')} className="bg-emerald-6
