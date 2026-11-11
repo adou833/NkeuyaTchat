@@ -206,7 +206,6 @@ export default function ChatRoom() {
     setIsRefreshing(false);
   };
 
-  // FONCTION MODIFIÉE : APPEL HTTP DIRECT POUR ÉVITER LES ERREURS DE FETCH SDK SUPABASE
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !fullName) return;
@@ -215,29 +214,17 @@ export default function ChatRoom() {
     setNewMessage('');
 
     try {
-      const response = await fetch(`https://yoffjgneldohabfzarbn.supabase.co/rest/v1/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvZmZqZ25lbGRvaGFiZnphcmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNDM5NTYsImV4cCI6MjEwOTkxOTk1Nn0.7yGi_T0vx5TcZQn02o_-27ti6oxERLrY0M-qEvqC9b0',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvZmZqZ25lbGRvaGFiZnphcmJuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNDM5NTYsImV4cCI6MjEwOTkxOTk1Nn0.7yGi_T0vx5TcZQn02o_-27ti6oxERLrY0M-qEvqC9b0',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          content: contentToSend,
-          username: fullName,
-          sender: fullName,
-          salon: currentSalonKey,
-        })
-      });
+      const { data, error } = await supabase.from('messages').insert({
+        content: contentToSend,
+        username: fullName,
+        salon: currentSalonKey,
+      }).select();
 
-      if (!response.ok) {
-        const errData = await response.json();
-        alert("Erreur Supabase : " + (errData.message || response.statusText));
+      if (error) {
+        alert("Erreur Supabase : " + error.message);
         return;
       }
 
-      const data = await response.json();
       if (data && data.length > 0) {
         setMessages((prev) => {
           const exists = prev.some((m) => m.id === data[0].id);
@@ -281,7 +268,6 @@ export default function ChatRoom() {
     const { data, error } = await supabase.from('messages').insert({
       content: `📁 Fichier partagé : ${file.name}`,
       username: fullName,
-      sender: fullName,
       salon: currentSalonKey,
       file_url: fileUrl,
       file_type: fileType,
@@ -375,7 +361,6 @@ export default function ChatRoom() {
     await supabase.from('messages').insert({
       content: `📢 ANNONCE ADMIN : ${announcementText.trim()}`,
       username: '📢 Eric MABOM (ADMIN)',
-      sender: '📢 Eric MABOM (ADMIN)',
       salon: currentSalonKey,
     });
     setAnnouncementText('');
