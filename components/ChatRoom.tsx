@@ -706,8 +706,8 @@ export default function ChatRoom() {
           </div>
         ) : (
           <>
-            {/* BARRE DE NAVIGATION DES SALONS */}
-            <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0">
+            {/* BARRE DE NAVIGATION DES SALONS (SANS BARRE DE DÉFILEMENT VISIBLE) */}
+            <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {allSalons.map((sId) => {
                 const hasAccess = isAdmin || allowedSalons.includes(sId) || sId === 'general' || sId === 'photos-familiales';
                 if (!hasAccess) return null;
