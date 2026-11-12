@@ -56,7 +56,7 @@ export default function ChatRoom() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const [activeCall, setActiveCall] = useState<'audio' | 'video' | null>(null);
+  const [activeCallType, setActiveCallType] = useState<'audio' | 'video' | null>(null);
 
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminTab, setAdminTab] = useState<'users' | 'passwords' | 'salons' | 'en_ligne' | 'moderation' | 'annonces'>('users');
@@ -398,14 +398,14 @@ export default function ChatRoom() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setActiveCall('audio')}
+              onClick={() => setActiveCallType('audio')}
               className="p-2 bg-blue-900/50 hover:bg-blue-800 rounded-full transition text-white shadow cursor-pointer"
               title="Appel audio"
             >
               📞
             </button>
             <button
-              onClick={() => setActiveCall('video')}
+              onClick={() => setActiveCallType('video')}
               className="p-2 bg-blue-900/50 hover:bg-blue-800 rounded-full transition text-white shadow cursor-pointer"
               title="Appel vidéo"
             >
@@ -431,27 +431,26 @@ export default function ChatRoom() {
           </div>
         </div>
 
-        {/* Modal d'appel */}
-        {activeCall && (
-          <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4 text-white">
-            <div className="bg-[#1e293b] p-6 rounded-2xl border border-blue-600 flex flex-col items-center space-y-4 max-w-md w-full shadow-2xl">
-              <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl font-bold shadow-lg animate-pulse">
-                {activeCall === 'video' ? '📹' : '📞'}
-              </div>
-              <h3 className="text-lg font-bold">
-                {activeCall === 'video' ? 'Appel Vidéo en cours...' : 'Appel Audio en cours...'}
-              </h3>
-              <p className="text-xs text-blue-300 text-center">
-                Salon {getSalonLabel(currentSalonKey)} - Famille Nkeuya
-              </p>
-              <div className="flex gap-4 pt-4">
-                <button
-                  onClick={() => setActiveCall(null)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-full font-bold text-xs transition shadow cursor-pointer"
-                >
-                  Raccrocher ❌
-                </button>
-              </div>
+        {/* Modal d'appel 100% Gratuit et Fonctionnel (Jitsi Meet Intégré) */}
+        {activeCallType && (
+          <div className="absolute inset-0 bg-black/90 z-50 flex flex-col">
+            <div className="bg-[#1e3a8a] text-white p-3 flex justify-between items-center shrink-0">
+              <span className="font-bold text-xs">
+                {activeCallType === 'video' ? '📹 Appel Vidéo' : '📞 Appel Audio'} - {getSalonLabel(currentSalonKey)}
+              </span>
+              <button
+                onClick={() => setActiveCallType(null)}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded-full font-bold cursor-pointer shadow"
+              >
+                Raccrocher ❌
+              </button>
+            </div>
+            <div className="flex-1 w-full h-full bg-black relative">
+              <iframe
+                src={`https://meet.jit.si/NkeuyaTchat_${currentSalonKey}#userInfo.displayName="${encodeURIComponent(fullName)}"&config.startWithAudioMuted=false&config.startWithVideoMuted=${activeCallType === 'audio' ? 'true' : 'false'}`}
+                allow="camera; microphone; fullscreen; display-capture; autoplay"
+                className="w-full h-full border-0"
+              />
             </div>
           </div>
         )}
@@ -706,7 +705,7 @@ export default function ChatRoom() {
           </div>
         ) : (
           <>
-            {/* BARRE DE NAVIGATION DES SALONS (SANS BARRE DE DÉFILEMENT VISIBLE) */}
+            {/* BARRE DE NAVIGATION DES SALONS (SANS BARRE DE DÉFILEMENT) */}
             <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {allSalons.map((sId) => {
                 const hasAccess = isAdmin || allowedSalons.includes(sId) || sId === 'general' || sId === 'photos-familiales';
@@ -735,7 +734,7 @@ export default function ChatRoom() {
               })}
             </div>
 
-            {/* FIL DES MESSAGES (TOUS ALIGNÉS À GAUCHE) */}
+            {/* FIL DES MESSAGES */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]">
               {messages.map((msg) => {
                 const authorName = msg.username || msg.sender || 'Inconnu';
