@@ -735,8 +735,8 @@ export default function ChatRoom() {
               })}
             </div>
 
-            {/* FIL DES MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]">
+            {/* FIL DES MESSAGES (AVEC SCROLLBAR ULTRA-FINE ET DISCRÈTE) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-400/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
               {messages.map((msg) => {
                 const authorName = msg.username || msg.sender || 'Inconnu';
                 const isAnnouncement = String(authorName).includes('ADMIN');
