@@ -250,8 +250,9 @@ export default function ChatRoom() {
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${currentSalonKey}/${fileName}`;
 
-    let fileType: 'audio' | 'video' | 'document' = 'document';
-    if (file.type.startsWith('audio/')) fileType = 'audio';
+    let fileType: 'image' | 'audio' | 'video' | 'document' = 'document';
+    if (file.type.startsWith('image/')) fileType = 'image';
+    else if (file.type.startsWith('audio/')) fileType = 'audio';
     else if (file.type.startsWith('video/')) fileType = 'video';
 
     const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, file);
@@ -266,7 +267,7 @@ export default function ChatRoom() {
     const fileUrl = publicUrlData.publicUrl;
 
     const { data, error } = await supabase.from('messages').insert({
-      content: `📁 Fichier partagé : ${file.name}`,
+      content: fileType === 'image' ? `📷 Photo partagée` : `📁 Fichier partagé : ${file.name}`,
       username: fullName,
       salon: currentSalonKey,
       file_url: fileUrl,
@@ -431,7 +432,7 @@ export default function ChatRoom() {
           </div>
         </div>
 
-        {/* Modal d'appel 100% Gratuit et Fonctionnel (Jitsi Meet Intégré) */}
+        {/* Modal d'appel Jitsi Meet */}
         {activeCallType && (
           <div className="absolute inset-0 bg-black/90 z-50 flex flex-col">
             <div className="bg-[#0284c7] text-white p-3 flex justify-between items-center shrink-0">
@@ -540,7 +541,7 @@ export default function ChatRoom() {
                         </div>
                       </div>
 
-                      {/* Section Réinitialisation mot de passe directement dans Membres */}
+                      {/* Section Réinitialisation mot de passe */}
                       <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold text-sky-400 uppercase">Mot de passe :</span>
@@ -570,7 +571,7 @@ export default function ChatRoom() {
                         )}
                       </div>
 
-                      {/* Boutons d'action : Validation, Refus, Remise en attente */}
+                      {/* Boutons d'action */}
                       <div className="flex justify-between items-center pt-2 border-t border-sky-900 flex-wrap gap-2">
                         <button
                           onClick={() => updateUserStatus(u.id, 'en_attente')}
@@ -705,7 +706,7 @@ export default function ChatRoom() {
           </div>
         ) : (
           <>
-            {/* BARRE DE NAVIGATION DES SALONS (SANS BARRE DE DÉFILEMENT) */}
+            {/* BARRE DE NAVIGATION DES SALONS */}
             <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {allSalons.map((sId) => {
                 const hasAccess = isAdmin || allowedSalons.includes(sId) || sId === 'general' || sId === 'photos-familiales';
@@ -747,28 +748,41 @@ export default function ChatRoom() {
                     }`}>
                       <span className="block text-[11px] font-bold mb-0.5 text-sky-600">{authorName}</span>
 
+                      {/* AFFICHAGE DES PHOTOS / IMAGES */}
+                      {msg.file_url && msg.file_type === 'image' && (
+                        <div className="mb-2">
+                          <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                            <img src={msg.file_url} alt="Photo partagée" className="rounded-lg max-h-60 w-full object-cover hover:opacity-95 transition cursor-pointer" />
+                          </a>
+                        </div>
+                      )}
+
                       <p className="break-words leading-relaxed">{msg.content}</p>
 
+                      {/* AFFICHAGE AUDIO */}
                       {msg.file_url && msg.file_type === 'audio' && (
                         <audio controls className="mt-2 w-full max-w-xs">
                           <source src={msg.file_url} type="audio/mpeg" />
                         </audio>
                       )}
 
+                      {/* AFFICHAGE VIDÉO */}
                       {msg.file_url && msg.file_type === 'video' && (
                         <video controls className="mt-2 rounded-lg max-h-48 w-full object-cover">
                           <source src={msg.file_url} type="video/mp4" />
                         </video>
                       )}
 
+                      {/* AFFICHAGE DOCUMENT PDF / AUTRE */}
                       {msg.file_url && msg.file_type === 'document' && (
                         <a
                           href={msg.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-block text-xs text-sky-600 underline font-bold"
+                          className="mt-2 inline-flex items-center gap-1.5 text-xs bg-sky-50 text-sky-700 px-3 py-2 rounded-lg border border-sky-200 font-bold hover:bg-sky-100 transition"
                         >
-                          Télécharger le document
+                          <span>📄</span>
+                          <span>Télécharger le document</span>
                         </a>
                       )}
                     </div>
@@ -785,14 +799,14 @@ export default function ChatRoom() {
                 ref={fileInputRef}
                 onChange={handleFileUpload}
                 className="hidden"
-                accept="image/*,audio/*,video/*,application/pdf"
+                accept="image/*,audio/*,video/*,application/pdf,.doc,.docx"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className="p-2 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition cursor-pointer text-sm"
-                title="Joindre un fichier"
+                title="Joindre une photo, audio, vidéo ou document"
               >
                 {uploading ? '⏳' : '📎'}
               </button>
