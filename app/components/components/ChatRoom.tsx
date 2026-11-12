@@ -538,28 +538,16 @@ export default function ChatRoom() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* SÉLECTEUR DE THÈME RAPIDE */}
-            <select
-              value={chatTheme}
-              onChange={(e) => changeTheme(e.target.value as any)}
-              className="bg-sky-800 text-white text-[11px] font-bold px-2 py-1.5 rounded-lg border border-sky-600 outline-none cursor-pointer"
-              title="Changer le fond d'écran"
-            >
-              <option value="clair">☀️ Clair</option>
-              <option value="sombre">🌙 Sombre</option>
-              <option value="bleu">🔵 Bleu</option>
-            </select>
-
             <button
               onClick={() => setActiveCallType('audio')}
-              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-sm"
+              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
               title="Appel audio"
             >
               📞
             </button>
             <button
               onClick={() => setActiveCallType('video')}
-              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-sm"
+              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
               title="Appel vidéo"
             >
               📹
@@ -568,7 +556,7 @@ export default function ChatRoom() {
             {isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow cursor-pointer ${
+                className={`text-xs px-2.5 py-1 rounded-lg font-bold transition shadow cursor-pointer ${
                   showAdminPanel ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-gray-900'
                 }`}
               >
@@ -577,9 +565,34 @@ export default function ChatRoom() {
             )}
             <button
               onClick={handleLogout}
-              className="text-xs bg-black/20 hover:bg-black/40 text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              className="text-xs bg-black/20 hover:bg-black/40 text-white px-2.5 py-1 rounded-lg transition cursor-pointer"
             >
               Quitter
+            </button>
+          </div>
+        </div>
+
+        {/* BARRE SECONDAIRE : SÉLECTEUR DE FOND D'ÉCRAN / THÈME VISIBLE */}
+        <div className="bg-[#0270b0] px-3 py-1.5 flex items-center justify-between text-xs text-white shrink-0 border-t border-sky-400/20 z-10">
+          <span className="font-medium">🎨 Fond d'écran :</span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => changeTheme('clair')}
+              className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatTheme === 'clair' ? 'bg-white text-[#0284c7] shadow' : 'bg-sky-900/60 text-sky-200'}`}
+            >
+              ☀️ Clair
+            </button>
+            <button
+              onClick={() => changeTheme('sombre')}
+              className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatTheme === 'sombre' ? 'bg-[#111b21] text-white shadow' : 'bg-sky-900/60 text-sky-200'}`}
+            >
+              🌙 Sombre
+            </button>
+            <button
+              onClick={() => changeTheme('bleu')}
+              className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${chatTheme === 'bleu' ? 'bg-[#0c2340] text-white shadow' : 'bg-sky-900/60 text-sky-200'}`}
+            >
+              🔵 Bleu
             </button>
           </div>
         </div>
