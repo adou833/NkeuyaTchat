@@ -34,7 +34,7 @@ const DEFAULT_SALONS = [
 ];
 
 const SALON_COLORS: Record<string, { bg: string, text: string, lightBg: string, border: string }> = {
-  'general': { bg: '#005c4b', text: '#005c4b', lightBg: '#e6f4f1', border: '#005c4b' },
+  'general': { bg: '#0284c7', text: '#0369a1', lightBg: '#e0f2fe', border: '#38bdf8' },
   'photos-familiales': { bg: '#d97706', text: '#b45309', lightBg: '#fef3c7', border: '#f59e0b' },
   'femmes': { bg: '#db2777', text: '#be185d', lightBg: '#fce7f3', border: '#f472b6' },
   'hommes': { bg: '#2563eb', text: '#1d4ed8', lightBg: '#dbeafe', border: '#60a5fa' },
@@ -376,20 +376,20 @@ export default function ChatRoom() {
     <div className="flex items-center justify-center h-screen w-screen bg-[#111b21] p-0 md:p-4 overflow-hidden">
       
       {/* CADRE SMARTPHONE */}
-      <div className="flex flex-col h-full w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#1e293b] bg-[#efeae2] relative overflow-hidden shadow-2xl">
+      <div className="flex flex-col h-full w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#0284c7] bg-[#efeae2] relative overflow-hidden shadow-2xl">
         
-        {/* EN-TÊTE AVEC LOGO BLEU */}
-        <div className="bg-[#1e3a8a] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
+        {/* EN-TÊTE AVEC BLEU CIEL (#0284c7) */}
+        <div className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-blue-600 border-2 border-blue-400 flex items-center justify-center font-bold text-white shadow-md">
+              <div className="w-10 h-10 rounded-full bg-sky-500 border-2 border-sky-200 flex items-center justify-center font-bold text-white shadow-md">
                 {fullName ? fullName.charAt(0).toUpperCase() : 'N'}
               </div>
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-current rounded-full"></span>
             </div>
             <div>
               <h2 className="font-bold text-sm text-white tracking-wide">{fullName || 'Utilisateur'}</h2>
-              <div className="text-[11px] text-blue-200 flex items-center gap-1.5 font-medium">
+              <div className="text-[11px] text-sky-100 flex items-center gap-1.5 font-medium">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
                 <span>{getSalonLabel(currentSalonKey)}</span>
               </div>
@@ -399,14 +399,14 @@ export default function ChatRoom() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveCallType('audio')}
-              className="p-2 bg-blue-900/50 hover:bg-blue-800 rounded-full transition text-white shadow cursor-pointer"
+              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer"
               title="Appel audio"
             >
               📞
             </button>
             <button
               onClick={() => setActiveCallType('video')}
-              className="p-2 bg-blue-900/50 hover:bg-blue-800 rounded-full transition text-white shadow cursor-pointer"
+              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer"
               title="Appel vidéo"
             >
               📹
@@ -424,7 +424,7 @@ export default function ChatRoom() {
             )}
             <button
               onClick={handleLogout}
-              className="text-xs bg-black/30 hover:bg-black/50 text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              className="text-xs bg-black/20 hover:bg-black/40 text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer"
             >
               Quitter
             </button>
@@ -434,7 +434,7 @@ export default function ChatRoom() {
         {/* Modal d'appel 100% Gratuit et Fonctionnel (Jitsi Meet Intégré) */}
         {activeCallType && (
           <div className="absolute inset-0 bg-black/90 z-50 flex flex-col">
-            <div className="bg-[#1e3a8a] text-white p-3 flex justify-between items-center shrink-0">
+            <div className="bg-[#0284c7] text-white p-3 flex justify-between items-center shrink-0">
               <span className="font-bold text-xs">
                 {activeCallType === 'video' ? '📹 Appel Vidéo' : '📞 Appel Audio'} - {getSalonLabel(currentSalonKey)}
               </span>
@@ -458,7 +458,7 @@ export default function ChatRoom() {
         {/* PANNEAU ADMIN */}
         {isAdmin && showAdminPanel ? (
           <div className="flex-1 bg-[#111b21] text-white overflow-y-auto flex flex-col">
-            <div className="bg-[#1e3a8a] p-2 flex items-center justify-between border-b border-blue-900 overflow-x-auto shrink-0 gap-2">
+            <div className="bg-[#0284c7] p-2 flex items-center justify-between border-b border-sky-800 overflow-x-auto shrink-0 gap-2">
               <div className="flex gap-1 overflow-x-auto flex-1">
                 {[
                   { id: 'users', label: '👥 Membres' },
@@ -472,7 +472,7 @@ export default function ChatRoom() {
                     key={tab.id}
                     onClick={() => setAdminTab(tab.id as any)}
                     className={`text-xs px-2.5 py-2 rounded-lg font-semibold transition shrink-0 cursor-pointer ${
-                      adminTab === tab.id ? 'bg-blue-600 text-white shadow' : 'bg-[#111b21] text-gray-400 hover:bg-gray-800'
+                      adminTab === tab.id ? 'bg-sky-600 text-white shadow' : 'bg-[#111b21] text-gray-400 hover:bg-gray-800'
                     }`}
                   >
                     {tab.label}
@@ -483,7 +483,7 @@ export default function ChatRoom() {
               <button
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
-                className="bg-blue-700 hover:bg-blue-800 text-white p-2 rounded-lg font-bold shrink-0 transition flex items-center gap-1 shadow cursor-pointer disabled:opacity-50 text-xs"
+                className="bg-sky-700 hover:bg-sky-800 text-white p-2 rounded-lg font-bold shrink-0 transition flex items-center gap-1 shadow cursor-pointer disabled:opacity-50 text-xs"
                 title="Rafraîchir"
               >
                 <span>{isRefreshing ? '⏳' : '🔄'}</span>
@@ -494,10 +494,10 @@ export default function ChatRoom() {
               {adminTab === 'users' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-blue-400 uppercase">Gestion des Membres et Validations</h3>
+                    <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Membres et Validations</h3>
                   </div>
                   {adminUsers.map((u) => (
-                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-blue-900 space-y-3">
+                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div>
                           <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
@@ -518,8 +518,8 @@ export default function ChatRoom() {
                       </div>
 
                       {/* Salons autorisés */}
-                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-blue-900 space-y-1.5">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase">Salons autorisés :</span>
+                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-1.5">
+                        <span className="text-[10px] font-bold text-sky-400 uppercase">Salons autorisés :</span>
                         <div className="flex flex-wrap gap-1.5">
                           {allSalons.map((sId) => {
                             const userSalonsArr = Array.isArray(u.salons) ? u.salons : [];
@@ -529,7 +529,7 @@ export default function ChatRoom() {
                                 key={sId}
                                 onClick={() => toggleSalonUser(u, sId)}
                                 className={`text-[10px] px-2 py-1 rounded-md border transition font-medium flex items-center gap-1 cursor-pointer ${
-                                  hasAccess ? 'bg-blue-600 text-white border-blue-400' : 'bg-[#1e293b] text-gray-400 border-gray-700'
+                                  hasAccess ? 'bg-sky-600 text-white border-sky-400' : 'bg-[#1e293b] text-gray-400 border-gray-700'
                                 }`}
                               >
                                 <span>{hasAccess ? '✓' : '+'}</span>
@@ -541,12 +541,12 @@ export default function ChatRoom() {
                       </div>
 
                       {/* Section Réinitialisation mot de passe directement dans Membres */}
-                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-blue-900 space-y-2">
+                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-blue-400 uppercase">Mot de passe :</span>
+                          <span className="text-[10px] font-bold text-sky-400 uppercase">Mot de passe :</span>
                           <button
                             onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
-                            className="text-[10px] bg-blue-700 text-white px-2 py-1 rounded font-semibold cursor-pointer"
+                            className="text-[10px] bg-sky-700 text-white px-2 py-1 rounded font-semibold cursor-pointer"
                           >
                             {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Réinitialiser MDP'}
                           </button>
@@ -558,7 +558,7 @@ export default function ChatRoom() {
                               value={newPasswordInput}
                               onChange={(e) => setNewPasswordInput(e.target.value)}
                               placeholder="Nouveau mot de passe"
-                              className="flex-1 bg-[#1e293b] border border-blue-800 rounded px-2 py-1 text-xs text-white"
+                              className="flex-1 bg-[#1e293b] border border-sky-800 rounded px-2 py-1 text-xs text-white"
                             />
                             <button
                               onClick={() => handleSavePasswordFromUsersTab(u.id, u.full_name)}
@@ -571,7 +571,7 @@ export default function ChatRoom() {
                       </div>
 
                       {/* Boutons d'action : Validation, Refus, Remise en attente */}
-                      <div className="flex justify-between items-center pt-2 border-t border-blue-900 flex-wrap gap-2">
+                      <div className="flex justify-between items-center pt-2 border-t border-sky-900 flex-wrap gap-2">
                         <button
                           onClick={() => updateUserStatus(u.id, 'en_attente')}
                           className="text-[10px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1 rounded border border-amber-900/50 cursor-pointer"
@@ -605,26 +605,26 @@ export default function ChatRoom() {
 
               {adminTab === 'passwords' && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Gestion des Mots de passe</h3>
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Mots de passe</h3>
                   {adminUsers.map((u) => (
-                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-blue-900 space-y-3">
+                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
                         <button
                           onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
-                          className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg cursor-pointer"
+                          className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg cursor-pointer"
                         >
                           {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'}
                         </button>
                       </div>
                       {editingPasswordUserId === u.id && (
-                        <div className="pt-2 border-t border-blue-900 flex gap-2">
+                        <div className="pt-2 border-t border-sky-900 flex gap-2">
                           <input
                             type="text"
                             value={newPasswordInput}
                             onChange={(e) => setNewPasswordInput(e.target.value)}
                             placeholder="Nouveau mot de passe"
-                            className="flex-1 bg-[#111b21] border border-blue-800 rounded-lg px-3 py-1.5 text-xs text-white"
+                            className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-1.5 text-xs text-white"
                           />
                           <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button>
                         </div>
@@ -636,8 +636,8 @@ export default function ChatRoom() {
 
               {adminTab === 'salons' && (
                 <div className="space-y-4">
-                  <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-blue-900 space-y-3">
-                    <h4 className="text-xs font-bold text-blue-400 uppercase">➕ Créer un salon</h4>
+                  <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
+                    <h4 className="text-xs font-bold text-sky-400 uppercase">➕ Créer un salon</h4>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -645,15 +645,15 @@ export default function ChatRoom() {
                         onChange={(e) => setNewSalonName(e.target.value)}
                         placeholder="Nom..."
                         required
-                        className="flex-1 bg-[#111b21] border border-blue-800 rounded-lg px-3 py-2 text-xs text-white"
+                        className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-2 text-xs text-white"
                       />
-                      <button type="submit" className="bg-blue-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button>
+                      <button type="submit" className="bg-sky-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button>
                     </div>
                   </form>
                   <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-blue-400 uppercase">Salons Actifs</h4>
+                    <h4 className="text-xs font-semibold text-sky-400 uppercase">Salons Actifs</h4>
                     {allSalons.map((sId) => (
-                      <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 flex items-center justify-between">
+                      <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex items-center justify-between">
                         <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span>
                         {sId !== 'general' && sId !== 'photos-familiales' && (
                           <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button>
@@ -666,20 +666,20 @@ export default function ChatRoom() {
 
               {adminTab === 'en_ligne' && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Membres connectés ({onlineUsers.length})</h3>
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Membres connectés ({onlineUsers.length})</h3>
                   {onlineUsers.map((name, index) => (
-                    <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 text-xs font-bold">{name}</div>
+                    <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 text-xs font-bold">{name}</div>
                   ))}
                 </div>
               )}
 
               {adminTab === 'moderation' && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-blue-400 uppercase">Modération</h3>
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Modération</h3>
                   {adminMessages.map((msg) => (
-                    <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-blue-900 flex justify-between items-center gap-2">
+                    <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex justify-between items-center gap-2">
                       <div>
-                        <span className="text-[11px] font-bold text-blue-400">{msg.username}</span>
+                        <span className="text-[11px] font-bold text-sky-400">{msg.username}</span>
                         <p className="text-xs text-gray-200 truncate">{msg.content}</p>
                       </div>
                       <button onClick={() => deleteMessage(msg.id)} className="bg-red-600 text-white text-[10px] px-2.5 py-1.5 rounded cursor-pointer">Supprimer</button>
@@ -689,14 +689,14 @@ export default function ChatRoom() {
               )}
 
               {adminTab === 'annonces' && (
-                <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-blue-900 space-y-3">
-                  <h3 className="text-xs font-bold text-blue-400 uppercase">Annonce officielle</h3>
+                <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
+                  <h3 className="text-xs font-bold text-sky-400 uppercase">Annonce officielle</h3>
                   <textarea
                     value={announcementText}
                     onChange={(e) => setAnnouncementText(e.target.value)}
                     placeholder="Message..."
                     rows={4}
-                    className="w-full bg-[#111b21] border border-blue-800 rounded-lg p-3 text-xs text-white"
+                    className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white"
                   />
                   <button type="submit" className="w-full bg-amber-500 text-gray-900 font-bold py-2.5 rounded-lg text-xs cursor-pointer">Publier</button>
                 </form>
@@ -712,7 +712,7 @@ export default function ChatRoom() {
                 if (!hasAccess) return null;
 
                 const isActive = currentSalonKey === sId;
-                const salonTheme = SALON_COLORS[sId] || { bg: '#2563eb', text: '#1d4ed8', lightBg: '#dbeafe', border: '#60a5fa' };
+                const salonTheme = SALON_COLORS[sId] || { bg: '#0284c7', text: '#0369a1', lightBg: '#e0f2fe', border: '#38bdf8' };
 
                 return (
                   <button
@@ -721,7 +721,7 @@ export default function ChatRoom() {
                     onClick={() => setCurrentSalonKey(sId)}
                     style={
                       isActive
-                        ? { backgroundColor: '#1e3a8a', color: '#ffffff', borderColor: '#1e3a8a' }
+                        ? { backgroundColor: '#0284c7', color: '#ffffff', borderColor: '#0284c7' }
                         : { backgroundColor: salonTheme.lightBg, color: salonTheme.text, borderColor: salonTheme.border }
                     }
                     className={`px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all duration-200 border cursor-pointer ${
@@ -745,7 +745,7 @@ export default function ChatRoom() {
                     <div className={`max-w-[85%] rounded-lg rounded-tl-none px-3.5 py-2 text-sm shadow-sm relative ${
                       isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' : 'bg-white text-gray-900'
                     }`}>
-                      <span className="block text-[11px] font-bold mb-0.5 text-blue-700">{authorName}</span>
+                      <span className="block text-[11px] font-bold mb-0.5 text-sky-600">{authorName}</span>
 
                       <p className="break-words leading-relaxed">{msg.content}</p>
 
@@ -766,7 +766,7 @@ export default function ChatRoom() {
                           href={msg.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-block text-xs text-blue-600 underline font-bold"
+                          className="mt-2 inline-block text-xs text-sky-600 underline font-bold"
                         >
                           Télécharger le document
                         </a>
@@ -802,11 +802,11 @@ export default function ChatRoom() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Tapez un message..."
-                className="flex-1 bg-white rounded-full px-4 py-2.5 text-sm border border-gray-300 focus:outline-none focus:border-blue-500 text-gray-900"
+                className="flex-1 bg-white rounded-full px-4 py-2.5 text-sm border border-gray-300 focus:outline-none focus:border-sky-500 text-gray-900"
               />
               <button
                 type="submit"
-                className="bg-[#1e3a8a] text-white p-2.5 rounded-full hover:bg-blue-900 transition cursor-pointer shadow"
+                className="bg-[#0284c7] text-white p-2.5 rounded-full hover:bg-sky-700 transition cursor-pointer shadow"
               >
                 ➤
               </button>
