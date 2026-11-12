@@ -56,6 +56,9 @@ export default function ChatRoom() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // État pour les notifications non lues par salon
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
   const [activeCallType, setActiveCallType] = useState<'audio' | 'video' | null>(null);
 
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -78,6 +81,36 @@ export default function ChatRoom() {
     const found = DEFAULT_SALONS.find(s => s.id === sId);
     if (found) return found.label;
     return sId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  };
+
+  // Son de notification style WhatsApp (Web Audio API)
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Note D5
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08); // Note A5
+      
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch (e) {
+      // Ignorer si le navigateur bloque l'autoplay audio
+    }
+  };
+
+  // Changement de salon avec remise à zéro des notifications non lues
+  const handleSelectSalon = (salonId: string) => {
+    setCurrentSalonKey(salonId);
+    setUnreadCounts((prev) => ({ ...prev, [salonId]: 0 }));
   };
 
   useEffect(() => {
@@ -138,6 +171,35 @@ export default function ChatRoom() {
     };
   }, [router]);
 
+  // Écouteur global pour les notifications de messages (tous salons confondus)
+  useEffect(() => {
+    if (!fullName) return;
+
+    const globalChannel = supabase
+      .channel('global-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          // Si le message ne vient pas de l'utilisateur et qu'on n'est pas dans ce salon actuellement
+          if (newMsg.username?.toLowerCase() !== fullName.toLowerCase() && newMsg.salon !== currentSalonKey) {
+            playNotificationSound();
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [newMsg.salon]: (prev[newMsg.salon] || 0) + 1,
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(globalChannel);
+    };
+  }, [currentSalonKey, fullName]);
+
+  // Chargement des messages du salon actif
   useEffect(() => {
     if (!currentSalonKey) return;
 
@@ -284,7 +346,6 @@ export default function ChatRoom() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // SUPPRESSION DE MESSAGE (Par l'auteur ou par l'admin)
   const handleDeleteMessage = async (msg: Message) => {
     const author = msg.username || msg.sender;
     const isOwner = author?.toLowerCase() === fullName.toLowerCase();
@@ -715,160 +776,165 @@ export default function ChatRoom() {
                   <textarea
                     value={announcementText}
                     onChange={(e) => setAnnouncementText(e.target.value)}
-                    placeholder="Message..."
-                    rows={4}
-                    className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white"
+                    placeholder="Écrire une annonce visible dans le salon actif..."
+                    required
+                    className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white h-24 resize-none"
                   />
-                  <button type="submit" className="w-full bg-amber-500 text-gray-900 font-bold py-2.5 rounded-lg text-xs cursor-pointer">Publier</button>
+                  <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-lg font-bold text-xs cursor-pointer">Diffuser l'annonce</button>
                 </form>
               )}
             </div>
           </div>
         ) : (
-          <>
-            {/* BARRE DE NAVIGATION DES SALONS */}
-            <div className="bg-[#f0f2f5] px-3 py-2.5 flex gap-2 overflow-x-auto border-b border-gray-300 text-xs shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-              {allSalons.map((sId) => {
-                const hasAccess = isAdmin || allowedSalons.includes(sId) || sId === 'general' || sId === 'photos-familiales';
-                if (!hasAccess) return null;
-
+          /* SECTION PRINCIPALE DU CHAT */
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            
+            {/* SÉLECTEUR DES SALONS (ONGLETS AVEC BADGES DE NOTIFICATIONS) */}
+            <div className="bg-[#111b21] px-2 py-2 flex gap-1.5 overflow-x-auto shrink-0 border-b border-sky-900/40">
+              {allowedSalons.map((sId) => {
                 const isActive = currentSalonKey === sId;
-                const salonTheme = SALON_COLORS[sId] || { bg: '#0284c7', text: '#0369a1', lightBg: '#e0f2fe', border: '#38bdf8' };
-
+                const unreadCount = unreadCounts[sId] || 0;
                 return (
                   <button
                     key={sId}
-                    type="button"
-                    onClick={() => setCurrentSalonKey(sId)}
-                    style={
+                    onClick={() => handleSelectSalon(sId)}
+                    className={`text-[11px] px-3 py-1.5 rounded-full font-semibold transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${
                       isActive
-                        ? { backgroundColor: '#0284c7', color: '#ffffff', borderColor: '#0284c7' }
-                        : { backgroundColor: salonTheme.lightBg, color: salonTheme.text, borderColor: salonTheme.border }
-                    }
-                    className={`px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all duration-200 border cursor-pointer ${
-                      isActive ? 'shadow-md scale-105 font-bold' : 'hover:opacity-85'
+                        ? 'bg-[#0284c7] text-white shadow-md'
+                        : 'bg-[#202c33] text-gray-300 hover:bg-gray-800'
                     }`}
                   >
-                    {getSalonLabel(sId)}
+                    <span>{getSalonLabel(sId)}</span>
+                    {unreadCount > 0 && (
+                      <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full animate-bounce">
+                        {unreadCount}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* FIL DES MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-400/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-              {messages.map((msg) => {
-                const authorName = msg.username || msg.sender || 'Inconnu';
-                const isAnnouncement = String(authorName).includes('ADMIN');
-                const isOwner = authorName.toLowerCase() === fullName.toLowerCase();
+            {/* LISTE DES MESSAGES */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#efeae2]">
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500 text-xs italic">
+                  Aucun message dans ce salon pour l'instant. Envoyez le premier !
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const author = msg.username || msg.sender;
+                  const isMe = author?.toLowerCase() === fullName.toLowerCase();
 
-                return (
-                  <div key={msg.id} className="flex flex-col items-start group relative">
-                    <div className={`max-w-[85%] rounded-lg rounded-tl-none px-3.5 py-2 text-sm shadow-sm relative ${
-                      isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' : 'bg-white text-gray-900'
-                    }`}>
-                      
-                      {/* En-tête du message et bouton de suppression discret */}
-                      <div className="flex items-center justify-between gap-3 mb-0.5">
-                        <span className="text-[11px] font-bold text-sky-600">{authorName}</span>
-                        {(isOwner || isAdmin) && (
-                          <button
-                            onClick={() => handleDeleteMessage(msg)}
-                            className="text-[10px] text-gray-400 hover:text-red-600 transition p-0.5 cursor-pointer"
-                            title="Supprimer ce message"
-                          >
-                            🗑️
-                          </button>
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-3.5 py-2 shadow-sm relative group ${
+                          isMe ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
+                        }`}
+                      >
+                        {!isMe && (
+                          <div className="text-[11px] font-bold text-sky-600 mb-0.5">
+                            {author}
+                          </div>
                         )}
+
+                        {/* Affichage des médias si présents */}
+                        {msg.file_url && (
+                          <div className="mb-2">
+                            {msg.file_type === 'image' ? (
+                              <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={msg.file_url}
+                                  alt="Média partagé"
+                                  className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-95 transition"
+                                />
+                              </a>
+                            ) : msg.file_type === 'audio' ? (
+                              <audio controls className="w-full max-h-10">
+                                <source src={msg.file_url} />
+                                Votre navigateur ne supporte pas l'audio.
+                              </audio>
+                            ) : msg.file_type === 'video' ? (
+                              <video controls className="rounded-lg max-h-48 w-full">
+                                <source src={msg.file_url} />
+                                Votre navigateur ne supporte pas la vidéo.
+                              </video>
+                            ) : (
+                              <a
+                                href={msg.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-sky-600 underline font-semibold flex items-center gap-1"
+                              >
+                                📎 Télécharger le fichier
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-xs whitespace-pre-wrap break-words">{msg.content}</p>
+
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-[9px] text-gray-400">
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {(isMe || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteMessage(msg)}
+                              className="text-[10px] text-red-500 hover:text-red-700 opacity-60 hover:opacity-100 transition cursor-pointer ml-1"
+                              title="Supprimer"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      {/* AFFICHAGE DES PHOTOS / IMAGES */}
-                      {msg.file_url && msg.file_type === 'image' && (
-                        <div className="mb-2">
-                          <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                            <img src={msg.file_url} alt="Photo partagée" className="rounded-lg max-h-60 w-full object-cover hover:opacity-95 transition cursor-pointer" />
-                          </a>
-                        </div>
-                      )}
-
-                      <p className="break-words leading-relaxed">{msg.content}</p>
-
-                      {/* AFFICHAGE AUDIO */}
-                      {msg.file_url && msg.file_type === 'audio' && (
-                        <audio controls className="mt-2 w-full max-w-xs">
-                          <source src={msg.file_url} type="audio/mpeg" />
-                        </audio>
-                      )}
-
-                      {/* AFFICHAGE VIDÉO */}
-                      {msg.file_url && msg.file_type === 'video' && (
-                        <div className="mt-2 w-full max-w-xs overflow-hidden rounded-lg bg-black">
-                          <video 
-                            controls 
-                            playsInline
-                            preload="metadata"
-                            className="max-h-56 w-full object-contain"
-                          >
-                            <source src={msg.file_url} type="video/mp4" />
-                            <source src={msg.file_url} type="video/webm" />
-                            Votre navigateur ne supporte pas la lecture de vidéos.
-                          </video>
-                        </div>
-                      )}
-
-                      {/* AFFICHAGE DOCUMENT PDF / AUTRE */}
-                      {msg.file_url && msg.file_type === 'document' && (
-                        <a
-                          href={msg.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1.5 text-xs bg-sky-50 text-sky-700 px-3 py-2 rounded-lg border border-sky-200 font-bold hover:bg-sky-100 transition"
-                        >
-                          <span>📄</span>
-                          <span>Télécharger le document</span>
-                        </a>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* ZONE DE SAISIE ET PIÈCES JOINTES */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-[#f0f2f5] flex items-center gap-2 shrink-0 border-t border-gray-300">
+            {/* ZONE DE SAISIE DU MESSAGE */}
+            <form onSubmit={handleSendMessage} className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-gray-300 shrink-0">
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileUpload}
                 className="hidden"
-                accept="image/*,audio/*,video/*,application/pdf,.doc,.docx"
+                accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt"
               />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700 transition cursor-pointer text-sm"
-                title="Joindre une photo, audio, vidéo ou document"
+                className="p-2 text-gray-600 hover:text-[#0284c7] transition cursor-pointer disabled:opacity-50"
+                title="Joindre un fichier ou une photo"
               >
-                {uploading ? '⏳' : '📎'}
+                📎
               </button>
 
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Tapez un message..."
-                className="flex-1 bg-white rounded-full px-4 py-2.5 text-sm border border-gray-300 focus:outline-none focus:border-sky-500 text-gray-900"
+                placeholder="Écrivez un message..."
+                className="flex-1 bg-white border border-gray-300 rounded-full px-4 py-2 text-xs text-gray-800 focus:outline-none focus:border-[#0284c7]"
               />
+
               <button
                 type="submit"
-                className="bg-[#0284c7] text-white p-2.5 rounded-full hover:bg-sky-700 transition cursor-pointer shadow"
+                className="bg-[#0284c7] hover:bg-sky-700 text-white px-4 py-2 rounded-full text-xs font-bold transition shadow cursor-pointer"
               >
-                ➤
+                Envoyer
               </button>
             </form>
-          </>
+          </div>
         )}
 
       </div>
