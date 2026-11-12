@@ -284,6 +284,26 @@ export default function ChatRoom() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // SUPPRESSION DE MESSAGE (Par l'auteur ou par l'admin)
+  const handleDeleteMessage = async (msg: Message) => {
+    const author = msg.username || msg.sender;
+    const isOwner = author?.toLowerCase() === fullName.toLowerCase();
+
+    if (!isOwner && !isAdmin) {
+      alert("Tu ne peux supprimer que tes propres messages !");
+      return;
+    }
+
+    if (!confirm("⚠️ Supprimer ce message ou fichier ?")) return;
+
+    const { error } = await supabase.from('messages').delete().eq('id', msg.id);
+    if (error) {
+      alert("Erreur lors de la suppression : " + error.message);
+    } else {
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('chat_user');
     router.push('/');
@@ -347,7 +367,7 @@ export default function ChatRoom() {
     setNewSalonName('');
   };
 
-  const deleteMessage = async (msgId: string) => {
+  const deleteMessageAdmin = async (msgId: string) => {
     await supabase.from('messages').delete().eq('id', msgId);
     setAdminMessages((prev) => prev.filter((m) => m.id !== msgId));
     setMessages((prev) => prev.filter((m) => m.id !== msgId));
@@ -683,7 +703,7 @@ export default function ChatRoom() {
                         <span className="text-[11px] font-bold text-sky-400">{msg.username}</span>
                         <p className="text-xs text-gray-200 truncate">{msg.content}</p>
                       </div>
-                      <button onClick={() => deleteMessage(msg.id)} className="bg-red-600 text-white text-[10px] px-2.5 py-1.5 rounded cursor-pointer">Supprimer</button>
+                      <button onClick={() => deleteMessageAdmin(msg.id)} className="bg-red-600 text-white text-[10px] px-2.5 py-1.5 rounded cursor-pointer">Supprimer</button>
                     </div>
                   ))}
                 </div>
@@ -740,13 +760,27 @@ export default function ChatRoom() {
               {messages.map((msg) => {
                 const authorName = msg.username || msg.sender || 'Inconnu';
                 const isAnnouncement = String(authorName).includes('ADMIN');
+                const isOwner = authorName.toLowerCase() === fullName.toLowerCase();
 
                 return (
-                  <div key={msg.id} className="flex flex-col items-start">
+                  <div key={msg.id} className="flex flex-col items-start group relative">
                     <div className={`max-w-[85%] rounded-lg rounded-tl-none px-3.5 py-2 text-sm shadow-sm relative ${
                       isAnnouncement ? 'bg-amber-100 border-2 border-amber-400 text-amber-950 font-medium' : 'bg-white text-gray-900'
                     }`}>
-                      <span className="block text-[11px] font-bold mb-0.5 text-sky-600">{authorName}</span>
+                      
+                      {/* En-tête du message et bouton de suppression discret */}
+                      <div className="flex items-center justify-between gap-3 mb-0.5">
+                        <span className="text-[11px] font-bold text-sky-600">{authorName}</span>
+                        {(isOwner || isAdmin) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg)}
+                            className="text-[10px] text-gray-400 hover:text-red-600 transition p-0.5 cursor-pointer"
+                            title="Supprimer ce message"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
 
                       {/* AFFICHAGE DES PHOTOS / IMAGES */}
                       {msg.file_url && msg.file_type === 'image' && (
@@ -766,7 +800,7 @@ export default function ChatRoom() {
                         </audio>
                       )}
 
-                      {/* AFFICHAGE VIDÉO CORRIGÉ (CLIP VIDÉO VISIBLE) */}
+                      {/* AFFICHAGE VIDÉO */}
                       {msg.file_url && msg.file_type === 'video' && (
                         <div className="mt-2 w-full max-w-xs overflow-hidden rounded-lg bg-black">
                           <video 
