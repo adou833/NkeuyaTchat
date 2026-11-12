@@ -211,11 +211,11 @@ export default function Home() {
 
   return (
     <main className="h-[100dvh] w-screen flex items-center justify-center bg-[#222222] p-0 sm:p-4 overflow-hidden">
-      <div className="w-full h-full sm:max-w-md sm:max-h-[950px] bg-[#efeae2] sm:rounded-[38px] shadow-2xl flex items-center justify-center p-6 relative overflow-hidden sm:border-4 sm:border-gray-800">
+      <div className="w-full h-full sm:max-w-md sm:max-h-[950px] bg-[#efeae2] sm:rounded-[38px] shadow-2xl flex items-center justify-center p-6 relative overflow-hidden sm:border-4 sm:border-[#0284c7]">
         
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border border-gray-200 flex flex-col justify-center overflow-y-auto max-h-[90vh]">
           <div className="text-center mb-4">
-            <div className="w-12 h-12 bg-[#005c4b] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 shadow">
+            <div className="w-12 h-12 bg-[#0284c7] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 shadow">
               👨‍👩‍👧‍👦
             </div>
             <h1 className="text-xl font-bold text-gray-800">NkeuyaTchat</h1>
@@ -259,8 +259,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setMode('login')}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${
-                    mode === 'login' ? 'bg-[#005c4b] text-white shadow' : 'text-gray-600 hover:text-gray-900'
+                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                    mode === 'login' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   Se Connecter
@@ -268,8 +268,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setMode('register')}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition ${
-                    mode === 'register' ? 'bg-[#005c4b] text-white shadow' : 'text-gray-600 hover:text-gray-900'
+                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                    mode === 'register' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   S'inscrire
@@ -288,7 +288,7 @@ export default function Home() {
                       onChange={(e) => setLoginName(e.target.value)}
                       placeholder="Ex: Eric MABOM"
                       required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -302,14 +302,14 @@ export default function Home() {
                       onChange={(e) => setLoginPassword(e.target.value)}
                       placeholder="••••••••"
                       required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#00a884] hover:bg-[#008f72] text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer"
+                    className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer"
                   >
                     {loading ? 'Connexion...' : 'Se Connecter'}
                   </button>
@@ -324,9 +324,9 @@ export default function Home() {
                       type="text"
                       value={nom}
                       onChange={(e) => setNom(e.target.value)}
-                      placeholder="Ex: Nkeuya"
+                      placeholder="Ex: nkeuya"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -340,7 +340,7 @@ export default function Home() {
                       onChange={(e) => setPrenom(e.target.value)}
                       placeholder="Ex: Jean"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -354,7 +354,7 @@ export default function Home() {
                       onChange={(e) => setTelephone(e.target.value)}
                       placeholder="Ex: +237 6XXXXXXXX"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -367,7 +367,7 @@ export default function Home() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Ex: jean@example.com"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -381,7 +381,7 @@ export default function Home() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Choisissez un mot de passe"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
@@ -395,14 +395,14 @@ export default function Home() {
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Répétez votre mot de passe"
                       required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#005c4b]"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#005c4b] hover:bg-[#00483a] text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer mt-1"
+                    className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer mt-1"
                   >
                     {loading ? 'Envoi...' : "Demande d'accès"}
                   </button>
