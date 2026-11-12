@@ -267,7 +267,7 @@ export default function ChatRoom() {
     const fileUrl = publicUrlData.publicUrl;
 
     const { data, error } = await supabase.from('messages').insert({
-      content: fileType === 'image' ? `📷 Photo partagée` : `📁 Fichier partagé : ${file.name}`,
+      content: fileType === 'image' ? `📷 Photo partagée` : fileType === 'video' ? `🎬 Vidéo partagée` : `📁 Fichier partagé : ${file.name}`,
       username: fullName,
       salon: currentSalonKey,
       file_url: fileUrl,
@@ -735,7 +735,7 @@ export default function ChatRoom() {
               })}
             </div>
 
-            {/* FIL DES MESSAGES (AVEC SCROLLBAR ULTRA-FINE ET DISCRÈTE) */}
+            {/* FIL DES MESSAGES */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-400/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
               {messages.map((msg) => {
                 const authorName = msg.username || msg.sender || 'Inconnu';
@@ -766,11 +766,20 @@ export default function ChatRoom() {
                         </audio>
                       )}
 
-                      {/* AFFICHAGE VIDÉO */}
+                      {/* AFFICHAGE VIDÉO CORRIGÉ (CLIP VIDÉO VISIBLE) */}
                       {msg.file_url && msg.file_type === 'video' && (
-                        <video controls className="mt-2 rounded-lg max-h-48 w-full object-cover">
-                          <source src={msg.file_url} type="video/mp4" />
-                        </video>
+                        <div className="mt-2 w-full max-w-xs overflow-hidden rounded-lg bg-black">
+                          <video 
+                            controls 
+                            playsInline
+                            preload="metadata"
+                            className="max-h-56 w-full object-contain"
+                          >
+                            <source src={msg.file_url} type="video/mp4" />
+                            <source src={msg.file_url} type="video/webm" />
+                            Votre navigateur ne supporte pas la lecture de vidéos.
+                          </video>
+                        </div>
                       )}
 
                       {/* AFFICHAGE DOCUMENT PDF / AUTRE */}
