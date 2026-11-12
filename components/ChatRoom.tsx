@@ -12,11 +12,11 @@
                   return (
                     <div
                       key={msg.id}
-                      className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}
+                      className={`flex w-full ${isMe ? 'justify-start' : 'justify-end'}`}
                     >
                       <div
                         className={`max-w-[85%] rounded-2xl px-3.5 py-2 shadow-sm relative group ${
-                          isMe ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
+                          isMe ? 'bg-white text-gray-900 rounded-tl-none' : 'bg-[#d9fdd3] text-gray-900 rounded-tr-none'
                         }`}
                       >
                         {!isMe && (
