@@ -46,7 +46,7 @@ export default function ChatRoom() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // État pour les notifications non lues par salon
+  // Notifications non lues par salon
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const [activeCallType, setActiveCallType] = useState<'audio' | 'video' | null>(null);
@@ -73,7 +73,7 @@ export default function ChatRoom() {
     return sId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
-  // Son de notification style WhatsApp (Web Audio API)
+  // Son de notification style WhatsApp
   const playNotificationSound = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -92,12 +92,9 @@ export default function ChatRoom() {
       
       osc.start();
       osc.stop(audioCtx.currentTime + 0.15);
-    } catch (e) {
-      // Ignorer si le navigateur bloque l'autoplay audio
-    }
+    } catch (e) {}
   };
 
-  // Changement de salon avec remise à zéro des notifications non lues du salon
   const handleSelectSalon = (salonId: string) => {
     setCurrentSalonKey(salonId);
     setUnreadCounts((prev) => ({ ...prev, [salonId]: 0 }));
@@ -161,7 +158,7 @@ export default function ChatRoom() {
     };
   }, [router]);
 
-  // Écouteur global pour les notifications de messages (tous salons confondus)
+  // Notifications globales sur tous les salons
   useEffect(() => {
     if (!fullName) return;
 
@@ -188,7 +185,7 @@ export default function ChatRoom() {
     };
   }, [currentSalonKey, fullName]);
 
-  // Chargement des messages du salon actif
+  // Messages du salon actif
   useEffect(() => {
     if (!currentSalonKey) return;
 
@@ -444,40 +441,40 @@ export default function ChatRoom() {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen w-screen bg-[#111b21] p-0 md:p-4 overflow-hidden">
+    <div className="flex items-center justify-center h-[100dvh] w-full max-w-full bg-[#111b21] p-0 md:p-4 overflow-hidden">
       
-      {/* CADRE SMARTPHONE */}
-      <div className="flex flex-col h-full w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#0284c7] bg-[#efeae2] relative overflow-hidden shadow-2xl">
+      {/* CADRE SMARTPHONE VERROUILLÉ POUR ANDROID & PC */}
+      <div className="flex flex-col h-full w-full max-w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#0284c7] bg-[#efeae2] relative overflow-hidden shadow-2xl">
         
-        {/* EN-TÊTE AVEC BLEU CIEL (#0284c7) */}
-        <div className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-sky-500 border-2 border-sky-200 flex items-center justify-center font-bold text-white shadow-md">
+        {/* EN-TÊTE */}
+        <div className="bg-[#0284c7] text-white px-3 py-2.5 flex items-center justify-between shadow-md z-10 shrink-0">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 rounded-full bg-sky-500 border-2 border-sky-200 flex items-center justify-center font-bold text-white shadow-md">
                 {fullName ? fullName.charAt(0).toUpperCase() : 'N'}
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-current rounded-full"></span>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-current rounded-full"></span>
             </div>
-            <div>
-              <h2 className="font-bold text-sm text-white tracking-wide">{fullName || 'Utilisateur'}</h2>
-              <div className="text-[11px] text-sky-100 flex items-center gap-1.5 font-medium">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse inline-block"></span>
-                <span>{getSalonLabel(currentSalonKey)}</span>
+            <div className="truncate">
+              <h2 className="font-bold text-xs text-white tracking-wide truncate">{fullName || 'Utilisateur'}</h2>
+              <div className="text-[10px] text-sky-100 flex items-center gap-1 font-medium truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block shrink-0"></span>
+                <span className="truncate">{getSalonLabel(currentSalonKey)}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setActiveCallType('audio')}
-              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer"
+              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
               title="Appel audio"
             >
               📞
             </button>
             <button
               onClick={() => setActiveCallType('video')}
-              className="p-2 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer"
+              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
               title="Appel vidéo"
             >
               📹
@@ -486,7 +483,7 @@ export default function ChatRoom() {
             {isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-bold transition shadow cursor-pointer ${
+                className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition shadow cursor-pointer ${
                   showAdminPanel ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-gray-900'
                 }`}
               >
@@ -495,7 +492,7 @@ export default function ChatRoom() {
             )}
             <button
               onClick={handleLogout}
-              className="text-xs bg-black/20 hover:bg-black/40 text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              className="text-[11px] bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-lg transition cursor-pointer"
             >
               Quitter
             </button>
@@ -654,279 +651,4 @@ export default function ChatRoom() {
                           {u.status !== 'valide' && (
                             <button
                               onClick={() => updateUserStatus(u.id, 'valide')}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
-                            >
-                              ✅ Valider l'inscription
-                            </button>
-                          )}
-                          {u.status !== 'refuse' && (
-                            <button
-                              onClick={() => updateUserStatus(u.id, 'refuse')}
-                              className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
-                            >
-                              ❌ Bloquer
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'passwords' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Mots de passe</h3>
-                  {adminUsers.map((u) => (
-                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
-                        <button
-                          onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
-                          className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg cursor-pointer"
-                        >
-                          {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'}
-                        </button>
-                      </div>
-                      {editingPasswordUserId === u.id && (
-                        <div className="pt-2 border-t border-sky-900 flex gap-2">
-                          <input
-                            type="text"
-                            value={newPasswordInput}
-                            onChange={(e) => setNewPasswordInput(e.target.value)}
-                            placeholder="Nouveau mot de passe"
-                            className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-1.5 text-xs text-white"
-                          />
-                          <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'salons' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
-                    <h4 className="text-xs font-bold text-sky-400 uppercase">➕ Créer un salon</h4>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newSalonName}
-                        onChange={(e) => setNewSalonName(e.target.value)}
-                        placeholder="Nom..."
-                        required
-                        className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-2 text-xs text-white"
-                      />
-                      <button type="submit" className="bg-sky-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button>
-                    </div>
-                  </form>
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-sky-400 uppercase">Salons Actifs</h4>
-                    {allSalons.map((sId) => (
-                      <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex items-center justify-between">
-                        <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span>
-                        {sId !== 'general' && sId !== 'photos-familiales' && (
-                          <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {adminTab === 'en_ligne' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Membres connectés ({onlineUsers.length})</h3>
-                  {onlineUsers.map((name, index) => (
-                    <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 text-xs font-bold">{name}</div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'moderation' && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Modération</h3>
-                  {adminMessages.map((msg) => (
-                    <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex justify-between items-center gap-2">
-                      <div>
-                        <span className="text-[11px] font-bold text-sky-400">{msg.username}</span>
-                        <p className="text-xs text-gray-200 truncate">{msg.content}</p>
-                      </div>
-                      <button onClick={() => deleteMessageAdmin(msg.id)} className="bg-red-600 text-white text-[10px] px-2.5 py-1.5 rounded cursor-pointer">Supprimer</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adminTab === 'annonces' && (
-                <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
-                  <h3 className="text-xs font-bold text-sky-400 uppercase">Annonce officielle</h3>
-                  <textarea
-                    value={announcementText}
-                    onChange={(e) => setAnnouncementText(e.target.value)}
-                    placeholder="Écrire une annonce visible dans le salon actif..."
-                    required
-                    className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white h-24 resize-none"
-                  />
-                  <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white py-2 rounded-lg font-bold text-xs cursor-pointer">Diffuser l'annonce</button>
-                </form>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* SECTION PRINCIPALE DU CHAT */
-          <div className="flex-1 flex flex-col overflow-hidden relative">
-            
-            {/* SÉLECTEUR DES SALONS (ONGLETS AVEC BADGES DE NOTIFICATIONS) */}
-            <div className="bg-[#111b21] px-2 py-2 flex gap-1.5 overflow-x-auto shrink-0 border-b border-sky-900/40">
-              {allowedSalons.map((sId) => {
-                const isActive = currentSalonKey === sId;
-                const unreadCount = unreadCounts[sId] || 0;
-                return (
-                  <button
-                    key={sId}
-                    onClick={() => handleSelectSalon(sId)}
-                    className={`text-[11px] px-3 py-1.5 rounded-full font-semibold transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                      isActive
-                        ? 'bg-[#0284c7] text-white shadow-md'
-                        : 'bg-[#202c33] text-gray-300 hover:bg-gray-800'
-                    }`}
-                  >
-                    <span>{getSalonLabel(sId)}</span>
-                    {unreadCount > 0 && (
-                      <span className="bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full animate-bounce">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* LISTE DES MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#efeae2]">
-              {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500 text-xs italic">
-                  Aucun message dans ce salon pour l'instant. Envoyez le premier !
-                </div>
-              ) : (
-                messages.map((msg) => {
-                  const author = msg.username || msg.sender;
-                  const isMe = author?.toLowerCase() === fullName.toLowerCase();
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex w-full ${isMe ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-2xl px-3.5 py-2 shadow-sm relative group ${
-                          isMe ? 'bg-white text-gray-900 rounded-tl-none' : 'bg-[#d9fdd3] text-gray-900 rounded-tr-none'
-                        }`}
-                      >
-                        {!isMe && (
-                          <div className="text-[11px] font-bold text-sky-600 mb-0.5">
-                            {author}
-                          </div>
-                        )}
-
-                        {/* Affichage des médias si présents */}
-                        {msg.file_url && (
-                          <div className="mb-2">
-                            {msg.file_type === 'image' ? (
-                              <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                                <img
-                                  src={msg.file_url}
-                                  alt="Média partagé"
-                                  className="rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-95 transition"
-                                />
-                              </a>
-                            ) : msg.file_type === 'audio' ? (
-                              <audio controls className="w-full max-h-10">
-                                <source src={msg.file_url} />
-                                Votre navigateur ne supporte pas l'audio.
-                              </audio>
-                            ) : msg.file_type === 'video' ? (
-                              <video controls className="rounded-lg max-h-48 w-full">
-                                <source src={msg.file_url} />
-                                Votre navigateur ne supporte pas la vidéo.
-                              </video>
-                            ) : (
-                              <a
-                                href={msg.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-sky-600 underline font-semibold flex items-center gap-1"
-                              >
-                                📎 Télécharger le fichier
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        <p className="text-xs whitespace-pre-wrap break-words">{msg.content}</p>
-
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          <span className="text-[9px] text-gray-400">
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {(isMe || isAdmin) && (
-                            <button
-                              onClick={() => handleDeleteMessage(msg)}
-                              className="text-[10px] text-red-500 hover:text-red-700 opacity-60 hover:opacity-100 transition cursor-pointer ml-1"
-                              title="Supprimer"
-                            >
-                              🗑️
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* ZONE DE SAISIE DU MESSAGE */}
-            <form onSubmit={handleSendMessage} className="bg-[#f0f2f5] p-2.5 flex items-center gap-2 border-t border-gray-300 shrink-0">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-                accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="p-2 text-gray-600 hover:text-[#0284c7] transition cursor-pointer disabled:opacity-50"
-                title="Joindre un fichier ou une photo"
-              >
-                📎
-              </button>
-
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Écrivez un message..."
-                className="flex-1 bg-white border border-gray-300 rounded-full px-4 py-2 text-xs text-gray-800 focus:outline-none focus:border-[#0284c7]"
-              />
-
-              <button
-                type="submit"
-                className="bg-[#0284c7] hover:bg-sky-700 text-white px-4 py-2 rounded-full text-xs font-bold transition shadow cursor-pointer"
-              >
-                Envoyer
-              </button>
-            </form>
-          </div>
-        )}
-
-      </div>
-    </div>
-  );
-}
+                              className="
