@@ -816,7 +816,7 @@ export default function ChatRoom() {
                 })}
             </div>
 
-            {/* CORPS DE LA DISCUSSION (TOUS LES MESSAGES ALIGNÉS À GAUCHE) */}
+            {/* CORPS DE LA DISCUSSION (TOUS LES MESSAGES ALIGNÉS STRICTEMENT À GAUCHE) */}
             <div className={`flex-1 overflow-y-auto p-3 space-y-2.5 ${isDarkMode ? 'bg-[#0b141a]' : 'bg-[#efeae2]'} relative`}>
               
               {/* Badge de sécurité admin / utilisateur */}
@@ -841,7 +841,7 @@ export default function ChatRoom() {
                 }
 
                 return (
-                  /* ALIGNEMENT STRICT À GAUCHE COMME D'ORIGINE */
+                  /* ALIGNEMENT FORCÉ À GAUCHE POUR TOUS LES MESSAGES */
                   <div key={msg.id} className="flex flex-col items-start group">
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 shadow-sm relative text-xs ${
@@ -937,3 +937,26 @@ export default function ChatRoom() {
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Tapez un message..."
+                className={`flex-1 border rounded-full px-4 py-2 text-xs focus:outline-none focus:border-[#0284c7] shadow-sm ${
+                  isDarkMode 
+                    ? 'bg-[#2a3942] border-gray-600 text-white placeholder-gray-400' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              />
+
+              {/* Bouton Envoyer */}
+              <button
+                type="submit"
+                disabled={!newMessage.trim()}
+                className="bg-[#0284c7] hover:bg-sky-700 disabled:opacity-40 text-white p-2.5 rounded-full transition shadow cursor-pointer text-xs font-bold"
+              >
+                ➤
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
