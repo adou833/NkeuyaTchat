@@ -8,12 +8,6 @@ export const metadata: Metadata = {
   title: "NkeuyaTchat",
   description: "Espace Familial Sécurisé",
   manifest: "/manifest.json",
-  themeColor: "#0284c7",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "NkeuyaTchat",
-  },
 };
 
 export default function RootLayout({
