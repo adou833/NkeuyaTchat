@@ -212,7 +212,93 @@ export default function ChatRoom() {
     fetchMessages();
 
     const roomChannel = supabase
-      .channel(`room-${currentSalonKey}`) .on( 'postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => { if (payload.eventType === 'INSERT' && (payload.new as Message).salon === currentSalonKey) { setMessages((prev) => { const exists = prev.some((m) => m.id === (payload.new as Message).id); if (exists) return prev; return [...prev, payload.new as Message]; }); setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 50); } else if (payload.eventType === 'DELETE') { setMessages((prev) => prev.filter((m) => m.id !== payload.old.id)); } } ) .subscribe();  return () => { supabase.removeChannel(roomChannel); }; }, [currentSalonKey]);  useEffect(() => { if (showAdminPanel && isAdmin) { fetchAdminData(); } }, [showAdminPanel, isAdmin]);  const fetchAdminData = async () => { const { data: usersData } = await supabase.from('users').select('*').order('created_at', { ascending: false }); if (usersData) setAdminUsers(usersData); const { data: msgData } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(40); if (msgData) setAdminMessages(msgData); };  const handleManualRefresh = async () => { setIsRefreshing(true); await fetchAdminData(); setIsRefreshing(false); };  const handleSendMessage = async (e: React.FormEvent) => { e.preventDefault(); if (!newMessage.trim() \vert{}\vert{} !fullName) return;  const contentToSend = newMessage.trim(); setNewMessage('');  try { const { data, error } = await supabase.from('messages').insert({ content: contentToSend, username: fullName, salon: currentSalonKey, }).select();  if (error) { alert("Erreur Supabase : " + error.message); return; }  if (data && data.length > 0) { setMessages((prev) => { const exists = prev.some((m) => m.id === data[0].id); if (exists) return prev; return [...prev, data[0] as Message]; }); setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 50); } } catch (err: any) { alert("Erreur réseau : " + err.message); } };  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file \vert{}\vert{} !fullName) return;  setUploading(true);  const fileExt = file.name.split('.').pop(); const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+      .channel(`room-${currentSalonKey}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' && (payload.new as Message).salon === currentSalonKey) {
+            setMessages((prev) => {
+              const exists = prev.some((m) => m.id === (payload.new as Message).id);
+              if (exists) return prev;
+              return [...prev, payload.new as Message];
+            });
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 50);
+          } else if (payload.eventType === 'DELETE') {
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomChannel);
+    };
+  }, [currentSalonKey]);
+
+  useEffect(() => {
+    if (showAdminPanel && isAdmin) {
+      fetchAdminData();
+    }
+  }, [showAdminPanel, isAdmin]);
+
+  const fetchAdminData = async () => {
+    const { data: usersData } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+    if (usersData) setAdminUsers(usersData);
+    const { data: msgData } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(40);
+    if (msgData) setAdminMessages(msgData);
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchAdminData();
+    setIsRefreshing(false);
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !fullName) return;
+
+    const contentToSend = newMessage.trim();
+    setNewMessage('');
+
+    try {
+      const { data, error } = await supabase.from('messages').insert({
+        content: contentToSend,
+        username: fullName,
+        salon: currentSalonKey,
+      }).select();
+
+      if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === data[0].id);
+          if (exists) return prev;
+          return [...prev, data[0] as Message];
+        });
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
+      }
+    } catch (err: any) {
+      alert("Erreur réseau : " + err.message);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !fullName) return;
+
+    setUploading(true);
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${currentSalonKey}/${fileName}`;
 
     let fileType: 'image' | 'audio' | 'video' | 'document' = 'document';
@@ -409,7 +495,39 @@ export default function ChatRoom() {
             {isAdmin && (
               <button
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition shadow cursor-pointer ${ showAdminPanel ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-gray-900' }`} > {showAdminPanel ? '💬 Chat' : '⚙️ Admin'} </button> )} <button onClick={handleLogout} className="text-[11px] bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-lg transition cursor-pointer" > Quitter </button> </div> </div>  {/* Modal d'appel Jitsi Meet */} {activeCallType && ( <div className="absolute inset-0 bg-black/90 z-50 flex flex-col"> <div className="bg-[#0284c7] text-white p-3 flex justify-between items-center shrink-0"> <span className="font-bold text-xs"> {activeCallType === 'video' ? '📹 Appel Vidéo' : '📞 Appel Audio'} - {getSalonLabel(currentSalonKey)} </span> <button onClick={() => setActiveCallType(null)} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded-full font-bold cursor-pointer shadow" > Raccrocher ❌ </button> </div> <div className="flex-1 w-full h-full bg-black relative"> <iframe src={`https://meet.jit.si/NkeuyaTchat_${currentSalonKey}#userInfo.displayName="${encodeURIComponent(fullName)}"&config.startWithAudioMuted=false&config.startWithVideoMuted=${activeCallType === 'audio' ? 'true' : 'false'}`}
+                className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition shadow cursor-pointer ${
+                  showAdminPanel ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-gray-900'
+                }`}
+              >
+                {showAdminPanel ? '💬 Chat' : '⚙️ Admin'}
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="text-[11px] bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-lg transition cursor-pointer"
+            >
+              Quitter
+            </button>
+          </div>
+        </div>
+
+        {/* Modal d'appel Jitsi Meet */}
+        {activeCallType && (
+          <div className="absolute inset-0 bg-black/90 z-50 flex flex-col">
+            <div className="bg-[#0284c7] text-white p-3 flex justify-between items-center shrink-0">
+              <span className="font-bold text-xs">
+                {activeCallType === 'video' ? '📹 Appel Vidéo' : '📞 Appel Audio'} - {getSalonLabel(currentSalonKey)}
+              </span>
+              <button
+                onClick={() => setActiveCallType(null)}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded-full font-bold cursor-pointer shadow"
+              >
+                Raccrocher ❌
+              </button>
+            </div>
+            <div className="flex-1 w-full h-full bg-black relative">
+              <iframe
+                src={`https://meet.jit.si/NkeuyaTchat_${currentSalonKey}#userInfo.displayName="${encodeURIComponent(fullName)}"&config.startWithAudioMuted=false&config.startWithVideoMuted=${activeCallType === 'audio' ? 'true' : 'false'}`}
                 allow="camera; microphone; fullscreen; display-capture; autoplay"
                 className="w-full h-full border-0"
               />
@@ -490,7 +608,186 @@ export default function ChatRoom() {
                               <button
                                 key={sId}
                                 onClick={() => toggleSalonUser(u, sId)}
-                                className={`text-[10px] px-2 py-1 rounded-md border transition font-medium flex items-center gap-1 cursor-pointer ${ hasAccess ? 'bg-sky-600 text-white border-sky-400' : 'bg-[#1e293b] text-gray-400 border-gray-700' }`} > <span>{hasAccess ? '✓' : '+'}</span> <span>{getSalonLabel(sId)}</span> </button> ); })} </div> </div>  {/* Section Réinitialisation mot de passe */} <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-2"> <div className="flex items-center justify-between"> <span className="text-[10px] font-bold text-sky-400 uppercase">Mot de passe :</span> <button onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }} className="text-[10px] bg-sky-700 text-white px-2 py-1 rounded font-semibold cursor-pointer" > {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Réinitialiser MDP'} </button> </div> {editingPasswordUserId === u.id && ( <div className="flex gap-2 pt-1"> <input type="text" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 bg-[#1e293b] border border-sky-800 rounded px-2 py-1 text-xs text-white" /> <button onClick={() => handleSavePasswordFromUsersTab(u.id, u.full_name)} className="bg-emerald-600 text-white text-[10px] px-3 py-1 rounded font-bold cursor-pointer" > Enregistrer </button> </div> )} </div>  {/* Boutons d'action */} <div className="flex justify-between items-center pt-2 border-t border-sky-900 flex-wrap gap-2"> <button onClick={() => updateUserStatus(u.id, 'en_attente')} className="text-[10px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1 rounded border border-amber-900/50 cursor-pointer" > 🔄 Remettre en attente </button>  <div className="flex gap-1.5"> {u.status !== 'valide' && ( <button onClick={() => updateUserStatus(u.id, 'valide')} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow" > ✅ Valider l'inscription </button> )} {u.status !== 'refuse' && ( <button onClick={() => updateUserStatus(u.id, 'refuse')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow" > ❌ Bloquer </button> )} </div> </div> </div> ))} </div> )}  {adminTab === 'passwords' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Mots de passe</h3> {adminUsers.map((u) => ( <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3"> <div className="flex items-center justify-between"> <span className="font-bold text-sm text-gray-100">{u.full_name}</span> <button onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }} className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg cursor-pointer" > {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'} </button> </div> {editingPasswordUserId === u.id && ( <div className="pt-2 border-t border-sky-900 flex gap-2"> <input type="text" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-1.5 text-xs text-white" /> <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button> </div> )} </div> ))} </div> )}  {adminTab === 'salons' && ( <div className="space-y-4"> <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3"> <h4 className="text-xs font-bold text-sky-400 uppercase">➕ Créer un salon</h4> <div className="flex gap-2"> <input type="text" value={newSalonName} onChange={(e) => setNewSalonName(e.target.value)} placeholder="Nom..." required className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-2 text-xs text-white" /> <button type="submit" className="bg-sky-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button> </div> </form> <div className="space-y-2"> <h4 className="text-xs font-semibold text-sky-400 uppercase">Salons Actifs</h4> {allSalons.map((sId) => ( <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex items-center justify-between"> <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span> {sId !== 'general' && sId !== 'photos-familiales' && ( <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button> )} </div> ))} </div> </div> )}  {adminTab === 'en_ligne' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Membres connectés ({onlineUsers.length})</h3> {onlineUsers.map((name, index) => ( <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 text-xs font-bold">{name}</div> ))} </div> )}  {adminTab === 'moderation' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Modération des Messages</h3> {adminMessages.map((msg) => ( <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 space-y-1.5"> <div className="flex items-center justify-between text-[10px] text-sky-300"> <span className="font-bold">{msg.username} ({getSalonLabel(msg.salon)})</span> <button onClick={() => deleteMessageAdmin(msg.id)} className="bg-red-950 text-red-300 px-2 py-0.5 rounded cursor-pointer font-bold">🗑️ Suppr.</button> </div> <p className="text-xs text-gray-100">{msg.content}</p> </div> ))} </div> )}  {adminTab === 'annonces' && ( <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3"> <h3 className="text-xs font-bold text-sky-400 uppercase">📢 Diffuser une Annonce</h3> <textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Écrivez votre annonce ici..." rows={4} className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white" required /> <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 rounded-lg cursor-pointer">Publier l'annonce</button> </form> )} </div> </div> ) : ( <> {/* LISTE DES SALONS (ONGLETS) */} <div className={`${isDarkMode ? 'bg-[#202c33] border-gray-700 text-white' : 'bg-[#f0f2f5] border-gray-300 text-gray-800'} border-b px-2 py-1.5 flex gap-1.5 overflow-x-auto shrink-0 scrollbar-none`}>
+                                className={`text-[10px] px-2 py-1 rounded-md border transition font-medium flex items-center gap-1 cursor-pointer ${
+                                  hasAccess ? 'bg-sky-600 text-white border-sky-400' : 'bg-[#1e293b] text-gray-400 border-gray-700'
+                                }`}
+                              >
+                                <span>{hasAccess ? '✓' : '+'}</span>
+                                <span>{getSalonLabel(sId)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Section Réinitialisation mot de passe */}
+                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-sky-400 uppercase">Mot de passe :</span>
+                          <button
+                            onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
+                            className="text-[10px] bg-sky-700 text-white px-2 py-1 rounded font-semibold cursor-pointer"
+                          >
+                            {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Réinitialiser MDP'}
+                          </button>
+                        </div>
+                        {editingPasswordUserId === u.id && (
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={newPasswordInput}
+                              onChange={(e) => setNewPasswordInput(e.target.value)}
+                              placeholder="Nouveau mot de passe"
+                              className="flex-1 bg-[#1e293b] border border-sky-800 rounded px-2 py-1 text-xs text-white"
+                            />
+                            <button
+                              onClick={() => handleSavePasswordFromUsersTab(u.id, u.full_name)}
+                              className="bg-emerald-600 text-white text-[10px] px-3 py-1 rounded font-bold cursor-pointer"
+                            >
+                              Enregistrer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Boutons d'action */}
+                      <div className="flex justify-between items-center pt-2 border-t border-sky-900 flex-wrap gap-2">
+                        <button
+                          onClick={() => updateUserStatus(u.id, 'en_attente')}
+                          className="text-[10px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1 rounded border border-amber-900/50 cursor-pointer"
+                        >
+                          🔄 Remettre en attente
+                        </button>
+
+                        <div className="flex gap-1.5">
+                          {u.status !== 'valide' && (
+                            <button
+                              onClick={() => updateUserStatus(u.id, 'valide')}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
+                            >
+                              ✅ Valider l'inscription
+                            </button>
+                          )}
+                          {u.status !== 'refuse' && (
+                            <button
+                              onClick={() => updateUserStatus(u.id, 'refuse')}
+                              className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow"
+                            >
+                              ❌ Bloquer
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminTab === 'passwords' && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Mots de passe</h3>
+                  {adminUsers.map((u) => (
+                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
+                        <button
+                          onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }}
+                          className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg cursor-pointer"
+                        >
+                          {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'}
+                        </button>
+                      </div>
+                      {editingPasswordUserId === u.id && (
+                        <div className="pt-2 border-t border-sky-900 flex gap-2">
+                          <input
+                            type="text"
+                            value={newPasswordInput}
+                            onChange={(e) => setNewPasswordInput(e.target.value)}
+                            placeholder="Nouveau mot de passe"
+                            className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-1.5 text-xs text-white"
+                          />
+                          <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminTab === 'salons' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
+                    <h4 className="text-xs font-bold text-sky-400 uppercase">➕ Créer un salon</h4>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newSalonName}
+                        onChange={(e) => setNewSalonName(e.target.value)}
+                        placeholder="Nom..."
+                        required
+                        className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-2 text-xs text-white"
+                      />
+                      <button type="submit" className="bg-sky-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button>
+                    </div>
+                  </form>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-sky-400 uppercase">Salons Actifs</h4>
+                    {allSalons.map((sId) => (
+                      <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span>
+                        {sId !== 'general' && sId !== 'photos-familiales' && (
+                          <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {adminTab === 'en_ligne' && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Membres connectés ({onlineUsers.length})</h3>
+                  {onlineUsers.map((name, index) => (
+                    <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 text-xs font-bold">{name}</div>
+                  ))}
+                </div>
+              )}
+
+              {adminTab === 'moderation' && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-sky-400 uppercase">Modération des Messages</h3>
+                  {adminMessages.map((msg) => (
+                    <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] text-sky-300">
+                        <span className="font-bold">{msg.username} ({getSalonLabel(msg.salon)})</span>
+                        <button onClick={() => deleteMessageAdmin(msg.id)} className="bg-red-950 text-red-300 px-2 py-0.5 rounded cursor-pointer font-bold">🗑️ Suppr.</button>
+                      </div>
+                      <p className="text-xs text-gray-100">{msg.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {adminTab === 'annonces' && (
+                <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3">
+                  <h3 className="text-xs font-bold text-sky-400 uppercase">📢 Diffuser une Annonce</h3>
+                  <textarea
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    placeholder="Écrivez votre annonce ici..."
+                    rows={4}
+                    className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white"
+                    required
+                  />
+                  <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 rounded-lg cursor-pointer">Publier l'annonce</button>
+                </form>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* LISTE DES SALONS (ONGLETS) */}
+            <div className={`${isDarkMode ? 'bg-[#202c33] border-gray-700 text-white' : 'bg-[#f0f2f5] border-gray-300 text-gray-800'} border-b px-2 py-1.5 flex gap-1.5 overflow-x-auto shrink-0 scrollbar-none`}>
               {allSalons
                 .filter((sId) => isAdmin || allowedSalons.includes(sId))
                 .map((sId) => {
@@ -519,8 +816,12 @@ export default function ChatRoom() {
                 })}
             </div>
 
-            {/* CORPS DE LA DISCUSSION (TOUS LES MESSAGES ALIGNÉS À GAUCHE COMME D'ORIGINE) */}
-            <div className={`flex-1 overflow-y-auto p-3 space-y-2.5 ${isDarkMode ? 'bg-[#0b141a]' : 'bg-[#efeae2]'} relative`}>  {/* Badge de sécurité admin / utilisateur */} <div className="text-center my-1"> <span className={`text-[10px] ${isDarkMode ? 'bg-[#182229] text-gray-300 border-gray-700' : 'bg-[#d9fdd3] text-gray-700 border-emerald-200'} px-3 py-1 rounded-lg shadow-sm border font-medium inline-block`}>
+            {/* CORPS DE LA DISCUSSION (TOUS LES MESSAGES ALIGNÉS À GAUCHE) */}
+            <div className={`flex-1 overflow-y-auto p-3 space-y-2.5 ${isDarkMode ? 'bg-[#0b141a]' : 'bg-[#efeae2]'} relative`}>
+              
+              {/* Badge de sécurité admin / utilisateur */}
+              <div className="text-center my-1">
+                <span className={`text-[10px] ${isDarkMode ? 'bg-[#182229] text-gray-300 border-gray-700' : 'bg-[#d9fdd3] text-gray-700 border-emerald-200'} px-3 py-1 rounded-lg shadow-sm border font-medium inline-block`}>
                   🔒 Messages chiffrés de bout en bout • Salon : {getSalonLabel(currentSalonKey)}
                 </span>
               </div>
@@ -540,7 +841,99 @@ export default function ChatRoom() {
                 }
 
                 return (
-                  /* ALIGNEMENT ORIGINEL À GAUCHE (items-start) */
+                  /* ALIGNEMENT STRICT À GAUCHE COMME D'ORIGINE */
                   <div key={msg.id} className="flex flex-col items-start group">
                     <div
-                      className={`max-w-[85%] rounded-2xl px-3 py
+                      className={`max-w-[85%] rounded-2xl px-3 py-2 shadow-sm relative text-xs ${
+                        isMe 
+                          ? (isDarkMode ? 'bg-[#005c4b] text-white rounded-tl-none' : 'bg-[#d9fdd3] text-gray-900 rounded-tl-none') 
+                          : (isDarkMode ? 'bg-[#202c33] text-white rounded-tl-none' : 'bg-white text-gray-900 rounded-tl-none')
+                      }`}
+                    >
+                      {/* Nom de l'expéditeur */}
+                      {!isMe && (
+                        <div className="text-[10px] font-bold text-[#0284c7] mb-0.5">
+                          {author}
+                        </div>
+                      )}
+
+                      {/* Contenu Texte */}
+                      <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.content}</p>
+
+                      {/* Fichiers Médias (Images, Vidéos, Audios, Documents) */}
+                      {msg.file_url && (
+                        <div className="mt-2">
+                          {msg.file_type === 'image' ? (
+                            <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                              <img src={msg.file_url} alt="Média partagé" className="rounded-lg max-h-48 object-cover w-full cursor-pointer hover:opacity-95 transition" />
+                            </a>
+                          ) : msg.file_type === 'video' ? (
+                            <video src={msg.file_url} controls className="rounded-lg max-h-48 w-full bg-black" />
+                          ) : msg.file_type === 'audio' ? (
+                            <audio src={msg.file_url} controls className="w-full h-8" />
+                          ) : (
+                            <a
+                              href={msg.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-2 p-2 rounded-lg border transition font-medium ${
+                                isDarkMode ? 'bg-[#111b21] border-gray-700 text-sky-400 hover:bg-gray-800' : 'bg-gray-100 border-gray-300 text-sky-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              <span>📁</span>
+                              <span className="truncate underline">Télécharger le document</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Horodatage et bouton suppression */}
+                      <div className="flex items-center justify-end gap-1.5 mt-1">
+                        <span className={`text-[9px] ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        {(isMe || isAdmin) && (
+                          <button
+                            onClick={() => handleDeleteMessage(msg)}
+                            className="text-[9px] text-red-600 opacity-0 group-hover:opacity-100 transition hover:underline font-bold cursor-pointer"
+                            title="Supprimer"
+                          >
+                            Suppr.
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* BARRE DE SAISIE ET ENVOI DE FICHIERS */}
+            <form onSubmit={handleSendMessage} className={`${isDarkMode ? 'bg-[#202c33] border-gray-700' : 'bg-[#f0f2f5] border-gray-300'} px-3 py-2.5 flex items-center gap-2 border-t shrink-0`}>
+              
+              {/* Input Fichier Caché */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                className="hidden"
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              />
+
+              {/* Bouton pour attacher un fichier */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className={`p-2 transition cursor-pointer disabled:opacity-50 text-base ${isDarkMode ? 'text-gray-300 hover:text-sky-400' : 'text-gray-600 hover:text-sky-600'}`}
+                title="Joindre un fichier ou une photo"
+              >
+                {uploading ? '⏳' : '📎'}
+              </button>
+
+              {/* Champ de texte */}
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
