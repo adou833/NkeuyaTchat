@@ -1,11 +1,21 @@
 'use client';
 
+import { use } from 'react';
 import ChatRoom from '@/components/ChatRoom';
 
-export default function SalonPage() {
+interface PageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function SalonPage({ params }: PageProps) {
+  const resolvedParams = use(params);
+  const salonId = resolvedParams.id;
+
   return (
-    <main className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col">
-      <ChatRoom />
+    <main className="h-screen w-screen overflow-hidden">
+      <ChatRoom salonId={salonId} />
     </main>
   );
 }
