@@ -1,505 +1,483 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { 
+  Send, 
+  Image as ImageIcon, 
+  FileText, 
+  Mic, 
+  Square, 
+  ArrowLeft, 
+  Phone, 
+  Video, 
+  Smile, 
+  Check, 
+  CheckCheck, 
+  Download,
+  Trash2
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Message {
   id: string;
-  content: string;
-  username: string;
-  sender?: string;
   salon: string;
+  sender: string;
+  content: string;
   file_url?: string;
-  file_type?: 'image' | 'audio' | 'video' | 'document';
+  file_type?: string;
+  file_name?: string;
   created_at: string;
+  status?: string;
 }
 
-interface UserRecord {
-  id: string;
-  full_name: string;
-  status: 'en_attente' | 'valide' | 'refuse';
-  salons: string[];
-  password?: string;
+interface ChatRoomProps {
+  salonId: string;
 }
 
-const DEFAULT_SALONS = [
-  { id: 'general', label: 'Général' },
-  { id: 'photos-familiales', label: 'Photos familiales' },
-  { id: 'femmes', label: 'Femmes' },
-  { id: 'hommes', label: 'Hommes' },
-  { id: 'filles', label: 'Filles' },
-  { id: 'garcons', label: 'Garçons' },
-  { id: 'petits-fils-et-filles', label: 'Petits fils et filles' },
-];
+const ADMIN_NAME = "Eric MABOM";
 
-export default function ChatRoom() {
-  const router = useRouter();
-  const [currentSalonKey, setCurrentSalonKey] = useState<string>('general');
-
+export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [allowedSalons, setAllowedSalons] = useState<string[]>(['general', 'photos-familiales']);
-  const [allSalons, setAllSalons] = useState<string[]>(DEFAULT_SALONS.map(s => s.id));
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [fullName, setFullName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-
-  // État du mode sombre
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // Notifications non lues par salon
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-
-  const [activeCallType, setActiveCallType] = useState<'audio' | 'video' | null>(null);
-
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [adminTab, setAdminTab] = useState<'users' | 'passwords' | 'salons' | 'en_ligne' | 'moderation' | 'annonces'>('users');
-  const [adminUsers, setAdminUsers] = useState<UserRecord[]>([]);
-  const [adminMessages, setAdminMessages] = useState<Message[]>([]);
-  const [newSalonName, setNewSalonName] = useState('');
-  const [announcementText, setAnnouncementText] = useState('');
+  const [allowedSalons, setAllowedSalons] = useState<string[]>([]);
   
-  const [editingPasswordUserId, setEditingPasswordUserId] = useState<string | null>(null);
-  const [newPasswordInput, setNewPasswordInput] = useState('');
+  // États pour l'enregistrement audio
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
-  const ADMIN_NAME = "Eric MABOM";
-  const isAdmin = fullName.toLowerCase() === ADMIN_NAME.toLowerCase();
-
-  const getSalonLabel = (sId: string) => {
-    const found = DEFAULT_SALONS.find(s => s.id === sId);
-    if (found) return found.label;
-    return sId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const salonTitles: { [key: string]: string } = {
+    general: 'Général',
+    femmes: 'Femmes',
+    hommes: 'Hommes',
+    filles: 'Filles',
+    garcons: 'Garçons',
+    'petits-fils-et-filles': 'Petits-fils et filles'
   };
 
-  // Son de notification style WhatsApp
-  const playNotificationSound = () => {
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08);
-      
-      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.15);
-    } catch (e) {}
-  };
+  const currentTitle = salonTitles[salonId] || salonId;
 
-  const handleSelectSalon = (salonId: string) => {
-    setCurrentSalonKey(salonId);
-    setUnreadCounts((prev) => ({ ...prev, [salonId]: 0 }));
-  };
-
+  // Charger l'utilisateur et les salons autorisés
   useEffect(() => {
     const user = localStorage.getItem('chat_user');
+    const salons = localStorage.getItem('chat_salons');
+
     if (!user) {
       router.push('/');
       return;
     }
+
     setFullName(user);
-
-    const initProfile = async () => {
-      const { data: usersData } = await supabase.from('users').select('*');
-      if (usersData) {
-        setAdminUsers(usersData);
-        
-        const dynamicSalons = new Set(DEFAULT_SALONS.map(s => s.id));
-        usersData.forEach(u => u.salons?.forEach((s: string) => dynamicSalons.add(s)));
-        const salonList = Array.from(dynamicSalons);
-        setAllSalons(salonList);
-
-        if (user.toLowerCase() === ADMIN_NAME.toLowerCase()) {
-          setAllowedSalons(salonList);
-        } else {
-          const uRecord = usersData.find(u => u.full_name.toLowerCase() === user.toLowerCase());
-          if (uRecord) {
-            if (uRecord.status !== 'valide') {
-              router.push('/');
-              return;
-            }
-            const userSalons = uRecord.salons && uRecord.salons.length > 0 
-              ? Array.from(new Set(['general', 'photos-familiales', ...uRecord.salons]))
-              : ['general', 'photos-familiales'];
-
-            setAllowedSalons(userSalons);
-          }
-        }
+    if (salons) {
+      try {
+        setAllowedSalons(JSON.parse(salons));
+      } catch (e) {
+        setAllowedSalons(['general']);
       }
-    };
-
-    initProfile();
-
-    const presenceChannel = supabase.channel('nkeuya_presence', {
-      config: { presence: { key: user } },
-    });
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState();
-        setOnlineUsers(Object.keys(state));
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({ online_at: new Date().toISOString() });
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(presenceChannel);
-    };
+    }
   }, [router]);
 
-  // Notifications globales sur tous les salons
+  // Charger les messages et écouter le Realtime
   useEffect(() => {
-    if (!fullName) return;
-
-    const globalChannel = supabase
-      .channel('global-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          if (newMsg.username?.toLowerCase() !== fullName.toLowerCase() && newMsg.salon !== currentSalonKey) {
-            playNotificationSound();
-            setUnreadCounts((prev) => ({
-              ...prev,
-              [newMsg.salon]: (prev[newMsg.salon] || 0) + 1,
-            }));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(globalChannel);
-    };
-  }, [currentSalonKey, fullName]);
-
-  // Messages du salon actif
-  useEffect(() => {
-    if (!currentSalonKey) return;
+    if (!salonId) return;
 
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('salon', currentSalonKey)
+        .eq('salon', salonId)
         .order('created_at', { ascending: true });
 
       if (!error && data) {
         setMessages(data);
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-        }, 50);
-      } else {
-        setMessages([]);
       }
     };
 
     fetchMessages();
 
-    const roomChannel = supabase
-      .channel(`room-${currentSalonKey}`) .on( 'postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => { if (payload.eventType === 'INSERT' && (payload.new as Message).salon === currentSalonKey) { setMessages((prev) => { const exists = prev.some((m) => m.id === (payload.new as Message).id); if (exists) return prev; return [...prev, payload.new as Message]; }); setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 50); } else if (payload.eventType === 'DELETE') { setMessages((prev) => prev.filter((m) => m.id !== payload.old.id)); } } ) .subscribe();  return () => { supabase.removeChannel(roomChannel); }; }, [currentSalonKey]);  useEffect(() => { if (showAdminPanel && isAdmin) { fetchAdminData(); } }, [showAdminPanel, isAdmin]);  const fetchAdminData = async () => { const { data: usersData } = await supabase.from('users').select('*').order('created_at', { ascending: false }); if (usersData) setAdminUsers(usersData); const { data: msgData } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(40); if (msgData) setAdminMessages(msgData); };  const handleManualRefresh = async () => { setIsRefreshing(true); await fetchAdminData(); setIsRefreshing(false); };  const handleSendMessage = async (e: React.FormEvent) => { e.preventDefault(); if (!newMessage.trim() \vert{}\vert{} !fullName) return;  const contentToSend = newMessage.trim(); setNewMessage('');  try { const { data, error } = await supabase.from('messages').insert({ content: contentToSend, username: fullName, salon: currentSalonKey, }).select();  if (error) { alert("Erreur Supabase : " + error.message); return; }  if (data && data.length > 0) { setMessages((prev) => { const exists = prev.some((m) => m.id === data[0].id); if (exists) return prev; return [...prev, data[0] as Message]; }); setTimeout(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 50); } } catch (err: any) { alert("Erreur réseau : " + err.message); } };  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file \vert{}\vert{} !fullName) return;  setUploading(true);  const fileExt = file.name.split('.').pop(); const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${currentSalonKey}/${fileName}`;
+    const channel = supabase
+      .channel(`room-${salonId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `salon=eq.${salonId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setMessages((prev) => prev.filter((msg) => msg.id !== deletedId));
+        }
+      )
+      .subscribe();
 
-    let fileType: 'image' | 'audio' | 'video' | 'document' = 'document';
-    if (file.type.startsWith('image/')) fileType = 'image';
-    else if (file.type.startsWith('audio/')) fileType = 'audio';
-    else if (file.type.startsWith('video/')) fileType = 'video';
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [salonId]);
 
-    const { error: uploadError } = await supabase.storage.from('chat_media').upload(filePath, file);
+  // Scroll automatique en bas
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    if (uploadError) {
-      alert("Erreur lors de l'envoi du fichier : " + uploadError.message);
+  // Envoyer un message texte
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !fullName) return;
+
+    const contentToSend = newMessage.trim();
+    setNewMessage('');
+
+    const { error } = await supabase.from('messages').insert([
+      {
+        salon: salonId,
+        sender: fullName,
+        content: contentToSend,
+      },
+    ]);
+
+    if (error) {
+      console.error("Erreur lors de l'envoi du message :", error);
+    }
+  };
+
+  // Envoyer un fichier (image ou document)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
+    const file = e.target.files?.[0];
+    if (!file || !fullName) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${salonId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        alert("Erreur lors de l'envoi du fichier : " + uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('chat-media')
+        .getPublicUrl(filePath);
+
+      await supabase.from('messages').insert([
+        {
+          salon: salonId,
+          sender: fullName,
+          content: fileType === 'image' ? '📷 Image' : `📎 ${file.name}`,
+          file_url: publicUrlData.publicUrl,
+          file_type: fileType,
+          file_name: file.name,
+        },
+      ]);
+    } catch (err: any) {
+      alert("Erreur inattendue : " + err.message);
+    } finally {
       setUploading(false);
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage.from('chat_media').getPublicUrl(filePath);
-    const fileUrl = publicUrlData.publicUrl;
-
-    const { data, error } = await supabase.from('messages').insert({
-      content: fileType === 'image' ? `📷 Photo partagée` : fileType === 'video' ? `🎬 Vidéo partagée` : `📁 Fichier partagé : ${file.name}`,
-      username: fullName,
-      salon: currentSalonKey,
-      file_url: fileUrl,
-      file_type: fileType,
-    }).select();
-
-    if (error) {
-      alert("Erreur d'enregistrement du fichier : " + error.message);
-    } else if (data && data.length > 0) {
-      setMessages((prev) => [...prev, data[0] as Message]);
-    }
-
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleDeleteMessage = async (msg: Message) => {
-    const author = msg.username || msg.sender;
-    const isOwner = author?.toLowerCase() === fullName.toLowerCase();
-
-    if (!isOwner && !isAdmin) {
-      alert("Tu ne peux supprimer que tes propres messages !");
-      return;
-    }
-
-    if (!confirm("⚠️ Supprimer ce message ou fichier ?")) return;
-
-    const { error } = await supabase.from('messages').delete().eq('id', msg.id);
-    if (error) {
-      alert("Erreur lors de la suppression : " + error.message);
-    } else {
-      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      e.target.value = '';
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('chat_user');
-    router.push('/');
-  };
+  // Enregistrement Audio
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-  const updateUserStatus = async (userId: string, status: 'valide' | 'refuse' | 'en_attente') => {
-    const updatePayload: any = { status };
-    if (status === 'valide') {
-      updatePayload.salons = ['general', 'photos-familiales'];
-    }
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
-    await supabase.from('users').update(updatePayload).eq('id', userId);
-    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updatePayload } : u)));
-  };
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        await sendAudioFile(audioBlob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
 
-  const deleteUserAccount = async (user: UserRecord) => {
-    if (!confirm(`⚠️ Supprimer le compte de "${user.full_name}" ?`)) return;
-    await supabase.from('users').delete().eq('id', user.id);
-    setAdminUsers((prev) => prev.filter((u) => u.id !== user.id));
-  };
-
-  const handleSavePasswordFromUsersTab = async (userId: string, userName: string) => {
-    if (!newPasswordInput.trim()) return;
-    const cleanPassword = newPasswordInput.trim();
-    await supabase.from('users').update({ password: cleanPassword }).eq('id', userId);
-    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, password: cleanPassword } : u)));
-    setEditingPasswordUserId(null);
-    setNewPasswordInput('');
-    alert(`Mot de passe réinitialisé pour ${userName} !`);
-  };
-
-  const handleSavePassword = async (userId: string, userName: string) => {
-    if (!newPasswordInput.trim()) return;
-    const cleanPassword = newPasswordInput.trim();
-    await supabase.from('users').update({ password: cleanPassword }).eq('id', userId);
-    setAdminUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, password: cleanPassword } : u)));
-    setEditingPasswordUserId(null);
-    setNewPasswordInput('');
-    alert(`Mot de passe mis à jour pour ${userName} !`);
-  };
-
-  const toggleSalonUser = async (user: UserRecord, salonId: string) => {
-    const currentSalons = Array.isArray(user.salons) ? user.salons : ['general', 'photos-familiales'];
-    const updatedSalons = currentSalons.includes(salonId)
-      ? currentSalons.filter((s) => s !== salonId)
-      : [...currentSalons, salonId];
-
-    const { error } = await supabase.from('users').update({ salons: updatedSalons }).eq('id', user.id);
-    if (!error) {
-      setAdminUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, salons: updatedSalons } : u)));
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      alert("Impossible d'accéder au microphone.");
     }
   };
 
-  const handleAddSalon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const formattedId = newSalonName.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!formattedId || allSalons.includes(formattedId)) return;
-
-    const updatedSalons = Array.from(new Set([...allSalons, formattedId]));
-    setAllSalons(updatedSalons);
-    setNewSalonName('');
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
-  const deleteMessageAdmin = async (msgId: string) => {
-    await supabase.from('messages').delete().eq('id', msgId);
-    setAdminMessages((prev) => prev.filter((m) => m.id !== msgId));
-    setMessages((prev) => prev.filter((m) => m.id !== msgId));
+  const sendAudioFile = async (blob: Blob) => {
+    if (!fullName) return;
+    setUploading(true);
+    try {
+      const fileName = `audio-${Date.now()}.webm`;
+      const filePath = `${salonId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-media')
+        .upload(filePath, blob);
+
+      if (uploadError) {
+        alert("Erreur d'envoi audio : " + uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('chat-media')
+        .getPublicUrl(filePath);
+
+      await supabase.from('messages').insert([
+        {
+          salon: salonId,
+          sender: fullName,
+          content: '🎤 Message vocal',
+          file_url: publicUrlData.publicUrl,
+          file_type: 'audio',
+          file_name: 'Message vocal',
+        },
+      ]);
+    } catch (err: any) {
+      alert("Erreur : " + err.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const purgeSalon = async (targetSalon: string) => {
-    if (!confirm(`⚠️ Purger les messages de ${getSalonLabel(targetSalon)} ?`)) return;
-    await supabase.from('messages').delete().eq('salon', targetSalon);
-    if (targetSalon === currentSalonKey) setMessages([]);
-    fetchAdminData();
-  };
+  // Supprimer un message (Admin ou auteur)
+  const handleDeleteMessage = async (messageId: string, sender: string) => {
+    if (fullName !== ADMIN_NAME && fullName !== sender) return;
+    if (!confirm("Voulez-vous supprimer ce message ?")) return;
 
-  const handleSendAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!announcementText.trim()) return;
-
-    await supabase.from('messages').insert({
-      content: `📢 ANNONCE ADMIN : ${announcementText.trim()}`,
-      username: '📢 Eric MABOM (ADMIN)',
-      salon: currentSalonKey,
-    });
-    setAnnouncementText('');
-    setShowAdminPanel(false);
+    await supabase.from('messages').delete().eq('id', messageId);
   };
 
   return (
-    <div className="flex items-center justify-center h-[100dvh] w-full max-w-full bg-[#111b21] p-0 md:p-4 overflow-hidden">
+    <div className="flex flex-col h-full bg-[#efeae2] relative overflow-hidden">
       
-      {/* CADRE SMARTPHONE HARMONISÉ EN BLEU CLAIR (#0284c7) */}
-      <div className="flex flex-col h-full w-full max-w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#0284c7] bg-[#efeae2] relative overflow-hidden shadow-2xl">
-        
-        {/* EN-TÊTE BLEU CLAIR AVEC LE BOUTON MODE SOMBRE */}
-        <div className="bg-[#0284c7] text-white px-3 py-2.5 flex items-center justify-between shadow-md z-10 shrink-0">
-          <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="relative shrink-0">
-              <div className="w-9 h-9 rounded-full bg-sky-500 border-2 border-sky-200 flex items-center justify-center font-bold text-white shadow-md">
-                {fullName ? fullName.charAt(0).toUpperCase() : 'N'}
-              </div>
-              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-current rounded-full"></span>
-            </div>
-            <div className="truncate">
-              <h2 className="font-bold text-xs text-white tracking-wide truncate">{fullName || 'Utilisateur'}</h2>
-              <div className="text-[10px] text-sky-100 flex items-center gap-1 font-medium truncate">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block shrink-0"></span>
-                <span className="truncate">{getSalonLabel(currentSalonKey)}</span>
-              </div>
-            </div>
+      {/* En-tête du Salon */}
+      <header className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => router.push('/salon/general')} 
+            className="p-1 rounded-full hover:bg-sky-600 transition cursor-pointer"
+            title="Retour"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg shadow">
+            💬
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* BOUTON MODE SOMBRE */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-1.5 bg-sky-800/60 hover:bg-sky-700 rounded-full transition text-white shadow cursor-pointer text-xs font-bold border border-sky-400/40"
-              title={isDarkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
-
-            <button
-              onClick={() => setActiveCallType('audio')}
-              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
-              title="Appel audio"
-            >
-              📞
-            </button>
-            <button
-              onClick={() => setActiveCallType('video')}
-              className="p-1.5 bg-sky-800/40 hover:bg-sky-700/60 rounded-full transition text-white shadow cursor-pointer text-xs"
-              title="Appel vidéo"
-            >
-              📹
-            </button>
-
-            {isAdmin && (
-              <button
-                onClick={() => setShowAdminPanel(!showAdminPanel)}
-                className={`text-[11px] px-2.5 py-1 rounded-lg font-bold transition shadow cursor-pointer ${ showAdminPanel ? 'bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-gray-900' }`} > {showAdminPanel ? '💬 Chat' : '⚙️ Admin'} </button> )} <button onClick={handleLogout} className="text-[11px] bg-black/20 hover:bg-black/40 text-white px-2 py-1 rounded-lg transition cursor-pointer" > Quitter </button> </div> </div>  {/* Modal d'appel Jitsi Meet */} {activeCallType && ( <div className="absolute inset-0 bg-black/90 z-50 flex flex-col"> <div className="bg-[#0284c7] text-white p-3 flex justify-between items-center shrink-0"> <span className="font-bold text-xs"> {activeCallType === 'video' ? '📹 Appel Vidéo' : '📞 Appel Audio'} - {getSalonLabel(currentSalonKey)} </span> <button onClick={() => setActiveCallType(null)} className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded-full font-bold cursor-pointer shadow" > Raccrocher ❌ </button> </div> <div className="flex-1 w-full h-full bg-black relative"> <iframe src={`https://meet.jit.si/NkeuyaTchat_${currentSalonKey}#userInfo.displayName="${encodeURIComponent(fullName)}"&config.startWithAudioMuted=false&config.startWithVideoMuted=${activeCallType === 'audio' ? 'true' : 'false'}`}
-                allow="camera; microphone; fullscreen; display-capture; autoplay"
-                className="w-full h-full border-0"
-              />
-            </div>
+          <div>
+            <h2 className="font-bold text-sm sm:text-base leading-tight">Salon : {currentTitle}</h2>
+            <p className="text-[11px] text-sky-100">Espace familial sécurisé</p>
           </div>
-        )}
+        </div>
 
-        {/* PANNEAU ADMIN */}
-        {isAdmin && showAdminPanel ? (
-          <div className="flex-1 bg-[#111b21] text-white overflow-y-auto flex flex-col">
-            <div className="bg-[#0284c7] p-2 flex items-center justify-between border-b border-sky-800 overflow-x-auto shrink-0 gap-2">
-              <div className="flex gap-1 overflow-x-auto flex-1">
-                {[
-                  { id: 'users', label: '👥 Membres' },
-                  { id: 'passwords', label: '🔑 Mots de passe' },
-                  { id: 'salons', label: '💬 Salons' },
-                  { id: 'en_ligne', label: `🟢 En ligne` },
-                  { id: 'moderation', label: '🛡️ Modération' },
-                  { id: 'annonces', label: '📢 Annonce' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setAdminTab(tab.id as any)}
-                    className={`text-xs px-2.5 py-2 rounded-lg font-semibold transition shrink-0 cursor-pointer ${
-                      adminTab === tab.id ? 'bg-sky-600 text-white shadow' : 'bg-[#111b21] text-gray-400 hover:bg-gray-800'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+        <div className="flex items-center space-x-1">
+          <button 
+            onClick={() => alert("Fonctionnalité d'appel vocal bientôt disponible")}
+            className="p-2 rounded-full hover:bg-sky-600 transition cursor-pointer"
+            title="Appel vocal"
+          >
+            <Phone className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => alert("Fonctionnalité d'appel vidéo bientôt disponible")}
+            className="p-2 rounded-full hover:bg-sky-600 transition cursor-pointer"
+            title="Appel vidéo"
+          >
+            <Video className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
 
-              <button
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className="bg-sky-700 hover:bg-sky-800 text-white p-2 rounded-lg font-bold shrink-0 transition flex items-center gap-1 shadow cursor-pointer disabled:opacity-50 text-xs"
-                title="Rafraîchir"
+      {/* Corps des Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#e5ddd5_1px,transparent_1px)] [background-size:16px_16px]">
+        {messages.map((msg) => {
+          const isMe = msg.sender === fullName;
+          const isAdmin = fullName === ADMIN_NAME;
+          const canDelete = isMe || isAdmin;
+
+          return (
+            <div 
+              key={msg.id} 
+              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
+            >
+              <div 
+                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm relative ${
+                  isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
+                }`}
               >
-                <span>{isRefreshing ? '⏳' : '🔄'}</span>
-              </button>
-            </div>
+                {!isMe && (
+                  <p className="text-[11px] font-bold text-[#0284c7] mb-0.5">
+                    {msg.sender}
+                  </p>
+                )}
 
-            <div className="p-4 flex-1 space-y-4">
-              {adminTab === 'users' && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Membres et Validations</h3>
+                {/* Affichage du contenu texte s'il y en a */}
+                {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
+                  <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
+                    {msg.content}
+                  </p>
+                )}
+
+                {/* Affichage Image */}
+                {msg.file_type === 'image' && msg.file_url && (
+                  <div className="mt-1 mb-1">
+                    <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                      <img 
+                        src={msg.file_url} 
+                        alt="Média partagé" 
+                        className="rounded-lg max-h-60 w-auto object-cover hover:opacity-95 transition shadow-sm" 
+                      />
+                    </a>
                   </div>
-                  {adminUsers.map((u) => (
-                    <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <span className="font-bold text-sm text-gray-100">{u.full_name}</span>
-                          <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                            u.status === 'valide' ? 'bg-emerald-900 text-emerald-300 border border-emerald-700' :
-                            u.status === 'refuse' ? 'bg-red-900 text-red-300 border border-red-700' :
-                            'bg-amber-900 text-amber-300 border border-amber-700'
-                          }`}>
-                            {u.status || 'en_attente'}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => deleteUserAccount(u)}
-                          className="text-[10px] bg-red-950 text-red-300 px-2 py-1 rounded-lg border border-red-800 font-bold cursor-pointer"
-                        >
-                          🗑️ Suppr.
-                        </button>
-                      </div>
+                )}
 
-                      {/* Salons autorisés */}
-                      <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-1.5">
-                        <span className="text-[10px] font-bold text-sky-400 uppercase">Salons autorisés :</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {allSalons.map((sId) => {
-                            const userSalonsArr = Array.isArray(u.salons) ? u.salons : [];
-                            const hasAccess = userSalonsArr.includes(sId) || sId === 'general' || sId === 'photos-familiales';
-                            return (
-                              <button
-                                key={sId}
-                                onClick={() => toggleSalonUser(u, sId)}
-                                className={`text-[10px] px-2 py-1 rounded-md border transition font-medium flex items-center gap-1 cursor-pointer ${ hasAccess ? 'bg-sky-600 text-white border-sky-400' : 'bg-[#1e293b] text-gray-400 border-gray-700' }`} > <span>{hasAccess ? '✓' : '+'}</span> <span>{getSalonLabel(sId)}</span> </button> ); })} </div> </div>  {/* Section Réinitialisation mot de passe */} <div className="bg-[#111b21] p-2.5 rounded-lg border border-sky-900 space-y-2"> <div className="flex items-center justify-between"> <span className="text-[10px] font-bold text-sky-400 uppercase">Mot de passe :</span> <button onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }} className="text-[10px] bg-sky-700 text-white px-2 py-1 rounded font-semibold cursor-pointer" > {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Réinitialiser MDP'} </button> </div> {editingPasswordUserId === u.id && ( <div className="flex gap-2 pt-1"> <input type="text" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 bg-[#1e293b] border border-sky-800 rounded px-2 py-1 text-xs text-white" /> <button onClick={() => handleSavePasswordFromUsersTab(u.id, u.full_name)} className="bg-emerald-600 text-white text-[10px] px-3 py-1 rounded font-bold cursor-pointer" > Enregistrer </button> </div> )} </div>  {/* Boutons d'action */} <div className="flex justify-between items-center pt-2 border-t border-sky-900 flex-wrap gap-2"> <button onClick={() => updateUserStatus(u.id, 'en_attente')} className="text-[10px] bg-gray-800 hover:bg-gray-700 text-amber-300 px-2.5 py-1 rounded border border-amber-900/50 cursor-pointer" > 🔄 Remettre en attente </button>  <div className="flex gap-1.5"> {u.status !== 'valide' && ( <button onClick={() => updateUserStatus(u.id, 'valide')} className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow" > ✅ Valider l'inscription </button> )} {u.status !== 'refuse' && ( <button onClick={() => updateUserStatus(u.id, 'refuse')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] px-3 py-1.5 rounded font-bold cursor-pointer shadow" > ❌ Bloquer </button> )} </div> </div> </div> ))} </div> )}  {adminTab === 'passwords' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Gestion des Mots de passe</h3> {adminUsers.map((u) => ( <div key={u.id} className="bg-[#1e293b] p-3.5 rounded-xl border border-sky-900 space-y-3"> <div className="flex items-center justify-between"> <span className="font-bold text-sm text-gray-100">{u.full_name}</span> <button onClick={() => { setEditingPasswordUserId(editingPasswordUserId === u.id ? null : u.id); setNewPasswordInput(''); }} className="text-xs bg-sky-600 text-white px-3 py-1.5 rounded-lg cursor-pointer" > {editingPasswordUserId === u.id ? 'Annuler' : '🔑 Modifier'} </button> </div> {editingPasswordUserId === u.id && ( <div className="pt-2 border-t border-sky-900 flex gap-2"> <input type="text" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} placeholder="Nouveau mot de passe" className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-1.5 text-xs text-white" /> <button onClick={() => handleSavePassword(u.id, u.full_name)} className="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer">OK</button> </div> )} </div> ))} </div> )}  {adminTab === 'salons' && ( <div className="space-y-4"> <form onSubmit={handleAddSalon} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3"> <h4 className="text-xs font-bold text-sky-400 uppercase">➕ Créer un salon</h4> <div className="flex gap-2"> <input type="text" value={newSalonName} onChange={(e) => setNewSalonName(e.target.value)} placeholder="Nom..." required className="flex-1 bg-[#111b21] border border-sky-800 rounded-lg px-3 py-2 text-xs text-white" /> <button type="submit" className="bg-sky-600 text-white text-xs px-4 py-2 rounded-lg font-bold cursor-pointer">Ajouter</button> </div> </form> <div className="space-y-2"> <h4 className="text-xs font-semibold text-sky-400 uppercase">Salons Actifs</h4> {allSalons.map((sId) => ( <div key={sId} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 flex items-center justify-between"> <span className="text-xs font-bold text-gray-200">{getSalonLabel(sId)}</span> {sId !== 'general' && sId !== 'photos-familiales' && ( <button onClick={() => purgeSalon(sId)} className="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded cursor-pointer">🗑️ Purger</button> )} </div> ))} </div> </div> )}  {adminTab === 'en_ligne' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Membres connectés ({onlineUsers.length})</h3> {onlineUsers.map((name, index) => ( <div key={index} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 text-xs font-bold">{name}</div> ))} </div> )}  {adminTab === 'moderation' && ( <div className="space-y-3"> <h3 className="text-xs font-semibold text-sky-400 uppercase">Modération des Messages</h3> {adminMessages.map((msg) => ( <div key={msg.id} className="bg-[#1e293b] p-3 rounded-lg border border-sky-900 space-y-1.5"> <div className="flex items-center justify-between text-[10px] text-sky-300"> <span className="font-bold">{msg.username} ({getSalonLabel(msg.salon)})</span> <button onClick={() => deleteMessageAdmin(msg.id)} className="bg-red-950 text-red-300 px-2 py-0.5 rounded cursor-pointer font-bold">🗑️ Suppr.</button> </div> <p className="text-xs text-gray-100">{msg.content}</p> </div> ))} </div> )}  {adminTab === 'annonces' && ( <form onSubmit={handleSendAnnouncement} className="bg-[#1e293b] p-4 rounded-xl border border-sky-900 space-y-3"> <h3 className="text-xs font-bold text-sky-400 uppercase">📢 Diffuser une Annonce</h3> <textarea value={announcementText} onChange={(e) => setAnnouncementText(e.target.value)} placeholder="Écrivez votre annonce ici..." rows={4} className="w-full bg-[#111b21] border border-sky-800 rounded-lg p-3 text-xs text-white" required /> <button type="submit" className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 rounded-lg cursor-pointer">Publier l'annonce</button> </form> )} </div> </div> ) : ( <> {/* LISTE DES SALONS (ONGLETS) */} <div className={`${isDarkMode ? 'bg-[#202c33] border-gray-700 text-white' : 'bg-[#f0f2f5] border-gray-300 text-gray-800'} border-b px-2 py-1.5 flex gap-1.5 overflow-x-auto shrink-0 scrollbar-none`}>
-              {allSalons
-                .filter((sId) => isAdmin || allowedSalons.includes(sId))
-                .map((sId) => {
-                  const isActive = currentSalonKey === sId;
-                  const unread = unreadCounts[sId] || 0;
-                  return (
-                    <button
-                      key={sId}
-                      onClick={() => handleSelectSalon(sId)}
-                      className={`relative px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition shadow-sm cursor-pointer ${
-                        isActive
-                          ? 'bg-[#
+                {/* Affichage Document */}
+                {msg.file_type === 'document' && msg.file_url && (
+                  <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                    <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
+                    <div className="overflow-hidden flex-1">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
+                      <a 
+                        href={msg.file_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-[#0284c7] hover:underline flex items-center gap-1 font-medium mt-0.5"
+                      >
+                        <Download className="w-3 h-3" /> Télécharger
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Affichage Audio */}
+                {msg.file_type === 'audio' && msg.file_url && (
+                  <div className="mt-1 mb-1">
+                    <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end space-x-1 mt-1">
+                  <span className="text-[9px] text-gray-500">
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
+                </div>
+
+                {/* Bouton de suppression discret */}
+                {canDelete && (
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id, msg.sender)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow cursor-pointer"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Barre d'envoi de message */}
+      <div className="bg-[#f0f0f0] px-3 py-2.5 flex items-center space-x-2 border-t border-gray-300 shrink-0">
+        <div className="flex items-center space-x-1">
+          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
+            <ImageIcon className="w-5 h-5" />
+            <input 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, 'image')} 
+              disabled={uploading}
+            />
+          </label>
+
+          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
+            <FileText className="w-5 h-5" />
+            <input 
+              type="file" 
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, 'document')} 
+              disabled={uploading}
+            />
+          </label>
+        </div>
+
+        <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
+            disabled={uploading}
+            className="flex-1 bg-white px-4 py-2 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7]"
+          />
+
+          {newMessage.trim() ? (
+            <button
+              type="submit"
+              disabled={uploading}
+              className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`p-2.5 rounded-full transition shadow cursor-pointer ${
+                isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+              title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
+            >
+              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
+        </form>
+      </div>
+
+    </div>
+  );
+}
