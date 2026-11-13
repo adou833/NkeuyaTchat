@@ -449,7 +449,7 @@ export default function ChatRoom() {
       {/* CADRE SMARTPHONE HARMONISÉ EN BLEU CLAIR (#0284c7) */}
       <div className="flex flex-col h-full w-full max-w-full md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#0284c7] bg-[#efeae2] relative overflow-hidden shadow-2xl">
         
-        {/* EN-TÊTE BLEU CLAIR AVEC LE BOUTON MODE SOMBRE TOUT EN HAUT */}
+        {/* EN-TÊTE BLEU CLAIR AVEC LE BOUTON MODE SOMBRE */}
         <div className="bg-[#0284c7] text-white px-3 py-2.5 flex items-center justify-between shadow-md z-10 shrink-0">
           <div className="flex items-center space-x-2.5 min-w-0">
             <div className="relative shrink-0">
@@ -468,7 +468,7 @@ export default function ChatRoom() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* BOUTON MODE SOMBRE (VISIBLE EN PERMANENCE DANS L'EN-TÊTE) */}
+            {/* BOUTON MODE SOMBRE */}
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
               className="p-1.5 bg-sky-800/60 hover:bg-sky-700 rounded-full transition text-white shadow cursor-pointer text-xs font-bold border border-sky-400/40"
@@ -816,7 +816,7 @@ export default function ChatRoom() {
                 })}
             </div>
 
-            {/* CORPS DE LA DISCUSSION - MODE SOMBRE INTÉGRÉ */}
+            {/* CORPS DE LA DISCUSSION */}
             <div className={`flex-1 overflow-y-auto p-3 space-y-2.5 ${isDarkMode ? 'bg-[#0b141a]' : 'bg-[#efeae2]'} relative`}>
               
               {/* Badge de sécurité admin / utilisateur */}
@@ -841,6 +841,7 @@ export default function ChatRoom() {
                 }
 
                 return (
+                  /* ALIGNEMENT CORRIGÉ : isMe à droite (items-end), les autres à gauche (items-start) */
                   <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}>
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 shadow-sm relative text-xs ${
@@ -908,7 +909,7 @@ export default function ChatRoom() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* BARRE DE SAISIE ET ENVOI DE FICHIERS - MODE SOMBRE INTÉGRÉ */}
+            {/* BARRE DE SAISIE ET ENVOI DE FICHIERS */}
             <form onSubmit={handleSendMessage} className={`${isDarkMode ? 'bg-[#202c33] border-gray-700' : 'bg-[#f0f2f5] border-gray-300'} px-3 py-2.5 flex items-center gap-2 border-t shrink-0`}>
               
               {/* Input Fichier Caché */}
