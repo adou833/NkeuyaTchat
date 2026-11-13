@@ -8,9 +8,11 @@ export const metadata: Metadata = {
   title: "NkeuyaTchat",
   description: "Espace Familial Sécurisé",
   manifest: "/manifest.json",
-  icons: {
-    icon: "/icon.png",
-    apple: "/icon.png",
+  themeColor: "#0284c7",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NkeuyaTchat",
   },
 };
 
