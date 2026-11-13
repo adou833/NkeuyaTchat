@@ -26,7 +26,7 @@ export default function Home() {
   const ADMIN_NAME = "Eric MABOM";
   const OFFICIAL_SALONS = ['general', 'femmes', 'hommes', 'filles', 'garcons', 'petits-fils-et-filles'];
 
-  // 1. Redirection automatique et écoute Realtime de la validation
+  // Redirection automatique et écoute Realtime de la validation
   useEffect(() => {
     const savedUser = localStorage.getItem('chat_user');
     if (!savedUser) return;
@@ -54,7 +54,7 @@ export default function Home() {
         }
       });
 
-    // 🔴 Écoute en temps réel de la validation du compte par l'administrateur
+    // Écoute en temps réel de la validation du compte par l'administrateur
     const channel = supabase
       .channel(`user-status-${savedUser}`)
       .on(
