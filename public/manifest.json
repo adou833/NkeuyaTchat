@@ -1,1 +1,16 @@
-
+{
+  "name": "NkeuyaTchat",
+  "short_name": "NkeuyaTchat",
+  "description": "Espace Familial Sécurisé",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#222222",
+  "theme_color": "#0284c7",
+  "icons": [
+    {
+      "src": "/vercel.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
