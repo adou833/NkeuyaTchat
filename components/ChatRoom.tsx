@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { 
   Send, 
-  Image as ImageIcon, 
+  ImageIcon, 
   FileText, 
   Mic, 
   Square, 
@@ -48,10 +48,12 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   const audioChunksRef = useRef<Blob[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const salonTitles: { [key: string]: string } = {
     general: 'Général',
+    'photos-familiales': 'Photos familiales',
     femmes: 'Femmes',
     hommes: 'Hommes',
     filles: 'Filles',
@@ -80,6 +82,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   }, [router]);
 
+  // Chargement et écoute Realtime des messages du salon
   useEffect(() => {
     if (!salonId) return;
 
@@ -113,18 +116,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
             if (prev.some((msg) => msg.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const updatedMsg = payload.new as Message;
-          setMessages((prev) => prev.map((msg) => msg.id === updatedMsg.id ? updatedMsg : msg));
         }
       )
       .on(
@@ -175,7 +166,8 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     setNewMessage((prev) => prev + emoji);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
+  // Gestion universelle des fichiers (Images, Vidéos, Documents)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !fullName) return;
 
@@ -185,26 +177,40 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${salonId}/${fileName}`;
 
+      let fileType = 'document';
+      if (file.type.startsWith('image/')) fileType = 'image';
+      else if (file.type.startsWith('video/')) fileType = 'video';
+      else if (file.type.startsWith('audio/')) fileType = 'audio';
+
       const { error: uploadError } = await supabase.storage
-        .from('chat-media')
+        .from('chat_media') // Nom standardisé du bucket
         .upload(filePath, file);
 
       if (uploadError) {
-        alert("Erreur lors de l'envoi du fichier : " + uploadError.message);
-        setUploading(false);
-        return;
+        // Fallback si le bucket s'appelle chat-media
+        const { error: fallbackError } = await supabase.storage
+          .from('chat-media')
+          .upload(filePath, file);
+
+        if (fallbackError) {
+          alert("Erreur lors de l'envoi du fichier : " + uploadError.message);
+          setUploading(false);
+          return;
+        }
       }
 
       const { data: publicUrlData } = supabase.storage
-        .from('chat-media')
+        .from('chat_media')
         .getPublicUrl(filePath);
+
+      const finalUrl = publicUrlData?.publicUrl || supabase.storage.from('chat-media').getPublicUrl(filePath).data.publicUrl;
 
       await supabase.from('messages').insert([
         {
           salon: salonId,
           sender: fullName,
-          content: fileType === 'image' ? '📷 Image' : `📎 ${file.name}`,
-          file_url: publicUrlData.publicUrl,
+          content: fileType === 'image' ? '📷 Image' : fileType === 'video' ? '🎬 Vidéo' : `📎 ${file.name}`,
+          file_url: finalUrl,
           file_type: fileType,
           file_name: file.name,
           reactions: {},
@@ -214,7 +220,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       alert("Erreur inattendue : " + err.message);
     } finally {
       setUploading(false);
-      e.target.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -259,25 +265,25 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       const filePath = `${salonId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('chat-media')
+        .from('chat_media')
         .upload(filePath, blob);
 
       if (uploadError) {
-        alert("Erreur d'envoi audio : " + uploadError.message);
-        setUploading(false);
-        return;
+        await supabase.storage.from('chat-media').upload(filePath, blob);
       }
 
       const { data: publicUrlData } = supabase.storage
-        .from('chat-media')
+        .from('chat_media')
         .getPublicUrl(filePath);
+
+      const finalUrl = publicUrlData?.publicUrl || supabase.storage.from('chat-media').getPublicUrl(filePath).data.publicUrl;
 
       await supabase.from('messages').insert([
         {
           salon: salonId,
           sender: fullName,
           content: '🎤 Message vocal',
-          file_url: publicUrlData.publicUrl,
+          file_url: finalUrl,
           file_type: 'audio',
           file_name: 'Message vocal',
           reactions: {},
@@ -291,20 +297,30 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   };
 
   const handleDeleteMessage = async (messageId: string, sender: string) => {
-    if (fullName !== ADMIN_NAME && fullName !== sender) return;
+    const isAdmin = fullName?.toLowerCase() === ADMIN_NAME.toLowerCase();
+    const isMe = fullName?.trim().toLowerCase() === sender?.trim().toLowerCase();
+
+    if (!isMe && !isAdmin) {
+      alert("Tu ne peux supprimer que tes propres messages !");
+      return;
+    }
+
     if (!confirm("Voulez-vous supprimer ce message ?")) return;
 
-    await supabase.from('messages').delete().eq('id', messageId);
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) {
+      alert("Erreur lors de la suppression : " + error.message);
+    }
   };
 
   return (
     <div className="flex flex-col h-full bg-[#efeae2] relative">
       
-      {/* En-tête du Salon */}
+      {/* En-tête du Salon (Bleu ciel #0284c7) */}
       <header className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
         <div className="flex items-center space-x-3">
           <button 
-            onClick={() => router.push('/salon/general')} 
+            onClick={() => router.push('/chat')} 
             className="p-1 rounded-full hover:bg-sky-600 transition cursor-pointer"
             title="Retour"
           >
@@ -337,11 +353,11 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         </div>
       </header>
 
-      {/* Corps des Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(#e5ddd5_1px,transparent_1px)] [background-size:16px_16px]">
+      {/* Corps des Messages avec Scrollbar fine */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(#e5ddd5_1px,transparent_1px)] [background-size:16px_16px] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-400/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
         {messages.map((msg) => {
-          const isMe = msg.sender === fullName;
-          const isAdmin = fullName === ADMIN_NAME;
+          const isMe = msg.sender?.trim().toLowerCase() === fullName?.trim().toLowerCase();
+          const isAdmin = fullName?.toLowerCase() === ADMIN_NAME.toLowerCase();
           const canDelete = isMe || isAdmin;
 
           return (
@@ -349,87 +365,101 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               key={msg.id} 
               className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} my-2`}
             >
-              <div className="max-w-[85%] sm:max-w-[70%] relative">
-                <div 
-                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative ${
-                    isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
-                  }`}
-                >
-                  {!isMe && (
-                    <p className="text-[11px] font-bold text-[#0284c7] mb-0.5">
-                      {msg.sender}
-                    </p>
-                  )}
+            <div className="max-w-[85%] sm:max-w-[70%] relative">
+              <div 
+                className={`rounded-2xl px-4 py-2.5 shadow-sm relative ${
+                  isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
+                }`}
+              >
+                {!isMe && (
+                  <p className="text-[11px] font-bold text-[#0284c7] mb-0.5">
+                    {msg.sender}
+                  </p>
+                )}
 
-                  {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
-                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
-                      {msg.content}
-                    </p>
-                  )}
+                {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('🎬') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
+                  <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
+                    {msg.content}
+                  </p>
+                )}
 
-                  {msg.file_type === 'image' && msg.file_url && (
-                    <div className="mt-1 mb-1">
-                      <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                        <img 
-                          src={msg.file_url} 
-                          alt="Média partagé" 
-                          className="rounded-lg max-h-60 w-auto object-cover hover:opacity-95 transition shadow-sm" 
-                        />
+                {/* Affichage Image */}
+              {msg.file_type === 'image' && msg.file_url && (
+                  <div className="mt-1 mb-1">
+                    <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                      <img 
+                        src={msg.file_url} 
+                        alt="Média partagé" 
+                        className="rounded-lg max-h-60 w-auto object-cover hover:opacity-95 transition shadow-sm" 
+                      />
+                    </a>
+                  </div>
+              )}
+
+                {/* Affichage Vidéo (Corrigé pour afficher le clip vidéo) */}
+                {msg.file_type === 'video' && msg.file_url && (
+                  <div className="mt-1 mb-1 w-full max-w-xs overflow-hidden rounded-lg bg-black">
+                    <video controls playsInline preload="metadata" className="max-h-56 w-full object-contain">
+                      <source src={msg.file_url} type="video/mp4" />
+                      <source src={msg.file_url} type="video/webm" />
+                      Votre navigateur ne supporte pas la lecture vidéo.
+                    </video>
+                  </div>
+                )}
+
+                {/* Affichage Document */}
+              {msg.file_type === 'document' && msg.file_url && (
+                  <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                    <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
+                    <div className="overflow-hidden flex-1">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
+                      <a 
+                        href={msg.file_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-[#0284c7] hover:underline flex items-center gap-1 font-medium mt-0.5"
+                      >
+                        <Download className="w-3 h-3" /> Télécharger
                       </a>
                     </div>
-                  )}
-
-                  {msg.file_type === 'document' && msg.file_url && (
-                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                      <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
-                      <div className="overflow-hidden flex-1">
-                        <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
-                        <a 
-                          href={msg.file_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-[#0284c7] hover:underline flex items-center gap-1 font-medium mt-0.5"
-                        >
-                          <Download className="w-3 h-3" /> Télécharger
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {msg.file_type === 'audio' && msg.file_url && (
-                    <div className="mt-1 mb-1">
-                      <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end space-x-1 mt-1">
-                    <span className="text-[9px] text-gray-500">
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
                   </div>
+              )}
 
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id, msg.sender)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow cursor-pointer hover:bg-red-600 transition"
-                      title="Supprimer"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
+                {/* Affichage Audio */}
+              {msg.file_type === 'audio' && msg.file_url && (
+                  <div className="mt-1 mb-1">
+                    <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
+                  </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-1 mt-1">
+                <span className="text-[9px] text-gray-500">
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
               </div>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
+
+              {canDelete && (
+                <button
+                  onClick={() => handleDeleteMessage(msg.id, msg.sender)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow cursor-pointer hover:bg-red-600 transition"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          </div>
+        </div>
+        );
+      })}
+      <div ref={messagesEndRef} />
       </div>
 
-      {/* Barre inférieure : Émojis à succès fixes + Zone de saisie */}
+      {/* Barre inférieure de saisie */}
       <div className="bg-[#f0f0f0] flex flex-col border-t border-gray-300 shrink-0 z-20">
         
-        {/* Barre des émojis les plus populaires */}
+        {/* Émojis populaires */}
         <div className="px-3 py-1.5 flex items-center space-x-2 overflow-x-auto bg-[#e5ddd5]/60 border-b border-gray-300 scrollbar-none">
           {POPULAR_EMOJIS.map((emoji) => (
             <button
@@ -444,16 +474,16 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           ))}
         </div>
 
-        {/* Ligne de saisie du message */}
+        {/* Ligne de saisie */}
         <div className="px-3 py-2 flex items-center space-x-2">
           <div className="flex items-center space-x-1">
-            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
+            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image ou vidéo">
               <ImageIcon className="w-5 h-5" />
               <input 
                 type="file" 
-                accept="image/*" 
+                accept="image/*,video/*" 
                 className="hidden" 
-                onChange={(e) => handleFileUpload(e, 'image')} 
+                onChange={handleFileUpload} 
                 disabled={uploading}
               />
             </label>
@@ -464,7 +494,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 type="file" 
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
                 className="hidden" 
-                onChange={(e) => handleFileUpload(e, 'document')} 
+                onChange={handleFileUpload} 
                 disabled={uploading}
               />
             </label>
@@ -505,6 +535,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
       </div>
 
-    </div>
+  </div>
   );
 }
