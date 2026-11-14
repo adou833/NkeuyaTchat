@@ -37,7 +37,6 @@ export default function Home() {
       return;
     }
 
-    // Vérification initiale du statut
     supabase
       .from('users')
       .select('status, salons')
@@ -54,7 +53,6 @@ export default function Home() {
         }
       });
 
-    // Écoute en temps réel de la validation du compte par l'administrateur
     const channel = supabase
       .channel(`user-status-${savedUser}`)
       .on(
@@ -99,7 +97,6 @@ export default function Home() {
     const cleanPassword = String(password.trim());
 
     try {
-      // Compte Admin automatique
       if (fullNameClean.toLowerCase() === ADMIN_NAME.toLowerCase()) {
         localStorage.setItem('chat_user', fullNameClean);
         localStorage.setItem('chat_salons', JSON.stringify(OFFICIAL_SALONS));
@@ -117,7 +114,6 @@ export default function Home() {
         return;
       }
 
-      // Vérifier si le membre existe déjà
       const { data: existingUser } = await supabase
         .from('users')
         .select('*')
@@ -130,7 +126,6 @@ export default function Home() {
         return;
       }
 
-      // Insertion sécurisée
       const { error: insertError } = await supabase.from('users').insert([
         {
           full_name: fullNameClean,
@@ -161,7 +156,6 @@ export default function Home() {
     const cleanLoginPassword = String(loginPassword.trim());
 
     try {
-      // Authentification Admin
       if (cleanName.toLowerCase() === ADMIN_NAME.toLowerCase()) {
         localStorage.setItem('chat_user', cleanName);
         localStorage.setItem('chat_salons', JSON.stringify(OFFICIAL_SALONS));
@@ -174,7 +168,6 @@ export default function Home() {
         return;
       }
 
-      // Recherche du membre
       const { data: existingUser, error } = await supabase
         .from('users')
         .select('*')
@@ -187,7 +180,6 @@ export default function Home() {
         return;
       }
 
-      // Vérification du mot de passe
       if (existingUser.password && existingUser.password !== cleanLoginPassword) {
         alert("Mot de passe incorrect.");
         setLoading(false);
@@ -211,205 +203,221 @@ export default function Home() {
 
   return (
     <main className="h-[100dvh] w-screen flex items-center justify-center bg-[#222222] p-0 sm:p-4 overflow-hidden">
-      <div className="w-full h-full sm:max-w-md sm:max-h-[950px] bg-[#efeae2] sm:rounded-[38px] shadow-2xl flex items-center justify-center p-6 relative overflow-hidden sm:border-4 sm:border-[#0284c7]">
+      <div className="w-full h-full sm:max-w-md sm:max-h-[950px] bg-[#efeae2] sm:rounded-[38px] shadow-2xl flex flex-col relative overflow-hidden sm:border-4 sm:border-[#0284c7]">
         
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border border-gray-200 flex flex-col justify-center overflow-y-auto max-h-[90vh]">
-          <div className="text-center mb-4">
-            <div className="w-12 h-12 bg-[#0284c7] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 shadow">
-              👨‍👩‍👧‍👦
-            </div>
-            <h1 className="text-xl font-bold text-gray-800">NkeuyaTchat</h1>
-            <p className="text-[11px] text-gray-500 mt-0.5">Espace Familial Sécurisé</p>
+        {/* Bandeau supérieur bleu avec le titre NkeuyaTchat */}
+        <header className="bg-[#0284c7] text-white px-4 py-3 flex items-center space-x-3 shadow-md z-10 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg shadow">
+            💬
           </div>
+          <div>
+            <h1 className="font-bold text-base leading-tight">NkeuyaTchat</h1>
+            <p className="text-[11px] text-sky-100">Espace Familial Sécurisé</p>
+          </div>
+        </header>
 
-          {status === 'en_attente' ? (
-            <div className="bg-amber-50 border border-amber-200 text-amber-950 p-4 rounded-xl text-center space-y-3">
-              <div className="animate-spin w-6 h-6 border-3 border-amber-600 border-t-transparent rounded-full mx-auto"></div>
-              <h2 className="font-bold text-sm">En attente de validation</h2>
-              <p className="text-xs text-amber-800 leading-relaxed">
-                Votre demande d'accès a bien été transmise à l'administrateur. Dès qu'elle sera validée, vous serez automatiquement connecté.
-              </p>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('chat_user');
-                  setStatus('idle');
-                }}
-                className="mt-2 text-xs text-amber-900 underline font-semibold block mx-auto cursor-pointer"
-              >
-                Changer de compte / Retour
-              </button>
+        {/* Corps de la page de connexion */}
+        <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border border-gray-200 flex flex-col justify-center">
+            
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-[#0284c7] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 shadow">
+                👨‍👩‍👧‍👦
+              </div>
+              <h2 className="text-lg font-bold text-gray-800">Bienvenue en famille</h2>
+              <p className="text-[11px] text-gray-500 mt-0.5">Connectez-vous pour accéder aux salons</p>
             </div>
-          ) : status === 'refuse' ? (
-            <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-center space-y-3">
-              <h2 className="font-bold text-sm">Accès Refusé</h2>
-              <p className="text-xs">L'administrateur a refusé l'accès pour ce compte.</p>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('chat_user');
-                  setStatus('idle');
-                }}
-                className="mt-2 text-xs bg-red-600 text-white px-4 py-2 rounded-lg font-medium cursor-pointer"
-              >
-                Réessayer
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
+
+            {status === 'en_attente' ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-950 p-4 rounded-xl text-center space-y-3">
+                <div className="animate-spin w-6 h-6 border-3 border-amber-600 border-t-transparent rounded-full mx-auto"></div>
+                <h3 className="font-bold text-sm">En attente de validation</h3>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Votre demande d'accès a bien été transmise à l'administrateur. Dès qu'elle sera validée, vous serez automatiquement connecté.
+                </p>
                 <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                    mode === 'login' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  onClick={() => {
+                    localStorage.removeItem('chat_user');
+                    setStatus('idle');
+                  }}
+                  className="mt-2 text-xs text-amber-900 underline font-semibold block mx-auto cursor-pointer"
                 >
-                  Se Connecter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('register')}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                    mode === 'register' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  S'inscrire
+                  Changer de compte / Retour
                 </button>
               </div>
-
-              {mode === 'login' ? (
-                <form onSubmit={handleLogin} className="space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      Votre Prénom et Nom
-                    </label>
-                    <input
-                      type="text"
-                      value={loginName}
-                      onChange={(e) => setLoginName(e.target.value)}
-                      placeholder="Ex: Eric MABOM"
-                      required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      Mot de passe
-                    </label>
-                    <input
-                      type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
+            ) : status === 'refuse' ? (
+              <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl text-center space-y-3">
+                <h3 className="font-bold text-sm">Accès Refusé</h3>
+                <p className="text-xs">L'administrateur a refusé l'accès pour ce compte.</p>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('chat_user');
+                    setStatus('idle');
+                  }}
+                  className="mt-2 text-xs bg-red-600 text-white px-4 py-2 rounded-lg font-medium cursor-pointer"
+                >
+                  Réessayer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer"
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                      mode === 'login' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
+                    }`}
                   >
-                    {loading ? 'Connexion...' : 'Se Connecter'}
+                    Se Connecter
                   </button>
-                </form>
-              ) : (
-                <form onSubmit={handleRegister} className="space-y-2.5">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      * Nom
-                    </label>
-                    <input
-                      type="text"
-                      value={nom}
-                      onChange={(e) => setNom(e.target.value)}
-                      placeholder="Ex: nkeuya"
-                      required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      * Prénom
-                    </label>
-                    <input
-                      type="text"
-                      value={prenom}
-                      onChange={(e) => setPrenom(e.target.value)}
-                      placeholder="Ex: Jean"
-                      required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      * Numéro de téléphone
-                    </label>
-                    <input
-                      type="tel"
-                      value={telephone}
-                      onChange={(e) => setTelephone(e.target.value)}
-                      placeholder="Ex: +237 6XXXXXXXX"
-                      required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      Adresse mail
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Ex: jean@example.com"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      * Mot de passe
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Choisissez un mot de passe"
-                      required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
-                      * Confirmer le mot de passe
-                    </label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Répétez votre mot de passe"
-                      required
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
-                    />
-                  </div>
-
                   <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer mt-1"
+                    type="button"
+                    onClick={() => setMode('register')}
+                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                      mode === 'register' ? 'bg-[#0284c7] text-white shadow' : 'text-gray-600 hover:text-gray-900'
+                    }`}
                   >
-                    {loading ? 'Envoi...' : "Demande d'accès"}
+                    S'inscrire
                   </button>
-                </form>
-              )}
-            </>
-          )}
+                </div>
+
+                {mode === 'login' ? (
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        Votre Prénom et Nom
+                      </label>
+                      <input
+                        type="text"
+                        value={loginName}
+                        onChange={(e) => setLoginName(e.target.value)}
+                        placeholder="Ex: Eric MABOM"
+                        required
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        Mot de passe
+                      </label>
+                      <input
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer"
+                    >
+                      {loading ? 'Connexion...' : 'Se Connecter'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleRegister} className="space-y-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        * Nom
+                      </label>
+                      <input
+                        type="text"
+                        value={nom}
+                        onChange={(e) => setNom(e.target.value)}
+                        placeholder="Ex: nkeuya"
+                        required
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        * Prénom
+                      </label>
+                      <input
+                        type="text"
+                        value={prenom}
+                        onChange={(e) => setPrenom(e.target.value)}
+                        placeholder="Ex: Jean"
+                        required
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        * Numéro de téléphone
+                      </label>
+                      <input
+                        type="tel"
+                        value={telephone}
+                        onChange={(e) => setTelephone(e.target.value)}
+                        placeholder="Ex: +237 6XXXXXXXX"
+                        required
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        Adresse mail
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Ex: jean@example.com"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        * Mot de passe
+                      </label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Choisissez un mot de passe"
+                        required
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">
+                        * Confirmer le mot de passe
+                      </label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Répétez votre mot de passe"
+                        required
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs focus:outline-none focus:border-[#0284c7]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-[#0284c7] hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg transition shadow-md disabled:opacity-50 text-xs cursor-pointer mt-1"
+                    >
+                      {loading ? 'Envoi...' : "Demande d'accès"}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+          </div>
         </div>
 
       </div>
