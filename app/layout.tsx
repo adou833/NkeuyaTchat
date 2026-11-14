@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
+import './globals.css';
 
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "NkeuyaTchat",
-  description: "Espace Familial Sécurisé",
-  manifest: "/manifest.json",
+export const metadata = {
+  title: 'NkeuyaTchat',
+  description: 'Espace familial sécurisé',
 };
 
 export default function RootLayout({
@@ -17,7 +12,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className={inter.className}>{children}</body>
+      <body style={{ margin: 0, padding: 0, backgroundColor: '#111b21', fontFamily: 'sans-serif' }}>
+        {children}
+      </body>
     </html>
   );
 }
