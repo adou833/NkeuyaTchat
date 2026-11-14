@@ -382,15 +382,15 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           return (
             <div 
               key={msg.id} 
-              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group relative`}
+              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group relative my-2`}
             >
-              <div className="flex items-end space-x-1 max-w-[85%] sm:max-w-[70%]">
+              <div className="flex items-end space-x-1 max-w-[85%] sm:max-w-[70%] relative">
                 
-                {/* Bouton émoji WhatsApp sur les messages reçus */}
+                {/* Bouton émoji sur les messages reçus */}
                 {!isMe && (
                   <button
                     onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
-                    className="opacity-0 group-hover:opacity-100 transition p-1 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 transition p-1.5 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer z-10"
                     title="Réagir"
                   >
                     <Smile className="w-4 h-4" />
@@ -472,15 +472,30 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   )}
                 </div>
 
-                {/* Bouton émoji WhatsApp sur ses propres messages */}
+                {/* Bouton émoji sur ses propres messages */}
                 {isMe && (
                   <button
                     onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
-                    className="opacity-0 group-hover:opacity-100 transition p-1 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 transition p-1.5 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer z-10"
                     title="Réagir"
                   >
                     <Smile className="w-4 h-4" />
                   </button>
+                )}
+
+                {/* Palette pop-up d'émojis (Façon WhatsApp) */}
+                {showPicker && (
+                  <div className={`absolute z-30 -top-12 ${isMe ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-2xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150`}>
+                    {QUICK_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
+                        className="hover:scale-125 transition transform text-xl p-1 cursor-pointer"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -508,21 +523,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 </div>
               )}
 
-              {/* Palette pop-up d'émojis (Façon WhatsApp) */}
-              {showPicker && (
-                <div className={`absolute z-20 top-0 ${isMe ? 'right-12' : 'left-12'} bg-white border border-gray-200 shadow-xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150`}>
-                  {QUICK_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
-                      className="hover:scale-125 transition transform text-lg p-1 cursor-pointer"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-
             </div>
           );
         })}
@@ -538,4 +538,56 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               type="file" 
               accept="image/*" 
               className="hidden" 
-              onChange={(e) => handleFileUpload(e, 'image')}
+              onChange={(e) => handleFileUpload(e, 'image')} 
+              disabled={uploading}
+            />
+          </label>
+
+          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
+            <FileText className="w-5 h-5" />
+            <input 
+              type="file" 
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
+              className="hidden" 
+              onChange={(e) => handleFileUpload(e, 'document')} 
+              disabled={uploading}
+            />
+          </label>
+        </div>
+
+        <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
+            disabled={uploading}
+            className="flex-1 bg-white px-4 py-2 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7]"
+          />
+
+          {newMessage.trim() ? (
+            <button
+              type="submit"
+              disabled={uploading}
+              className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`p-2.5 rounded-full transition shadow cursor-pointer ${
+                isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+              title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
+            >
+              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+          )}
+        </form>
+      </div>
+
+    </div>
+  );
+}
