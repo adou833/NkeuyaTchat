@@ -14,7 +14,7 @@ export default function SalonPage({ params }: PageProps) {
   const salonId = resolvedParams.id;
 
   return (
-    <main className="h-screen w-screen overflow-hidden">
+    <main className="h-dvh w-screen overflow-hidden">
       <ChatRoom salonId={salonId} />
     </main>
   );
