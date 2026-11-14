@@ -13,8 +13,7 @@ import {
   Video, 
   CheckCheck, 
   Download,
-  Trash2,
-  Smile
+  Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -35,7 +34,7 @@ interface ChatRoomProps {
 }
 
 const ADMIN_NAME = "Eric MABOM";
-const POPULAR_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '🎉', '😢', '😍', '👏', '😁', '😎', 'ab', '💪', '✨'];
+const POPULAR_EMOJIS = ['👍', '❤️', '😂', '🙏', '🔥', '😊', '🎉', '💪', '😍', '✨'];
 
 export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,7 +42,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [fullName, setFullName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [allowedSalons, setAllowedSalons] = useState<string[]>([]);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   // États pour l'enregistrement audio
   const [isRecording, setIsRecording] = useState(false);
@@ -159,7 +157,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
     const contentToSend = newMessage.trim();
     setNewMessage('');
-    setShowEmojiPicker(false);
 
     const { error } = await supabase.from('messages').insert([
       {
@@ -430,26 +427,26 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Zone de saisie et sélecteur d'émojis WhatsApp */}
-      <div className="bg-[#f0f0f0] px-3 py-2.5 relative flex flex-col border-t border-gray-300 shrink-0 z-20">
+      {/* Barre inférieure : Émojis à succès fixes + Zone de saisie */}
+      <div className="bg-[#f0f0f0] flex flex-col border-t border-gray-300 shrink-0 z-20">
         
-        {/* Grille d'émojis flottante (Apparaît au clic sur le smiley) */}
-        {showEmojiPicker && (
-          <div className="absolute bottom-16 left-3 bg-white border border-gray-300 shadow-2xl rounded-2xl p-3 grid grid-cols-5 gap-2 z-50">
-            {POPULAR_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => addEmojiToInput(emoji)}
-                className="text-2xl hover:scale-125 transition transform p-1.5 cursor-pointer flex items-center justify-center bg-gray-50 hover:bg-sky-50 rounded-lg"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Barre des émojis les plus populaires directement accessible au-dessus du clavier / de l'input */}
+        <div className="px-3 py-1.5 flex items-center space-x-2 overflow-x-auto bg-[#e5ddd5]/60 border-b border-gray-300 scrollbar-none">
+          {POPULAR_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => addEmojiToInput(emoji)}
+              className="text-xl sm:text-2xl hover:scale-125 transition transform p-1 cursor-pointer shrink-0 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-xs"
+              title={`Ajouter ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Ligne de saisie du message */}
+        <div className="px-3 py-2 flex items-center space-x-2">
           <div className="flex items-center space-x-1">
             <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
               <ImageIcon className="w-5 h-5" />
@@ -475,27 +472,14 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           </div>
 
           <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
-            <div className="flex-1 relative flex items-center bg-white rounded-full border border-gray-300 px-3 shadow-inner">
-              
-              {/* Bouton émoji (Smiley) dans la barre de saisie */}
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="text-gray-500 hover:text-[#0284c7] transition p-1 cursor-pointer mr-1 shrink-0"
-                title="Choisir un émoji"
-              >
-                <Smile className="w-6 h-6" />
-              </button>
-
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
-                disabled={uploading}
-                className="w-full py-2.5 text-xs sm:text-sm focus:outline-none bg-transparent"
-              />
-            </div>
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
+              disabled={uploading}
+              className="flex-1 bg-white px-4 py-2.5 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7] shadow-inner"
+            />
 
             {newMessage.trim() ? (
               <button
@@ -508,20 +492,4 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
             ) : (
               <button
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`p-2.5 rounded-full transition shadow cursor-pointer shrink-0 ${
-                  isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-                title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
-              >
-                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </button>
-            )}
-          </form>
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
+                onClick={isRecording ?
