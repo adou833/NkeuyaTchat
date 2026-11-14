@@ -11,8 +11,6 @@ import {
   ArrowLeft, 
   Phone, 
   Video, 
-  Smile, 
-  Check, 
   CheckCheck, 
   Download,
   Trash2
@@ -28,7 +26,7 @@ interface Message {
   file_type?: string;
   file_name?: string;
   created_at: string;
-  status?: string;
+  reactions?: { [emoji: string]: string[] };
 }
 
 interface ChatRoomProps {
@@ -36,6 +34,7 @@ interface ChatRoomProps {
 }
 
 const ADMIN_NAME = "Eric MABOM";
+const POPULAR_EMOJIS = ['👍', '❤️', '😂', '🙏', '🔥', '😊', '🎉', '💪', '😍', '✨'];
 
 export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,7 +43,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [uploading, setUploading] = useState(false);
   const [allowedSalons, setAllowedSalons] = useState<string[]>([]);
   
-  // États pour l'enregistrement audio
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -63,7 +61,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
   const currentTitle = salonTitles[salonId] || salonId;
 
-  // Charger l'utilisateur et les salons autorisés
   useEffect(() => {
     const user = localStorage.getItem('chat_user');
     const salons = localStorage.getItem('chat_salons');
@@ -83,7 +80,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   }, [router]);
 
-  // Charger les messages et écouter le Realtime
   useEffect(() => {
     if (!salonId) return;
 
@@ -122,6 +118,18 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const updatedMsg = payload.new as Message;
+          setMessages((prev) => prev.map((msg) => msg.id === updatedMsg.id ? updatedMsg : msg));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'DELETE',
           schema: 'public',
           table: 'messages',
@@ -138,12 +146,10 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     };
   }, [salonId]);
 
-  // Scroll automatique en bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Envoyer un message texte
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !fullName) return;
@@ -156,6 +162,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         salon: salonId,
         sender: fullName,
         content: contentToSend,
+        reactions: {},
       },
     ]);
 
@@ -164,7 +171,10 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Envoyer un fichier (image ou document)
+  const addEmojiToInput = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
     const file = e.target.files?.[0];
     if (!file || !fullName) return;
@@ -197,6 +207,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           file_url: publicUrlData.publicUrl,
           file_type: fileType,
           file_name: file.name,
+          reactions: {},
         },
       ]);
     } catch (err: any) {
@@ -207,7 +218,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Enregistrement Audio
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -270,6 +280,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           file_url: publicUrlData.publicUrl,
           file_type: 'audio',
           file_name: 'Message vocal',
+          reactions: {},
         },
       ]);
     } catch (err: any) {
@@ -279,7 +290,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Supprimer un message (Admin ou auteur)
   const handleDeleteMessage = async (messageId: string, sender: string) => {
     if (fullName !== ADMIN_NAME && fullName !== sender) return;
     if (!confirm("Voulez-vous supprimer ce message ?")) return;
@@ -288,7 +298,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#efeae2] relative overflow-hidden">
+    <div className="flex flex-col h-full bg-[#efeae2] relative">
       
       {/* En-tête du Salon */}
       <header className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
@@ -328,7 +338,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       </header>
 
       {/* Corps des Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(#e5ddd5_1px,transparent_1px)] [background-size:16px_16px]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[radial-gradient(#e5ddd5_1px,transparent_1px)] [background-size:16px_16px]">
         {messages.map((msg) => {
           const isMe = msg.sender === fullName;
           const isAdmin = fullName === ADMIN_NAME;
@@ -337,81 +347,78 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           return (
             <div 
               key={msg.id} 
-              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
+              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} my-2`}
             >
-              <div 
-                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm relative ${
-                  isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
-                }`}
-              >
-                {!isMe && (
-                  <p className="text-[11px] font-bold text-[#0284c7] mb-0.5">
-                    {msg.sender}
-                  </p>
-                )}
+              <div className="max-w-[85%] sm:max-w-[70%] relative">
+                <div 
+                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative ${
+                    isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
+                  }`}
+                >
+                  {!isMe && (
+                    <p className="text-[11px] font-bold text-[#0284c7] mb-0.5">
+                      {msg.sender}
+                    </p>
+                  )}
 
-                {/* Affichage du contenu texte s'il y en a */}
-                {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
-                  <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
-                    {msg.content}
-                  </p>
-                )}
+                  {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
+                      {msg.content}
+                    </p>
+                  )}
 
-                {/* Affichage Image */}
-                {msg.file_type === 'image' && msg.file_url && (
-                  <div className="mt-1 mb-1">
-                    <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
-                      <img 
-                        src={msg.file_url} 
-                        alt="Média partagé" 
-                        className="rounded-lg max-h-60 w-auto object-cover hover:opacity-95 transition shadow-sm" 
-                      />
-                    </a>
-                  </div>
-                )}
-
-                {/* Affichage Document */}
-                {msg.file_type === 'document' && msg.file_url && (
-                  <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                    <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
-                    <div className="overflow-hidden flex-1">
-                      <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
-                      <a 
-                        href={msg.file_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-[#0284c7] hover:underline flex items-center gap-1 font-medium mt-0.5"
-                      >
-                        <Download className="w-3 h-3" /> Télécharger
+                  {msg.file_type === 'image' && msg.file_url && (
+                    <div className="mt-1 mb-1">
+                      <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
+                        <img 
+                          src={msg.file_url} 
+                          alt="Média partagé" 
+                          className="rounded-lg max-h-60 w-auto object-cover hover:opacity-95 transition shadow-sm" 
+                        />
                       </a>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Affichage Audio */}
-                {msg.file_type === 'audio' && msg.file_url && (
-                  <div className="mt-1 mb-1">
-                    <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
-                  </div>
-                )}
+                  {msg.file_type === 'document' && msg.file_url && (
+                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                      <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
+                      <div className="overflow-hidden flex-1">
+                        <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
+                        <a 
+                          href={msg.file_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-[#0284c7] hover:underline flex items-center gap-1 font-medium mt-0.5"
+                        >
+                          <Download className="w-3 h-3" /> Télécharger
+                        </a>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex items-center justify-end space-x-1 mt-1">
-                  <span className="text-[9px] text-gray-500">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
+                  {msg.file_type === 'audio' && msg.file_url && (
+                    <div className="mt-1 mb-1">
+                      <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end space-x-1 mt-1">
+                    <span className="text-[9px] text-gray-500">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
+                  </div>
+
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDeleteMessage(msg.id, msg.sender)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow cursor-pointer hover:bg-red-600 transition"
+                      title="Supprimer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
-
-                {/* Bouton de suppression discret */}
-                {canDelete && (
-                  <button
-                    onClick={() => handleDeleteMessage(msg.id, msg.sender)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow cursor-pointer"
-                    title="Supprimer"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
               </div>
             </div>
           );
@@ -419,63 +426,83 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Barre d'envoi de message */}
-      <div className="bg-[#f0f0f0] px-3 py-2.5 flex items-center space-x-2 border-t border-gray-300 shrink-0">
-        <div className="flex items-center space-x-1">
-          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
-            <ImageIcon className="w-5 h-5" />
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={(e) => handleFileUpload(e, 'image')} 
-              disabled={uploading}
-            />
-          </label>
-
-          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
-            <FileText className="w-5 h-5" />
-            <input 
-              type="file" 
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
-              className="hidden" 
-              onChange={(e) => handleFileUpload(e, 'document')} 
-              disabled={uploading}
-            />
-          </label>
+      {/* Barre inférieure : Émojis à succès fixes + Zone de saisie */}
+      <div className="bg-[#f0f0f0] flex flex-col border-t border-gray-300 shrink-0 z-20">
+        
+        {/* Barre des émojis les plus populaires */}
+        <div className="px-3 py-1.5 flex items-center space-x-2 overflow-x-auto bg-[#e5ddd5]/60 border-b border-gray-300 scrollbar-none">
+          {POPULAR_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => addEmojiToInput(emoji)}
+              className="text-xl sm:text-2xl hover:scale-125 transition transform p-1 cursor-pointer shrink-0 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-xs"
+              title={`Ajouter ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
         </div>
 
-        <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
-            disabled={uploading}
-            className="flex-1 bg-white px-4 py-2 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7]"
-          />
+        {/* Ligne de saisie du message */}
+        <div className="px-3 py-2 flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
+            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
+              <ImageIcon className="w-5 h-5" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={(e) => handleFileUpload(e, 'image')} 
+                disabled={uploading}
+              />
+            </label>
 
-          {newMessage.trim() ? (
-            <button
-              type="submit"
+            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
+              <FileText className="w-5 h-5" />
+              <input 
+                type="file" 
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
+                className="hidden" 
+                onChange={(e) => handleFileUpload(e, 'document')} 
+                disabled={uploading}
+              />
+            </label>
+          </div>
+
+          <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
               disabled={uploading}
-              className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`p-2.5 rounded-full transition shadow cursor-pointer ${
-                isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
-            >
-              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </button>
-          )}
-        </form>
+              className="flex-1 bg-white px-4 py-2.5 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7] shadow-inner"
+            />
+
+            {newMessage.trim() ? (
+              <button
+                type="submit"
+                disabled={uploading}
+                className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`p-2.5 rounded-full transition shadow cursor-pointer shrink-0 ${
+                  isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
+              >
+                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
+          </form>
+        </div>
+
       </div>
 
     </div>
