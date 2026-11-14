@@ -27,7 +27,7 @@ interface Message {
   file_type?: string;
   file_name?: string;
   created_at: string;
-  reactions?: { [emoji: string]: string[] }; // Ex: { "❤️": ["Eric MABOM"] }
+  reactions?: { [emoji: string]: string[] };
 }
 
 interface ChatRoomProps {
@@ -178,7 +178,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Ajouter ou retirer une réaction émoji
+  // Ajouter ou retirer une réaction émoji (façon WhatsApp)
   const handleToggleReaction = async (messageId: string, emoji: string, currentReactions?: { [key: string]: string[] }) => {
     if (!fullName) return;
 
@@ -187,7 +187,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     const userIndex = userList.indexOf(fullName);
 
     if (userIndex > -1) {
-      // L'utilisateur a déjà réagi avec cet émoji, on le retire
       userList.splice(userIndex, 1);
       if (userList.length === 0) {
         delete reactions[emoji];
@@ -195,14 +194,12 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         reactions[emoji] = userList;
       }
     } else {
-      // Ajouter la réaction
       userList.push(fullName);
       reactions[emoji] = userList;
     }
 
     setActiveEmojiPicker(null);
 
-    // Mettre à jour dans Supabase
     await supabase
       .from('messages')
       .update({ reactions })
@@ -389,7 +386,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
             >
               <div className="flex items-end space-x-1 max-w-[85%] sm:max-w-[70%]">
                 
-                {/* Bouton pour ouvrir le sélecteur d'émojis sur les messages des autres */}
+                {/* Bouton émoji WhatsApp sur les messages reçus */}
                 {!isMe && (
                   <button
                     onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
@@ -411,7 +408,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     </p>
                   )}
 
-                  {/* Texte du message */}
+                  {/* Texte */}
                   {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
                     <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
                       {msg.content}
@@ -463,7 +460,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
                   </div>
 
-                  {/* Bouton de suppression discret */}
+                  {/* Supprimer */}
                   {canDelete && (
                     <button
                       onClick={() => handleDeleteMessage(msg.id, msg.sender)}
@@ -475,7 +472,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   )}
                 </div>
 
-                {/* Bouton pour ouvrir le sélecteur d'émojis sur ses propres messages */}
+                {/* Bouton émoji WhatsApp sur ses propres messages */}
                 {isMe && (
                   <button
                     onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
@@ -487,7 +484,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 )}
               </div>
 
-              {/* Affichage des réactions émojis sous le message */}
+              {/* Bulles de réactions affichées sous le message */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                 <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'mr-8' : 'ml-8'}`}>
                   {Object.entries(msg.reactions).map(([emoji, users]) => {
@@ -511,9 +508,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 </div>
               )}
 
-              {/* Popup du sélecteur rapide d'émojis */}
+              {/* Palette pop-up d'émojis (Façon WhatsApp) */}
               {showPicker && (
-                <div className={`absolute z-20 top-0 ${isMe ? 'right-12' : 'left-12'} bg-white border border-gray-200 shadow-lg rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150`}>
+                <div className={`absolute z-20 top-0 ${isMe ? 'right-12' : 'left-12'} bg-white border border-gray-200 shadow-xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150`}>
                   {QUICK_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -541,4 +538,4 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               type="file" 
               accept="image/*" 
               className="hidden" 
-              onChange={(
+              onChange={(e) => handleFileUpload(e, 'image')}
