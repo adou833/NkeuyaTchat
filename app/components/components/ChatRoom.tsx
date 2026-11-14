@@ -35,7 +35,7 @@ interface ChatRoomProps {
 }
 
 const ADMIN_NAME = "Eric MABOM";
-const POPULAR_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '🎉', '😢', '😍', '👏'];
+const POPULAR_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '🎉', '😢', '😍', '👏', '😁', '😎', 'ab', '💪', '✨'];
 
 export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -64,7 +64,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
   const currentTitle = salonTitles[salonId] || salonId;
 
-  // Charger l'utilisateur et les salons autorisés
   useEffect(() => {
     const user = localStorage.getItem('chat_user');
     const salons = localStorage.getItem('chat_salons');
@@ -84,7 +83,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   }, [router]);
 
-  // Charger les messages et écouter le Realtime
   useEffect(() => {
     if (!salonId) return;
 
@@ -151,12 +149,10 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     };
   }, [salonId]);
 
-  // Scroll automatique en bas
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Envoyer un message texte
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !fullName) return;
@@ -179,12 +175,10 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Ajouter un émoji dans le champ de texte
   const addEmojiToInput = (emoji: string) => {
     setNewMessage((prev) => prev + emoji);
   };
 
-  // Envoyer un fichier (image ou document)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'image' | 'document') => {
     const file = e.target.files?.[0];
     if (!file || !fullName) return;
@@ -228,7 +222,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Enregistrement Audio
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -301,7 +294,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Supprimer un message (Admin ou auteur)
   const handleDeleteMessage = async (messageId: string, sender: string) => {
     if (fullName !== ADMIN_NAME && fullName !== sender) return;
     if (!confirm("Voulez-vous supprimer ce message ?")) return;
@@ -310,7 +302,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#efeae2] relative overflow-hidden">
+    <div className="flex flex-col h-full bg-[#efeae2] relative">
       
       {/* En-tête du Salon */}
       <header className="bg-[#0284c7] text-white px-4 py-3 flex items-center justify-between shadow-md z-10 shrink-0">
@@ -373,14 +365,12 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     </p>
                   )}
 
-                  {/* Texte */}
                   {msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('📎') && !msg.content.startsWith('🎤') && (
                     <p className="text-xs sm:text-sm whitespace-pre-wrap break-words leading-relaxed">
                       {msg.content}
                     </p>
                   )}
 
-                  {/* Image */}
                   {msg.file_type === 'image' && msg.file_url && (
                     <div className="mt-1 mb-1">
                       <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
@@ -393,7 +383,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     </div>
                   )}
 
-                  {/* Document */}
                   {msg.file_type === 'document' && msg.file_url && (
                     <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
                       <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
@@ -411,7 +400,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     </div>
                   )}
 
-                  {/* Audio */}
                   {msg.file_type === 'audio' && msg.file_url && (
                     <div className="mt-1 mb-1">
                       <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
@@ -425,7 +413,6 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     {isMe && <CheckCheck className="w-3 h-3 text-sky-600" />}
                   </div>
 
-                  {/* Supprimer */}
                   {canDelete && (
                     <button
                       onClick={() => handleDeleteMessage(msg.id, msg.sender)}
@@ -443,18 +430,18 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Barre d'envoi de message (avec le sélecteur d'émojis façon WhatsApp) */}
-      <div className="bg-[#f0f0f0] px-3 py-2.5 relative flex flex-col border-t border-gray-300 shrink-0">
+      {/* Zone de saisie et sélecteur d'émojis WhatsApp */}
+      <div className="bg-[#f0f0f0] px-3 py-2.5 relative flex flex-col border-t border-gray-300 shrink-0 z-20">
         
-        {/* Panneau de sélection d'émojis (s'ouvre au clic sur le smiley) */}
+        {/* Grille d'émojis flottante (Apparaît au clic sur le smiley) */}
         {showEmojiPicker && (
-          <div className="absolute bottom-16 left-3 bg-white border border-gray-300 shadow-xl rounded-2xl p-3 grid grid-cols-5 gap-2 z-30">
+          <div className="absolute bottom-16 left-3 bg-white border border-gray-300 shadow-2xl rounded-2xl p-3 grid grid-cols-5 gap-2 z-50">
             {POPULAR_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => addEmojiToInput(emoji)}
-                className="text-2xl hover:scale-125 transition transform p-1 cursor-pointer flex items-center justify-center"
+                className="text-2xl hover:scale-125 transition transform p-1.5 cursor-pointer flex items-center justify-center bg-gray-50 hover:bg-sky-50 rounded-lg"
               >
                 {emoji}
               </button>
@@ -488,15 +475,16 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           </div>
 
           <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
-            <div className="flex-1 relative flex items-center bg-white rounded-full border border-gray-300 px-3">
-              {/* Bouton émoji (smiley) situé exactement comme sur WhatsApp dans la barre de saisie */}
+            <div className="flex-1 relative flex items-center bg-white rounded-full border border-gray-300 px-3 shadow-inner">
+              
+              {/* Bouton émoji (Smiley) dans la barre de saisie */}
               <button
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="text-gray-500 hover:text-[#0284c7] transition p-1 cursor-pointer mr-1"
+                className="text-gray-500 hover:text-[#0284c7] transition p-1 cursor-pointer mr-1 shrink-0"
                 title="Choisir un émoji"
               >
-                <Smile className="w-5 h-5" />
+                <Smile className="w-6 h-6" />
               </button>
 
               <input
@@ -505,7 +493,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
                 disabled={uploading}
-                className="w-full py-2 text-xs sm:text-sm focus:outline-none bg-transparent"
+                className="w-full py-2.5 text-xs sm:text-sm focus:outline-none bg-transparent"
               />
             </div>
 
@@ -513,7 +501,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               <button
                 type="submit"
                 disabled={uploading}
-                className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
+                className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer shrink-0"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -521,7 +509,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               <button
                 type="button"
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`p-2.5 rounded-full transition shadow cursor-pointer ${
+                className={`p-2.5 rounded-full transition shadow cursor-pointer shrink-0 ${
                   isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
                 title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
