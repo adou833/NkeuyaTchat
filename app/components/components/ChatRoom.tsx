@@ -13,8 +13,7 @@ import {
   Video, 
   CheckCheck, 
   Download,
-  Trash2,
-  Smile
+  Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -178,7 +177,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Ajouter ou retirer une réaction émoji (façon WhatsApp)
+  // Ajouter ou retirer une réaction émoji
   const handleToggleReaction = async (messageId: string, emoji: string, currentReactions?: { [key: string]: string[] }) => {
     if (!fullName) return;
 
@@ -382,23 +381,29 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           return (
             <div 
               key={msg.id} 
-              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group relative my-2`}
+              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} relative my-3`}
             >
-              <div className="flex items-end space-x-1 max-w-[85%] sm:max-w-[70%] relative">
+              <div className="relative max-w-[85%] sm:max-w-[70%]">
                 
-                {/* Bouton émoji sur les messages reçus */}
-                {!isMe && (
-                  <button
-                    onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
-                    className="opacity-0 group-hover:opacity-100 transition p-1.5 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer z-10"
-                    title="Réagir"
-                  >
-                    <Smile className="w-4 h-4" />
-                  </button>
+                {/* Palette pop-up d'émojis (Façon WhatsApp : apparaît directement au-dessus de la bulle au clic) */}
+                {showPicker && (
+                  <div className="absolute z-30 -top-12 left-1/2 -translate-x-1/2 bg-white border border-gray-300 shadow-2xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150 whitespace-nowrap">
+                    {QUICK_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
+                        className="hover:scale-125 transition transform text-xl p-1 cursor-pointer"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
                 )}
 
+                {/* Bulle de message cliquable pour ouvrir les émojis */}
                 <div 
-                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative ${
+                  onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
+                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative cursor-pointer ${
                     isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
                   }`}
                 >
@@ -417,7 +422,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Image */}
                   {msg.file_type === 'image' && msg.file_url && (
-                    <div className="mt-1 mb-1">
+                    <div className="mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
                       <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
                         <img 
                           src={msg.file_url} 
@@ -430,7 +435,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Document */}
                   {msg.file_type === 'document' && msg.file_url && (
-                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200" onClick={(e) => e.stopPropagation()}>
                       <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
                       <div className="overflow-hidden flex-1">
                         <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
@@ -448,7 +453,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Audio */}
                   {msg.file_type === 'audio' && msg.file_url && (
-                    <div className="mt-1 mb-1">
+                    <div className="mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
                       <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
                     </div>
                   )}
@@ -463,8 +468,11 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   {/* Supprimer */}
                   {canDelete && (
                     <button
-                      onClick={() => handleDeleteMessage(msg.id, msg.sender)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition shadow cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteMessage(msg.id, msg.sender);
+                      }}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow cursor-pointer hover:bg-red-600 transition"
                       title="Supprimer"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -472,36 +480,11 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   )}
                 </div>
 
-                {/* Bouton émoji sur ses propres messages */}
-                {isMe && (
-                  <button
-                    onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
-                    className="opacity-0 group-hover:opacity-100 transition p-1.5 bg-white rounded-full shadow hover:bg-gray-100 mb-1 text-gray-600 cursor-pointer z-10"
-                    title="Réagir"
-                  >
-                    <Smile className="w-4 h-4" />
-                  </button>
-                )}
-
-                {/* Palette pop-up d'émojis (Façon WhatsApp) */}
-                {showPicker && (
-                  <div className={`absolute z-30 -top-12 ${isMe ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-2xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150`}>
-                    {QUICK_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
-                        className="hover:scale-125 transition transform text-xl p-1 cursor-pointer"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Bulles de réactions affichées sous le message */}
+              {/* Bulles de réactions affichées sous le message (exactement comme WhatsApp) */}
               {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'mr-8' : 'ml-8'}`}>
+                <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'mr-2' : 'ml-2'}`}>
                   {Object.entries(msg.reactions).map(([emoji, users]) => {
                     const hasReacted = fullName ? users.includes(fullName) : false;
                     return (
