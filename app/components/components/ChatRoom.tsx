@@ -13,7 +13,8 @@ import {
   Video, 
   CheckCheck, 
   Download,
-  Trash2
+  Trash2,
+  Smile
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -34,7 +35,7 @@ interface ChatRoomProps {
 }
 
 const ADMIN_NAME = "Eric MABOM";
-const QUICK_EMOJIS = ['👍', '❤️', '😂', '🔥', '🙏'];
+const POPULAR_EMOJIS = ['😊', '😂', '❤️', '👍', '🙏', '🔥', '🎉', '😢', '😍', '👏'];
 
 export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +43,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   const [fullName, setFullName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [allowedSalons, setAllowedSalons] = useState<string[]>([]);
-  const [activeEmojiPicker, setActiveEmojiPicker] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   // États pour l'enregistrement audio
   const [isRecording, setIsRecording] = useState(false);
@@ -162,6 +163,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
     const contentToSend = newMessage.trim();
     setNewMessage('');
+    setShowEmojiPicker(false);
 
     const { error } = await supabase.from('messages').insert([
       {
@@ -177,32 +179,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     }
   };
 
-  // Ajouter ou retirer une réaction émoji
-  const handleToggleReaction = async (messageId: string, emoji: string, currentReactions?: { [key: string]: string[] }) => {
-    if (!fullName) return;
-
-    const reactions = currentReactions ? { ...currentReactions } : {};
-    const userList = reactions[emoji] ? [...reactions[emoji]] : [];
-    const userIndex = userList.indexOf(fullName);
-
-    if (userIndex > -1) {
-      userList.splice(userIndex, 1);
-      if (userList.length === 0) {
-        delete reactions[emoji];
-      } else {
-        reactions[emoji] = userList;
-      }
-    } else {
-      userList.push(fullName);
-      reactions[emoji] = userList;
-    }
-
-    setActiveEmojiPicker(null);
-
-    await supabase
-      .from('messages')
-      .update({ reactions })
-      .eq('id', messageId);
+  // Ajouter un émoji dans le champ de texte
+  const addEmojiToInput = (emoji: string) => {
+    setNewMessage((prev) => prev + emoji);
   };
 
   // Envoyer un fichier (image ou document)
@@ -376,34 +355,15 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           const isMe = msg.sender === fullName;
           const isAdmin = fullName === ADMIN_NAME;
           const canDelete = isMe || isAdmin;
-          const showPicker = activeEmojiPicker === msg.id;
 
           return (
             <div 
               key={msg.id} 
-              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} relative my-3`}
+              className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} my-2`}
             >
-              <div className="relative max-w-[85%] sm:max-w-[70%]">
-                
-                {/* Palette pop-up d'émojis (Façon WhatsApp : apparaît directement au-dessus de la bulle au clic) */}
-                {showPicker && (
-                  <div className="absolute z-30 -top-12 left-1/2 -translate-x-1/2 bg-white border border-gray-300 shadow-2xl rounded-full px-3 py-1.5 flex items-center space-x-2 animate-in fade-in zoom-in duration-150 whitespace-nowrap">
-                    {QUICK_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
-                        className="hover:scale-125 transition transform text-xl p-1 cursor-pointer"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Bulle de message cliquable pour ouvrir les émojis */}
+              <div className="max-w-[85%] sm:max-w-[70%] relative">
                 <div 
-                  onClick={() => setActiveEmojiPicker(showPicker ? null : msg.id)}
-                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative cursor-pointer ${
+                  className={`rounded-2xl px-4 py-2.5 shadow-sm relative ${
                     isMe ? 'bg-[#dcf8c6] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
                   }`}
                 >
@@ -422,7 +382,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Image */}
                   {msg.file_type === 'image' && msg.file_url && (
-                    <div className="mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-1 mb-1">
                       <a href={msg.file_url} target="_blank" rel="noopener noreferrer">
                         <img 
                           src={msg.file_url} 
@@ -435,7 +395,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Document */}
                   {msg.file_type === 'document' && msg.file_url && (
-                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-1 mb-1 flex items-center space-x-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
                       <FileText className="w-8 h-8 text-[#0284c7] shrink-0" />
                       <div className="overflow-hidden flex-1">
                         <p className="text-xs font-semibold text-gray-800 truncate">{msg.file_name || 'Document'}</p>
@@ -453,7 +413,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
                   {/* Audio */}
                   {msg.file_type === 'audio' && msg.file_url && (
-                    <div className="mt-1 mb-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-1 mb-1">
                       <audio controls src={msg.file_url} className="w-48 sm:w-64 h-10" />
                     </div>
                   )}
@@ -468,10 +428,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   {/* Supprimer */}
                   {canDelete && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteMessage(msg.id, msg.sender);
-                      }}
+                      onClick={() => handleDeleteMessage(msg.id, msg.sender)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow cursor-pointer hover:bg-red-600 transition"
                       title="Supprimer"
                     >
@@ -479,96 +436,102 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     </button>
                   )}
                 </div>
-
               </div>
-
-              {/* Bulles de réactions affichées sous le message (exactement comme WhatsApp) */}
-              {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'mr-2' : 'ml-2'}`}>
-                  {Object.entries(msg.reactions).map(([emoji, users]) => {
-                    const hasReacted = fullName ? users.includes(fullName) : false;
-                    return (
-                      <button
-                        key={emoji}
-                        onClick={() => handleToggleReaction(msg.id, emoji, msg.reactions)}
-                        className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs border shadow-sm transition cursor-pointer ${
-                          hasReacted 
-                            ? 'bg-sky-100 border-sky-300 text-sky-800 font-bold' 
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }`}
-                        title={users.join(', ')}
-                      >
-                        <span>{emoji}</span>
-                        <span className="text-[10px]">{users.length}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Barre d'envoi de message */}
-      <div className="bg-[#f0f0f0] px-3 py-2.5 flex items-center space-x-2 border-t border-gray-300 shrink-0">
-        <div className="flex items-center space-x-1">
-          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
-            <ImageIcon className="w-5 h-5" />
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={(e) => handleFileUpload(e, 'image')} 
-              disabled={uploading}
-            />
-          </label>
+      {/* Barre d'envoi de message (avec le sélecteur d'émojis façon WhatsApp) */}
+      <div className="bg-[#f0f0f0] px-3 py-2.5 relative flex flex-col border-t border-gray-300 shrink-0">
+        
+        {/* Panneau de sélection d'émojis (s'ouvre au clic sur le smiley) */}
+        {showEmojiPicker && (
+          <div className="absolute bottom-16 left-3 bg-white border border-gray-300 shadow-xl rounded-2xl p-3 grid grid-cols-5 gap-2 z-30">
+            {POPULAR_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => addEmojiToInput(emoji)}
+                className="text-2xl hover:scale-125 transition transform p-1 cursor-pointer flex items-center justify-center"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
 
-          <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
-            <FileText className="w-5 h-5" />
-            <input 
-              type="file" 
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
-              className="hidden" 
-              onChange={(e) => handleFileUpload(e, 'document')} 
-              disabled={uploading}
-            />
-          </label>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
+            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer une image">
+              <ImageIcon className="w-5 h-5" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={(e) => handleFileUpload(e, 'image')} 
+                disabled={uploading}
+              />
+            </label>
+
+            <label className="p-2 text-gray-600 hover:text-[#0284c7] cursor-pointer transition" title="Envoyer un document">
+              <FileText className="w-5 h-5" />
+              <input 
+                type="file" 
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" 
+                className="hidden" 
+                onChange={(e) => handleFileUpload(e, 'document')} 
+                disabled={uploading}
+              />
+            </label>
+          </div>
+
+          <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
+            <div className="flex-1 relative flex items-center bg-white rounded-full border border-gray-300 px-3">
+              {/* Bouton émoji (smiley) situé exactement comme sur WhatsApp dans la barre de saisie */}
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="text-gray-500 hover:text-[#0284c7] transition p-1 cursor-pointer mr-1"
+                title="Choisir un émoji"
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
+                disabled={uploading}
+                className="w-full py-2 text-xs sm:text-sm focus:outline-none bg-transparent"
+              />
+            </div>
+
+            {newMessage.trim() ? (
+              <button
+                type="submit"
+                disabled={uploading}
+                className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`p-2.5 rounded-full transition shadow cursor-pointer ${
+                  isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
+              >
+                {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
+          </form>
         </div>
 
-        <form onSubmit={handleSendMessage} className="flex-1 flex items-center space-x-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={uploading ? "Envoi en cours..." : "Tapez un message..."}
-            disabled={uploading}
-            className="flex-1 bg-white px-4 py-2 rounded-full border border-gray-300 text-xs sm:text-sm focus:outline-none focus:border-[#0284c7]"
-          />
-
-          {newMessage.trim() ? (
-            <button
-              type="submit"
-              disabled={uploading}
-              className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full transition shadow cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`p-2.5 rounded-full transition shadow cursor-pointer ${
-                isRecording ? 'bg-red-600 text-white animate-pulse' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              title={isRecording ? "Arrêter l'enregistrement" : "Enregistrer un vocal"}
-            >
-              {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </button>
-          )}
-        </form>
       </div>
 
     </div>
