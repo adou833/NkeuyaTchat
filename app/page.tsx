@@ -159,7 +159,15 @@ export default function HomePage() {
       return;
     }
 
-    if (!isEricMabom && !trimmedPassword) {
+    if (isEricMabom) {
+      window.localStorage.setItem('chat_user', trimmedName);
+      setCurrentUser(trimmedName);
+      void fetchPendingUsers();
+      router.replace('/salon/general');
+      return;
+    }
+
+    if (!trimmedPassword) {
       setError('Veuillez entrer votre mot de passe.');
       return;
     }
@@ -175,17 +183,6 @@ export default function HomePage() {
         .maybeSingle();
 
       const row = (data ?? null) as UserRow | null;
-
-      if (isEricMabom) {
-        const resolvedAdminName =
-          row?.full_name && row.full_name.trim() ? row.full_name.trim() : trimmedName;
-        window.localStorage.setItem('chat_user', resolvedAdminName);
-        setCurrentUser(resolvedAdminName);
-        void fetchPendingUsers();
-        router.replace('/salon/general');
-        setLoading(false);
-        return;
-      }
 
       if (loginError || !row) {
         setError("Aucun compte trouvé à ce nom. Veuillez d'abord créer votre compte.");
