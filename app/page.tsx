@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import {
   MessageCircle,
@@ -31,21 +32,20 @@ interface PendingUser {
   id: string;
   full_name: string;
   phone?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'valide' | 'en_attente' | 'refuse';
   created_at: string;
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
-  // Champs pour la création de compte
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [phone, setPhone] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Champs pour la connexion
   const [loginName, setLoginName] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -54,30 +54,31 @@ export default function HomePage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Demandes en attente pour l'admin
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
 
-  const fetchPendingUsers = async () => {
+  const fetchPendingUsers = useCallback(async () => {
     const { data, error: fetchError } = await supabase
       .from('users')
       .select('*')
-      .eq('status', 'pending')
+      .in('status', ['pending', 'en_attente'])
       .order('created_at', { ascending: false });
 
     if (!fetchError && data) {
       setPendingUsers(data);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const savedUser = window.localStorage.getItem('chat_user');
+    const savedUser =
+      typeof window !== 'undefined' ? window.localStorage.getItem('chat_user') : null;
     if (savedUser) {
       setCurrentUser(savedUser);
       if (savedUser.toLowerCase() === ADMIN_NAME.toLowerCase()) {
-        fetchPendingUsers();
+        void fetchPendingUsers();
       }
+      router.replace('/salon/general');
     }
-  }, []);
+  }, [router, fetchPendingUsers]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +96,7 @@ export default function HomePage() {
       return;
     }
 
-    if (registerPassword !== confirmPassword) {
+    if (registerPassword.trim() !== confirmPassword.trim()) {
       setError('Les deux mots de passe ne correspondent pas.');
       return;
     }
@@ -139,8 +140,9 @@ export default function HomePage() {
         setRegisterPassword('');
         setConfirmPassword('');
       }
-    } catch (err: any) {
-      setError('Une erreur est survenue : ' + (err?.message || 'Erreur inconnue'));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur inconnue';
+      setError('Une erreur est survenue : ' + message);
     } finally {
       setLoading(false);
     }
@@ -151,12 +153,13 @@ export default function HomePage() {
     setError('');
     setSuccessMsg('');
 
-    if (!loginName.trim() || !loginPassword.trim()) {
+    const trimmedName = loginName.trim();
+    const trimmedPassword = loginPassword.trim();
+
+    if (!trimmedName || !trimmedPassword) {
       setError('Veuillez entrer votre Prénom et Nom ainsi que votre mot de passe.');
       return;
     }
-
-    const trimmedName = loginName.trim();
 
     setLoading(true);
     try {
@@ -164,13 +167,15 @@ export default function HomePage() {
         .from('users')
         .select('*')
         .ilike('full_name', trimmedName)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (trimmedName.toLowerCase() === ADMIN_NAME.toLowerCase() && !data) {
         window.localStorage.setItem('chat_user', ADMIN_NAME);
         setCurrentUser(ADMIN_NAME);
-        fetchPendingUsers();
+        void fetchPendingUsers();
+        router.replace('/salon/general');
         setLoading(false);
         return;
       }
@@ -181,16 +186,18 @@ export default function HomePage() {
         return;
       }
 
-      if (data.password && data.password !== loginPassword.trim()) {
+      const storedPassword =
+        typeof data.password === 'string' ? data.password.trim() : '';
+
+      if (storedPassword && storedPassword !== trimmedPassword) {
         setError('Mot de passe incorrect.');
         setLoading(false);
         return;
       }
 
-      if (
-        data.status === 'pending' &&
-        trimmedName.toLowerCase() !== ADMIN_NAME.toLowerCase()
-      ) {
+      const isWaiting =
+        data.status === 'pending' || data.status === 'en_attente';
+      if (isWaiting && trimmedName.toLowerCase() !== ADMIN_NAME.toLowerCase()) {
         setError(
           "Votre demande d'accès est toujours en attente de validation par l'administrateur."
         );
@@ -198,18 +205,20 @@ export default function HomePage() {
         return;
       }
 
-      if (data.status === 'rejected') {
+      if (data.status === 'rejected' || data.status === 'refuse') {
         setError("Votre demande d'accès a été refusée.");
         setLoading(false);
         return;
       }
 
-      window.localStorage.setItem('chat_user', data.full_name);
-      setCurrentUser(data.full_name);
+      const resolvedName = data.full_name?.trim() || trimmedName;
+      window.localStorage.setItem('chat_user', resolvedName);
+      setCurrentUser(resolvedName);
 
-      if (data.full_name.toLowerCase() === ADMIN_NAME.toLowerCase()) {
-        fetchPendingUsers();
+      if (resolvedName.toLowerCase() === ADMIN_NAME.toLowerCase()) {
+        void fetchPendingUsers();
       }
+      router.replace('/salon/general');
     } catch {
       setError('Impossible de vérifier le compte pour le moment.');
     } finally {
@@ -224,7 +233,7 @@ export default function HomePage() {
       .eq('id', userId);
 
     if (!approveError) {
-      fetchPendingUsers();
+      void fetchPendingUsers();
     } else {
       alert('Erreur lors de la validation : ' + approveError.message);
     }
@@ -237,7 +246,7 @@ export default function HomePage() {
       .eq('id', userId);
 
     if (!rejectError) {
-      fetchPendingUsers();
+      void fetchPendingUsers();
     }
   };
 
@@ -253,7 +262,6 @@ export default function HomePage() {
   return (
     <main className="h-[100dvh] w-screen flex justify-center items-center bg-[#dadbd4] overflow-hidden">
       <div className="w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl sm:shadow-2xl flex flex-col bg-[#efeae2] overflow-hidden border border-gray-300">
-        {/* En-tête (Bandeau bleu clair) */}
         <header className="bg-[#0284c7] text-white px-5 py-4 flex items-center justify-between shadow-md shrink-0 z-10">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shadow">
@@ -261,7 +269,7 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="font-bold text-lg tracking-wide">NkeuyaTchat</h1>
-              <p className="text-xs text-sky-100">Le cercle familial privé</p>
+              <p className="text-xs text-sky-100">Salon Général</p>
             </div>
           </div>
 
@@ -277,7 +285,6 @@ export default function HomePage() {
           )}
         </header>
 
-        {/* Barre horizontale des salons sous le bandeau */}
         {currentUser && (
           <div className="bg-[#f0f2f5] border-b border-gray-300 py-3 px-3 shrink-0 overflow-x-auto flex space-x-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {SALONS.map((salon) => (
@@ -297,11 +304,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Corps */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col justify-center">
           {!currentUser ? (
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-md space-y-4 my-auto">
-              {/* Boutons de bascule Connexion / Créer son compte */}
               <div className="flex bg-gray-100 p-1 rounded-xl">
                 <button
                   type="button"
@@ -455,10 +460,10 @@ export default function HomePage() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="text-center pb-1">
                     <h2 className="text-base font-bold text-gray-800">
-                      Accès aux salons
+                      Accès au salon Général
                     </h2>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      Connectez-vous une fois votre compte validé
+                      Connectez-vous pour ouvrir le salon Général
                     </p>
                   </div>
 
@@ -508,7 +513,7 @@ export default function HomePage() {
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Espace familial sous validation administrateur</span>
+                <span>Accès direct au salon Général</span>
               </div>
             </div>
           ) : (
@@ -522,10 +527,12 @@ export default function HomePage() {
                     {currentUser} {isAdmin && '👑'}
                   </p>
                 </div>
-                <span className="text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  En ligne
-                </span>
+                <Link
+                  href="/salon/general"
+                  className="text-xs bg-[#0284c7] text-white font-semibold px-3.5 py-2 rounded-xl shadow-xs hover:bg-sky-700 transition"
+                >
+                  Salon Général →
+                </Link>
               </div>
 
               {isAdmin && pendingUsers.length > 0 && (
