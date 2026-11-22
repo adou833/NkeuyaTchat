@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { ArrowLeft, Send, LogOut } from 'lucide-react';
+import { ArrowLeft, Send, LogOut, ShieldCheck } from 'lucide-react';
 
 const SALONS = [
   { id: 'general', name: 'Général', icon: '💬' },
@@ -55,11 +55,27 @@ function getSalonIdFromLocation(): string {
   return 'general';
 }
 
+function checkIsAdmin(rawUser: string | null | undefined): boolean {
+  if (!rawUser) return false;
+  let candidate = rawUser.trim();
+  if (candidate.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      const nameVal = parsed.full_name ?? parsed.name ?? parsed.user ?? '';
+      candidate = String(nameVal).trim();
+    } catch {
+      // garder candidate tel quel
+    }
+  }
+  return candidate.toLowerCase().replace(/\s+/g, ' ') === 'eric mabom';
+}
+
 export default function SalonPage() {
   const router = useRouter();
 
   const [salonId, setSalonId] = useState<string>(() => getSalonIdFromLocation());
   const [currentUser, setCurrentUser] = useState<string>('');
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [rows, setRows] = useState<GenericRow[]>([]);
   const [textCol, setTextCol] = useState<string>('contenu');
   const [senderCol, setSenderCol] = useState<string>('expediteur');
@@ -83,12 +99,21 @@ export default function SalonPage() {
   }, [syncSalonFromUrl]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('chat_user');
-      if (saved) {
-        setCurrentUser(saved);
-      }
-    }
+    const syncUser = () => {
+      if (typeof window === 'undefined') return;
+      const saved =
+        window.localStorage.getItem('chat_user') ||
+        window.localStorage.getItem('nkeuya_user') ||
+        '';
+      setCurrentUser(saved);
+      setIsAdmin(checkIsAdmin(saved));
+    };
+
+    syncUser();
+    window.addEventListener('storage', syncUser);
+    return () => {
+      window.removeEventListener('storage', syncUser);
+    };
   }, []);
 
   const currentSalon = SALONS.find((s) => s.id === salonId) ?? SALONS[0];
@@ -289,14 +314,27 @@ export default function SalonPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleQuit}
-            className="p-2 rounded-full bg-sky-700/60 hover:bg-sky-800 cursor-pointer flex items-center gap-1 text-xs shrink-0"
-            title="Quitter"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => router.push('/admin')}
+                className="px-2.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 text-gray-900 font-bold cursor-pointer flex items-center gap-1 text-xs shadow-sm"
+                title="Administration"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Admin</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleQuit}
+              className="p-2 rounded-full bg-sky-700/60 hover:bg-sky-800 cursor-pointer flex items-center gap-1 text-xs"
+              title="Quitter"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </header>
 
         <nav className="bg-[#f0f2f5] border-b border-gray-300 py-2.5 px-3 shrink-0 overflow-x-auto flex gap-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
