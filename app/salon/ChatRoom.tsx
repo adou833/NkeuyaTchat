@@ -60,10 +60,7 @@ function normalizeSalonId(rawId: string): string {
 
 export default function ChatRoom({ salonId }: ChatRoomProps) {
   const router = useRouter();
-  const decodedSalonId = normalizeSalonId(salonId);
-
-  const [selectedSalonOverride, setSelectedSalonOverride] = useState<string | null>(null);
-  const currentSalonKey = selectedSalonOverride ?? decodedSalonId;
+  const currentSalonKey = normalizeSalonId(salonId);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -117,7 +114,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
   };
 
   const handleSelectSalon = (targetSalonId: string) => {
-    setSelectedSalonOverride(targetSalonId);
+    if (targetSalonId === currentSalonKey && !showAdminPanel) return;
     setShowAdminPanel(false);
     router.replace(`/salon/${encodeURIComponent(targetSalonId)}`);
   };
@@ -216,9 +213,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
       if (!error && data) {
         setMessages(data);
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-        }, 50);
+        });
       } else {
         setMessages([]);
       }
@@ -241,9 +238,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
               if (exists) return prev;
               return [...prev, payload.new as Message];
             });
-            setTimeout(() => {
-              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 50);
+            requestAnimationFrame(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            });
           } else if (payload.eventType === 'DELETE') {
             setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
           }
@@ -313,9 +310,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
         if (exists) return prev;
         return [...prev, data[0] as Message];
       });
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
     }
   };
 
@@ -365,6 +362,9 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
       setStatusFeedback("Erreur d'enregistrement du fichier : " + error.message);
     } else if (data && data.length > 0) {
       setMessages((prev) => [...prev, data[0] as Message]);
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
     }
 
     setUploading(false);
@@ -482,16 +482,23 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
     setShowAdminPanel(false);
   };
 
+  const activeTheme = SALON_COLORS[currentSalonKey] ?? {
+    bg: '#1e3a8a',
+    text: '#1e3a8a',
+    lightBg: '#eff6ff',
+    border: '#3b82f6',
+  };
+
   if (isLoadingProfile) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#111b21] text-sm font-bold text-[#2563eb]">
+      <div className="flex h-dvh w-screen items-center justify-center bg-[#111b21] text-sm font-bold text-[#2563eb]">
         Chargement du salon NkeuyaTchat...
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center overflow-hidden bg-[#111b21] p-0 md:p-4">
+    <div className="flex h-dvh w-screen items-center justify-center overflow-hidden bg-[#111b21] p-0 md:p-4">
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#efeae2] shadow-2xl md:h-[90vh] md:w-[440px] md:rounded-[40px] md:border-[8px] md:border-[#1e293b]">
         <div className="z-10 flex shrink-0 items-center justify-between bg-[#1e3a8a] px-4 py-3 text-white shadow-md">
           <div className="flex items-center space-x-3">
@@ -504,7 +511,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
             <div>
               <h2 className="text-sm font-bold tracking-wide text-white">{fullName}</h2>
               <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-200">
-                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-400" />
+                <span className="inline-block h-2 w-2 rounded-full bg-green-400" />
                 <span>{getSalonLabel(currentSalonKey)}</span>
               </div>
             </div>
@@ -551,8 +558,37 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           </div>
         </div>
 
+        <div className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-gray-300/70 bg-[#f0f2f5] px-3 py-2">
+          {allowedSalons.map((sId) => {
+            const isActive = sId === currentSalonKey && !showAdminPanel;
+            const colors = SALON_COLORS[sId];
+            return (
+              <button
+                key={sId}
+                type="button"
+                onClick={() => handleSelectSalon(sId)}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: colors?.bg ?? '#1e3a8a',
+                        borderColor: colors?.border ?? '#1e3a8a',
+                      }
+                    : undefined
+                }
+                className={`shrink-0 cursor-pointer rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  isActive
+                    ? 'text-white shadow-sm'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {getSalonLabel(sId)}
+              </button>
+            );
+          })}
+        </div>
+
         {statusFeedback && (
-          <div className="border-b border-amber-300 bg-amber-50 px-3 py-1.5 text-center text-xs font-medium text-amber-900">
+          <div className="shrink-0 border-b border-amber-300 bg-amber-50 px-3 py-1.5 text-center text-xs font-medium text-amber-900">
             {statusFeedback}
           </div>
         )}
@@ -840,16 +876,19 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                     >
                       <div className="min-w-0">
                         <span className="text-[11px] font-bold text-blue-400">
-                          {msg.username}
+                          {msg.username || msg.sender || 'Membre'}
+                        </span>
+                        <span className="ml-2 text-[10px] text-gray-400">
+                          ({getSalonLabel(msg.salon_id)})
                         </span>
                         <p className="truncate text-xs text-gray-200">{msg.content}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => deleteMessage(msg.id)}
-                        className="shrink-0 cursor-pointer rounded bg-red-600 px-2.5 py-1.5 text-[10px] text-white"
+                        className="shrink-0 cursor-pointer rounded bg-red-950 px-2.5 py-1 text-[10px] font-bold text-red-300"
                       >
-                        Supprimer
+                        Suppr.
                       </button>
                     </div>
                   ))}
@@ -861,21 +900,22 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                   onSubmit={handleSendAnnouncement}
                   className="space-y-3 rounded-xl border border-blue-900 bg-[#1e293b] p-4"
                 >
-                  <h3 className="text-xs font-bold uppercase text-blue-400">
-                    Annonce officielle
-                  </h3>
+                  <h4 className="text-xs font-bold uppercase text-blue-400">
+                    Publier une annonce dans {getSalonLabel(currentSalonKey)}
+                  </h4>
                   <textarea
+                    rows={3}
                     value={announcementText}
                     onChange={(e) => setAnnouncementText(e.target.value)}
-                    placeholder="Message..."
-                    rows={4}
-                    className="w-full rounded-lg border border-blue-800 bg-[#111b21] p-3 text-xs text-white"
+                    placeholder="Votre message d'annonce..."
+                    required
+                    className="w-full rounded-lg border border-blue-800 bg-[#111b21] p-2.5 text-xs text-white"
                   />
                   <button
                     type="submit"
-                    className="w-full cursor-pointer rounded-lg bg-amber-500 py-2.5 text-xs font-bold text-gray-900"
+                    className="cursor-pointer rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-gray-900 transition hover:bg-amber-600"
                   >
-                    Publier
+                    Envoyer l&apos;annonce
                   </button>
                 </form>
               )}
@@ -883,98 +923,63 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-gray-300 bg-[#f0f2f5] px-3 py-2.5 text-xs">
-              {allSalons.map((sId) => {
-                const hasAccess = isAdmin || allowedSalons.includes(sId);
-                if (!hasAccess) return null;
+            <div className="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
+              <div
+                style={{
+                  backgroundColor: activeTheme.lightBg,
+                  borderColor: activeTheme.border,
+                  color: activeTheme.text,
+                }}
+                className="mx-auto w-fit rounded-full border px-3 py-1 text-[11px] font-semibold"
+              >
+                Salon : {getSalonLabel(currentSalonKey)}
+              </div>
 
-                const isActive = currentSalonKey === sId;
-                const salonTheme = SALON_COLORS[sId] || {
-                  bg: '#2563eb',
-                  text: '#1d4ed8',
-                  lightBg: '#dbeafe',
-                  border: '#60a5fa',
-                };
-
-                return (
-                  <button
-                    key={sId}
-                    type="button"
-                    onClick={() => handleSelectSalon(sId)}
-                    style={
-                      isActive
-                        ? {
-                            backgroundColor: '#1e3a8a',
-                            color: '#ffffff',
-                            borderColor: '#1e3a8a',
-                          }
-                        : {
-                            backgroundColor: salonTheme.lightBg,
-                            color: salonTheme.text,
-                            borderColor: salonTheme.border,
-                          }
-                    }
-                    className={`cursor-pointer whitespace-nowrap rounded-full border px-3 py-1.5 font-semibold transition-all duration-200 ${
-                      isActive ? 'scale-105 font-bold shadow-md' : 'hover:opacity-85'
-                    }`}
-                  >
-                    {getSalonLabel(sId)}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px] p-4">
               {messages.map((msg) => {
-                const authorName = msg.username || msg.sender || 'Inconnu';
-                const isMe = authorName === fullName;
-                const isAnnouncement = String(authorName).includes('ADMIN');
+                const senderName = msg.username || msg.sender || 'Membre';
+                const isMine =
+                  fullName && senderName.toLowerCase() === fullName.toLowerCase();
 
                 return (
                   <div
                     key={msg.id}
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col ${
+                      isMine ? 'items-end' : 'items-start'
+                    }`}
                   >
                     <div
-                      className={`relative max-w-[85%] rounded-lg px-3.5 py-2 text-sm shadow-sm ${
-                        isAnnouncement
-                          ? 'border-2 border-amber-400 bg-amber-100 font-medium text-amber-950'
-                          : isMe
-                          ? 'rounded-tr-none border border-blue-200 bg-[#dbeafe] text-gray-900'
-                          : 'rounded-tl-none bg-white text-gray-900'
+                      className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs shadow-sm ${
+                        isMine
+                          ? 'rounded-tr-sm bg-[#d9fdd3] text-[#111b21]'
+                          : 'rounded-tl-sm bg-white text-[#111b21]'
                       }`}
                     >
-                      {!isMe && (
-                        <span className="mb-0.5 block text-[11px] font-bold text-blue-700">
-                          {authorName}
-                        </span>
+                      {!isMine && (
+                        <div className="mb-0.5 text-[10px] font-bold text-[#1e3a8a]">
+                          {senderName}
+                        </div>
                       )}
-
-                      <p className="break-words leading-relaxed">{msg.content}</p>
-
+                      <p className="whitespace-pre-wrap break-words leading-relaxed">
+                        {msg.content}
+                      </p>
                       {msg.file_url && msg.file_type === 'audio' && (
-                        <audio controls className="mt-2 w-full max-w-xs">
-                          <source src={msg.file_url} type="audio/mpeg" />
-                        </audio>
+                        <audio controls src={msg.file_url} className="mt-2 max-w-full" />
                       )}
-
                       {msg.file_url && msg.file_type === 'video' && (
                         <video
                           controls
-                          className="mt-2 max-h-48 w-full rounded-lg object-cover"
-                        >
-                          <source src={msg.file_url} />
-                        </video>
+                          src={msg.file_url}
+                          className="mt-2 max-h-48 rounded-lg"
+                        />
                       )}
-
                       {msg.file_url && msg.file_type === 'document' && (
                         <a
                           href={msg.file_url}
                           target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1.5 inline-block text-xs font-semibold text-blue-700 underline"
+                          rel="noreferrer"
+                          className="mt-1.5 inline-block text-[11px] font-semibold text-blue-700 underline"
                         >
-                          Télécharger le fichier
+                          Ouvrir le fichier
                         </a>
                       )}
                     </div>
@@ -986,7 +991,7 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
 
             <form
               onSubmit={handleSendMessage}
-              className="flex shrink-0 items-center gap-2 border-t border-gray-300 bg-[#f0f2f5] p-2.5"
+              className="flex shrink-0 items-center gap-2 border-t border-gray-300/70 bg-[#f0f2f5] px-3 py-2.5"
             >
               <input
                 ref={fileInputRef}
@@ -999,22 +1004,19 @@ export default function ChatRoom({ salonId }: ChatRoomProps) {
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
                 className="cursor-pointer rounded-full bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100 disabled:opacity-50"
-                title="Joindre un fichier"
               >
-                {uploading ? '...' : '+'}
+                {uploading ? '...' : 'Fichier'}
               </button>
-
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={`Écrire dans ${getSalonLabel(currentSalonKey)}...`}
-                className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 focus:border-[#1e3a8a] focus:outline-none"
+                placeholder="Écrire un message..."
+                className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-xs text-[#111b21] outline-none focus:border-blue-600"
               />
-
               <button
                 type="submit"
-                className="cursor-pointer rounded-full bg-[#1e3a8a] px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-blue-900"
+                className="cursor-pointer rounded-full bg-[#1e3a8a] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-blue-800"
               >
                 Envoyer
               </button>
