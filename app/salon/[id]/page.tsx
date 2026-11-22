@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { ArrowLeft, Send, LogOut } from 'lucide-react';
+import { ArrowLeft, Send, LogOut, MessageCircle } from 'lucide-react';
 
 const SALONS = [
   { id: 'general', name: 'Général', icon: '💬' },
@@ -23,7 +23,7 @@ interface MessageRow {
   created_at: string;
 }
 
-export default function SalonPage() {
+function SalonContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const routeSalonId = typeof params?.id === 'string' ? params.id : 'general';
@@ -206,5 +206,27 @@ export default function SalonPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+function SalonFallback() {
+  return (
+    <main className="h-[100dvh] w-screen flex justify-center items-center bg-[#dadbd4] overflow-hidden">
+      <div className="w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl sm:shadow-2xl flex flex-col bg-[#efeae2] overflow-hidden border border-gray-300">
+        <header className="bg-[#0284c7] text-white px-4 py-3.5 flex items-center gap-2.5 shrink-0">
+          <MessageCircle className="w-5 h-5 text-white" />
+          <h1 className="font-bold text-base">NkeuyaTchat</h1>
+        </header>
+        <div className="flex-1 bg-[#efeae2]" />
+      </div>
+    </main>
+  );
+}
+
+export default function SalonPage() {
+  return (
+    <Suspense fallback={<SalonFallback />}>
+      <SalonContent />
+    </Suspense>
   );
 }
