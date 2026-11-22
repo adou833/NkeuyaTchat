@@ -26,17 +26,20 @@ interface MessageRow {
 export default function SalonPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const salonId = typeof params?.id === 'string' ? params.id : 'general';
+  const routeSalonId = typeof params?.id === 'string' ? params.id : 'general';
 
-  const currentSalon =
-    SALONS.find((s) => s.id === salonId) ?? SALONS[0];
-
+  const [activeSalonId, setActiveSalonId] = useState<string>(routeSalonId);
   const [currentUser, setCurrentUser] = useState<string>('');
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const requestSeqRef = useRef<number>(0);
+
+  useEffect(() => {
+    setActiveSalonId(routeSalonId);
+  }, [routeSalonId]);
 
   useEffect(() => {
     const saved =
@@ -46,21 +49,25 @@ export default function SalonPage() {
     }
   }, []);
 
-  const loadMessages = useCallback(async () => {
+  const currentSalon =
+    SALONS.find((s) => s.id === activeSalonId) ?? SALONS[0];
+
+  const loadMessages = useCallback(async (targetSalonId: string) => {
+    const seq = ++requestSeqRef.current;
     const { data } = await supabase
       .from('messages')
       .select('*')
-      .eq('salon_id', currentSalon.id)
+      .eq('salon_id', targetSalonId)
       .order('created_at', { ascending: true });
 
-    if (Array.isArray(data)) {
+    if (seq === requestSeqRef.current && Array.isArray(data)) {
       setMessages(data as MessageRow[]);
     }
-  }, [currentSalon.id]);
+  }, []);
 
   useEffect(() => {
-    void loadMessages();
-  }, [loadMessages]);
+    void loadMessages(currentSalon.id);
+  }, [currentSalon.id, loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
@@ -68,7 +75,10 @@ export default function SalonPage() {
 
   const handleOpenSalon = (targetId: string) => {
     if (targetId === currentSalon.id) return;
-    router.push(`/salon/${targetId}`);
+    setActiveSalonId(targetId);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `/salon/${targetId}`);
+    }
   };
 
   const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -88,7 +98,7 @@ export default function SalonPage() {
       ]);
       if (!error) {
         setText('');
-        await loadMessages();
+        await loadMessages(currentSalon.id);
       }
     } finally {
       setSending(false);
@@ -109,7 +119,7 @@ export default function SalonPage() {
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => router.push('/')}
+              onClick={() => router.replace('/')}
               className="p-2 rounded-full bg-sky-700/60 hover:bg-sky-800 cursor-pointer shrink-0"
               title="Accueil"
             >
