@@ -76,7 +76,7 @@ export default function SalonPage() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      setStatusInfo(`Lecture impossible : ${error.message}`);
+      setStatusInfo(`Lecture impossible (${targetSalonId}) : ${error.message}`);
       return;
     }
 
@@ -102,13 +102,14 @@ export default function SalonPage() {
   const sendMessageNow = async () => {
     const clean = text.trim();
     if (!clean) {
-      setStatusInfo('Écrivez un message avant d’envoyer.');
+      setStatusInfo(`Écrivez un message dans ${currentSalon.name} avant d’envoyer.`);
       return;
     }
     if (sending) return;
 
+    const targetSalonId = currentSalon.id;
     setSending(true);
-    setStatusInfo('Envoi en cours...');
+    setStatusInfo(`Envoi vers ${currentSalon.name}...`);
 
     try {
       const sender =
@@ -120,7 +121,7 @@ export default function SalonPage() {
         .from('messages')
         .insert([
           {
-            salon_id: currentSalon.id,
+            salon_id: targetSalonId,
             sender_name: sender,
             content: clean,
           },
@@ -128,21 +129,21 @@ export default function SalonPage() {
         .select('*');
 
       if (error) {
-        setStatusInfo(`Erreur Supabase : ${error.message}`);
+        setStatusInfo(`Erreur Supabase (${targetSalonId}) : ${error.message}`);
         return;
       }
 
       setText('');
-      setStatusInfo('Message envoyé.');
+      setStatusInfo(`Message envoyé dans ${currentSalon.name}.`);
 
       if (Array.isArray(data) && data.length > 0) {
         setMessages((prev) => [...prev, ...(data as MessageRow[])]);
       } else {
-        await loadMessages(currentSalon.id);
+        await loadMessages(targetSalonId);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue';
-      setStatusInfo(`Erreur : ${msg}`);
+      setStatusInfo(`Erreur (${targetSalonId}) : ${msg}`);
     } finally {
       setSending(false);
     }
@@ -251,7 +252,7 @@ export default function SalonPage() {
                 void sendMessageNow();
               }
             }}
-            placeholder="Écrire un message..."
+            placeholder={`Écrire dans ${currentSalon.name}...`}
             className="flex-1 bg-white border border-gray-300 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-[#0284c7]"
           />
           <button
