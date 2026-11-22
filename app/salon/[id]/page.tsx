@@ -41,6 +41,7 @@ export default function SalonPage() {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -68,18 +69,19 @@ export default function SalonPage() {
   const currentSalon = SALONS.find((s) => s.id === salonId) ?? SALONS[0];
 
   const loadMessages = useCallback(async (targetSalonId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('salon_id', targetSalonId)
       .order('created_at', { ascending: true });
 
-    if (Array.isArray(data)) {
+    if (!error && Array.isArray(data)) {
       setMessages(data as MessageRow[]);
     }
   }, []);
 
   useEffect(() => {
+    setSendError('');
     void loadMessages(currentSalon.id);
   }, [currentSalon.id, loadMessages]);
 
@@ -98,19 +100,38 @@ export default function SalonPage() {
     if (!clean || sending) return;
 
     setSending(true);
+    setSendError('');
     try {
-      const sender = currentUser || 'Eric MABOM';
-      const { error } = await supabase.from('messages').insert([
-        {
-          salon_id: currentSalon.id,
-          sender_name: sender,
-          content: clean,
-        },
-      ]);
-      if (!error) {
-        setText('');
+      const sender =
+        currentUser ||
+        (typeof window !== 'undefined' && window.localStorage.getItem('chat_user')) ||
+        'Eric MABOM';
+
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            salon_id: currentSalon.id,
+            sender_name: sender,
+            content: clean,
+          },
+        ])
+        .select('*');
+
+      if (error) {
+        setSendError(`Échec de l'envoi : ${error.message}`);
+        return;
+      }
+
+      setText('');
+      if (Array.isArray(data) && data.length > 0) {
+        setMessages((prev) => [...prev, ...(data as MessageRow[])]);
+      } else {
         await loadMessages(currentSalon.id);
       }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur réseau';
+      setSendError(`Erreur d'envoi : ${msg}`);
     } finally {
       setSending(false);
     }
@@ -179,6 +200,11 @@ export default function SalonPage() {
         </nav>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-text">
+          {sendError && (
+            <div className="bg-red-50 text-red-700 text-xs p-2.5 rounded-xl border border-red-200 font-medium">
+              {sendError}
+            </div>
+          )}
           {messages.map((msg) => (
             <div
               key={msg.id}
