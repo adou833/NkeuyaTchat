@@ -19,8 +19,8 @@ type GenericRow = Record<string, unknown>;
 
 const TEXT_CANDIDATES = ['contenu', 'message', 'texte', 'content', 'body', 'text'];
 const SENDER_CANDIDATES = [
-  'expéditeur',
   'expediteur',
+  'expéditeur',
   'sender_name',
   'sender',
   'author',
@@ -62,7 +62,7 @@ export default function SalonPage() {
   const [currentUser, setCurrentUser] = useState<string>('');
   const [rows, setRows] = useState<GenericRow[]>([]);
   const [textCol, setTextCol] = useState<string>('contenu');
-  const [senderCol, setSenderCol] = useState<string>('expéditeur');
+  const [senderCol, setSenderCol] = useState<string>('expediteur');
   const [dateCol, setDateCol] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -104,8 +104,8 @@ export default function SalonPage() {
       if (detectedSender) setSenderCol(detectedSender);
       if (detectedDate) setDateCol(detectedDate);
       return {
-        textKey: detectedText ?? 'contenu',
-        senderKey: detectedSender ?? 'expéditeur',
+        textKey: detectedText ?? textCol,
+        senderKey: detectedSender ?? senderCol,
         dateKey: detectedDate,
       };
     }
@@ -187,38 +187,52 @@ export default function SalonPage() {
       const candidateTextCols = Array.from(
         new Set([detected.textKey, textCol, ...TEXT_CANDIDATES])
       );
+      const candidateSenderCols = Array.from(
+        new Set([detected.senderKey, senderCol, ...SENDER_CANDIDATES])
+      );
 
       let insertedRow: GenericRow | null = null;
       let lastErrorMsg = '';
+      let matchedSenderCol: string | null = null;
+      let matchedTextCol: string | null = null;
 
-      for (const candidateCol of candidateTextCols) {
-        const payload: GenericRow = {
-          salon: targetSalonId,
-          [detected.senderKey]: sender,
-          [candidateCol]: clean,
-        };
+      for (const sCol of candidateSenderCols) {
+        for (const tCol of candidateTextCols) {
+          const payload: GenericRow = {
+            salon: targetSalonId,
+            [sCol]: sender,
+            [tCol]: clean,
+          };
 
-        const { data, error } = await supabase
-          .from('messages')
-          .insert([payload])
-          .select('*');
+          const { data, error } = await supabase
+            .from('messages')
+            .insert([payload])
+            .select('*');
 
-        if (!error) {
-          setTextCol(candidateCol);
-          if (Array.isArray(data) && data.length > 0) {
-            insertedRow = data[0] as GenericRow;
+          if (!error) {
+            matchedSenderCol = sCol;
+            matchedTextCol = tCol;
+            if (Array.isArray(data) && data.length > 0) {
+              insertedRow = data[0] as GenericRow;
+            }
+            lastErrorMsg = '';
+            break;
           }
-          lastErrorMsg = '';
-          break;
-        }
 
-        lastErrorMsg = error.message;
-        const isMissingCol =
-          error.message.includes('schema cache') || error.message.includes('column');
-        if (!isMissingCol) {
+          lastErrorMsg = error.message;
+          const isMissingCol =
+            error.message.includes('schema cache') || error.message.includes('column');
+          if (!isMissingCol) {
+            break;
+          }
+        }
+        if (matchedTextCol || (lastErrorMsg && !lastErrorMsg.includes('schema cache') && !lastErrorMsg.includes('column'))) {
           break;
         }
       }
+
+      if (matchedSenderCol) setSenderCol(matchedSenderCol);
+      if (matchedTextCol) setTextCol(matchedTextCol);
 
       if (lastErrorMsg) {
         setStatusInfo(`Erreur Supabase (${targetSalonId}) : ${lastErrorMsg}`);
