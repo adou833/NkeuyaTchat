@@ -1,264 +1,652 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
-interface Message {
+const SALONS = [
+  { id: 'general', name: 'Général', icon: '💬' },
+  { id: 'photos-familiales', name: 'Photos familiales', icon: '📸' },
+  { id: 'femmes', name: 'Femmes', icon: '👩🏾' },
+  { id: 'hommes', name: 'Hommes', icon: '👨🏾' },
+  { id: 'filles', name: 'Filles', icon: '👧🏾' },
+  { id: 'garcons', name: 'Garçons', icon: '👦🏾' },
+  { id: 'petits-fils-et-filles', name: 'Petits-fils et filles', icon: '👶🏾' },
+];
+
+type GenericRow = Record<string, unknown>;
+
+interface UserRow {
   id: string;
-  salon: string;
-  sender: string;
-  content: string;
-  created_at: string;
+  full_name: string | null;
+  password?: string | null;
+  status: string | null;
+  salons?: string | null;
+  allowed_salons?: string[] | null;
+  téléphone?: string | null;
+  created_at?: string | null;
+}
+
+const TEXT_CANDIDATES = ['contenu', 'message', 'texte', 'content', 'body', 'text'];
+const SENDER_CANDIDATES = [
+  'expediteur',
+  'expéditeur',
+  'sender_name',
+  'sender',
+  'author',
+  'auteur',
+  'full_name',
+];
+const DATE_CANDIDATES = ['créer_à', 'cree_a', 'created_at', 'date'];
+
+function isAdminUser(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return name.trim().toLowerCase() === 'eric mabom';
+}
+
+function pickField(row: GenericRow | null, candidates: string[]): string | null {
+  if (!row) return null;
+  for (const key of candidates) {
+    if (key in row) return key;
+  }
+  const lowerMap = new Map<string, string>();
+  for (const k of Object.keys(row)) {
+    lowerMap.set(k.toLowerCase().trim(), k);
+  }
+  for (const cand of candidates) {
+    const found = lowerMap.get(cand.toLowerCase().trim());
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseAllowedSalons(user: UserRow): string[] {
+  if (Array.isArray(user.allowed_salons)) {
+    return user.allowed_salons.map(String);
+  }
+  if (typeof user.salons === 'string' && user.salons.trim()) {
+    return user.salons
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return ['general'];
 }
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState<'messages' | 'members' | 'salons' | 'settings'>('messages');
-  const [messages, setMessages] = useState<Message[]>([]);
+
+  const [messages, setMessages] = useState<GenericRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [salonFilter, setSalonFilter] = useState<string>('all');
+
+  const [newFullName, setNewFullName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newStatus, setNewStatus] = useState('actif');
+  const [newAllowedSalons, setNewAllowedSalons] = useState<string[]>(['general']);
+
   const [announcement, setAnnouncement] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusNotice, setStatusNotice] = useState('');
 
-  // Vérification rapide des droits admin (simulée via localStorage ou stockée)
   useEffect(() => {
-    const user = localStorage.getItem('nkeuya_user');
-    // Tu peux sécuriser cela avec un mot de passe admin ou un profil spécifique
-    if (!user) {
-      router.push('/');
+    if (typeof window === 'undefined') return;
+    const saved = window.localStorage.getItem('chat_user');
+    if (!isAdminUser(saved)) {
+      setAuthorized(false);
+      router.replace('/salon/general');
+      return;
     }
-    fetchAllMessages();
+    setAuthorized(true);
+  }, [router]);
+
+  const fetchAllMessages = useCallback(async () => {
+    const { data, error } = await supabase.from('messages').select('*');
+    if (error) {
+      setStatusNotice(`Erreur chargement messages : ${error.message}`);
+      return;
+    }
+    if (Array.isArray(data)) {
+      setMessages([...(data as GenericRow[])].reverse());
+    }
   }, []);
 
-  const fetchAllMessages = async () => {
-    try {
-      const res = await fetch('/api/messages?salon=all'); // Assure-toi que ton API gère 'all' ou récupère tous les messages
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(data);
-      }
-    } catch (err) {
-      console.error("Erreur chargement messages admin :", err);
+  const fetchAllUsers = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      setStatusNotice(`Erreur chargement membres : ${error.message}`);
+      return;
     }
-  };
+    if (Array.isArray(data)) {
+      setUsers(data as UserRow[]);
+    }
+  }, []);
 
-  // Supprimer un message indésirable
+  useEffect(() => {
+    if (authorized) {
+      void fetchAllMessages();
+      void fetchAllUsers();
+    }
+  }, [authorized, fetchAllMessages, fetchAllUsers]);
+
   const handleDeleteMessage = async (id: string) => {
-    if (!confirm("Voulez-vous vraiment supprimer ce message indésirable ?")) return;
-    try {
-      const res = await fetch(`/api/messages?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setMessages(prev => prev.filter(m => m.id !== id));
-      }
-    } catch (err) {
-      console.error("Erreur suppression :", err);
+    if (typeof window !== 'undefined' && !window.confirm('Supprimer ce message ?')) {
+      return;
     }
+    const { error } = await supabase.from('messages').delete().eq('id', id);
+    if (error) {
+      setStatusNotice(`Erreur suppression message : ${error.message}`);
+      return;
+    }
+    setMessages((prev) => prev.filter((m) => String(m.id) !== id));
+    setStatusNotice('Message supprimé.');
   };
 
-  // Forcer la réinitialisation du mot de passe d'un membre
-  const handleForcePasswordReset = (memberName: string) => {
-    if (confirm(`Forcer la réinitialisation du mot de passe pour ${memberName} ? Il devra obligatoirement le changer à sa prochaine connexion.`)) {
-      // Logique pour mettre à jour la base de données (ex: champ must_change_password = true)
-      alert(`Un lien de réinitialisation a été préparé pour ${memberName}.`);
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newFullName.trim();
+    if (!cleanName) {
+      setStatusNotice('Saisissez le nom complet du membre.');
+      return;
     }
+    setLoading(true);
+    setStatusNotice('');
+
+    const { error } = await supabase.from('users').insert([
+      {
+        full_name: cleanName,
+        téléphone: newPhone.trim() || null,
+        password: newPassword.trim() || '1234',
+        status: newStatus,
+        salons: newAllowedSalons.join(','),
+        allowed_salons: newAllowedSalons,
+      },
+    ]);
+
+    setLoading(false);
+
+    if (error) {
+      setStatusNotice(`Erreur ajout membre : ${error.message}`);
+      return;
+    }
+
+    setNewFullName('');
+    setNewPhone('');
+    setNewPassword('');
+    setNewStatus('actif');
+    setNewAllowedSalons(['general']);
+    setStatusNotice(`Membre "${cleanName}" ajouté.`);
+    await fetchAllUsers();
   };
 
-  // Envoyer une annonce globale dans tous les salons
+  const handleToggleMemberStatus = async (user: UserRow) => {
+    const current = (user.status || '').toLowerCase();
+    const nextStatus = current === 'actif' ? 'suspendu' : 'actif';
+    const { error } = await supabase
+      .from('users')
+      .update({ status: nextStatus })
+      .eq('id', user.id);
+
+    if (error) {
+      setStatusNotice(`Erreur statut : ${error.message}`);
+      return;
+    }
+    setStatusNotice(`Statut de ${user.full_name || 'Membre'} : ${nextStatus}.`);
+    await fetchAllUsers();
+  };
+
+  const handleToggleSalonForMember = (userId: string, salonId: string) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const list = parseAllowedSalons(u);
+        const updated = list.includes(salonId)
+          ? list.filter((s) => s !== salonId)
+          : [...list, salonId];
+        return {
+          ...u,
+          allowed_salons: updated,
+          salons: updated.join(','),
+        };
+      })
+    );
+  };
+
+  const handleSaveMemberSalons = async (user: UserRow) => {
+    const list = parseAllowedSalons(user);
+    const { error } = await supabase
+      .from('users')
+      .update({
+        allowed_salons: list,
+        salons: list.join(','),
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      setStatusNotice(`Erreur mise à jour salons : ${error.message}`);
+      return;
+    }
+    setStatusNotice(`Salons enregistrés pour ${user.full_name || 'Membre'}.`);
+  };
+
+  const handleDeleteMember = async (user: UserRow) => {
+    if (isAdminUser(user.full_name)) {
+      setStatusNotice("Impossible de supprimer le compte d'Eric MABOM.");
+      return;
+    }
+    const { error } = await supabase.from('users').delete().eq('id', user.id);
+    if (error) {
+      setStatusNotice(`Erreur suppression membre : ${error.message}`);
+      return;
+    }
+    setStatusNotice(`Membre "${user.full_name || ''}" supprimé.`);
+    await fetchAllUsers();
+  };
+
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!announcement.trim()) return;
-    setLoading(true);
+    const clean = announcement.trim();
+    if (!clean || loading) return;
 
-    const salons = ['general', 'femmes', 'hommes', 'filles', 'garcons', 'petits-fils-et-filles'];
+    setLoading(true);
+    setStatusNotice('');
+
+    const sample = messages.length > 0 ? messages[0] : null;
+    const senderCol = pickField(sample, SENDER_CANDIDATES) || 'expediteur';
+    const textCol = pickField(sample, TEXT_CANDIDATES) || 'contenu';
+
     try {
-      for (const salon of salons) {
-        await fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            salon,
-            sender: '👑 Administrateur',
-            content: `📢 ANNONCE OFFICIELLE : ${announcement}`
-          })
-        });
+      for (const salon of SALONS) {
+        const { error } = await supabase.from('messages').insert([
+          {
+            salon: salon.id,
+            [senderCol]: 'Eric MABOM',
+            [textCol]: `📢 ANNONCE : ${clean}`,
+          },
+        ]);
+        if (error) {
+          setStatusNotice(`Erreur sur ${salon.name} : ${error.message}`);
+          setLoading(false);
+          return;
+        }
       }
       setAnnouncement('');
-      alert("Annonce diffusée avec succès dans tous les salons !");
-    } catch (err) {
-      console.error("Erreur diffusion :", err);
+      setStatusNotice('Annonce diffusée dans tous les salons de nkeuya-tchat.');
+      await fetchAllMessages();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setStatusNotice(`Erreur diffusion : ${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
+  if (authorized !== true) {
+    return null;
+  }
+
+  const filteredMessages =
+    salonFilter === 'all'
+      ? messages
+      : messages.filter((m) => String(m.salon || '') === salonFilter);
+
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-[#f0f2f5]">
-      
-      {/* Barre latérale d'administration */}
-      <aside className="w-full md:w-64 bg-[#0284c7] text-white flex flex-col shadow-lg">
+    <div className="flex flex-col md:flex-row min-h-screen bg-[#f0f2f5]">
+      <aside className="w-full md:w-64 bg-[#0284c7] text-white flex flex-col shadow-lg shrink-0">
         <div className="p-5 border-b border-white/20">
           <h1 className="text-lg font-bold">🛠️ Administration</h1>
-          <p className="text-xs text-white/80">NkeuyaTchat - Contrôle Total</p>
+          <p className="text-xs text-white/80">nkeuya-tchat — Eric MABOM</p>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <button
+            type="button"
             onClick={() => setActiveTab('messages')}
-            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
               activeTab === 'messages' ? 'bg-white/20 shadow' : 'hover:bg-white/10'
             }`}
           >
-            💬 Modération des messages
+            💬 Modération ({messages.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('members')}
-            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
               activeTab === 'members' ? 'bg-white/20 shadow' : 'hover:bg-white/10'
             }`}
           >
-            👥 Gestion des membres
+            👥 Membres ({users.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('salons')}
-            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
               activeTab === 'salons' ? 'bg-white/20 shadow' : 'hover:bg-white/10'
             }`}
           >
-            🏛️ Salons familiaux
+            🏛️ Salons ({SALONS.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('settings')}
-            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
               activeTab === 'settings' ? 'bg-white/20 shadow' : 'hover:bg-white/10'
             }`}
           >
-            ⚙️ Paramètres & Annonces
+            📢 Annonces globales
           </button>
         </nav>
         <div className="p-4 border-t border-white/20">
           <button
-            onClick={() => router.push('/')}
-            className="w-full bg-white/20 hover:bg-white/30 text-white py-2 rounded-lg text-xs font-bold transition"
+            type="button"
+            onClick={() => router.push('/salon/general')}
+            className="w-full bg-white/20 hover:bg-white/30 text-white py-2 rounded-lg text-xs font-bold transition cursor-pointer"
           >
-            ← Retour au Chat
+            ← Retour aux salons
           </button>
         </div>
       </aside>
 
-      {/* Contenu principal de l'administration */}
-      <main className="flex-1 overflow-y-auto p-6 space-y-6">
-        
-        {/* ONGLET 1 : MODÉRATION DES MESSAGES */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+        {statusNotice && (
+          <div className="bg-white border border-sky-300 text-gray-800 text-xs font-medium px-4 py-3 rounded-xl shadow-sm">
+            {statusNotice}
+          </div>
+        )}
+
         {activeTab === 'messages' && (
-          <div className="bg-white rounded-xl shadow p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 border-b pb-3">🛡️ Modération des messages indésirables</h2>
-            <p className="text-xs text-gray-500">Examinez et supprimez instantanément les messages inappropriés partagés dans les salons.</p>
-            
-            <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
-              {messages.length === 0 ? (
-                <p className="text-center text-gray-400 py-8 text-sm">Aucun message trouvé.</p>
+          <div className="bg-white rounded-xl shadow p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+              <h2 className="text-base font-bold text-gray-800">
+                🛡️ Modération des messages
+              </h2>
+              <select
+                value={salonFilter}
+                onChange={(e) => setSalonFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white"
+              >
+                <option value="all">Tous les salons</option>
+                {SALONS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.icon} {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="divide-y divide-gray-200 max-h-[65vh] overflow-y-auto">
+              {filteredMessages.length === 0 ? (
+                <p className="text-center text-gray-400 py-8 text-sm">
+                  Aucun message trouvé.
+                </p>
               ) : (
-                messages.map((msg) => (
-                  <div key={msg.id} className="py-3 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[#0284c7]">[{msg.salon}]</span>
-                        <span className="text-xs font-semibold text-gray-700">{msg.sender}</span>
-                        <span className="text-[10px] text-gray-400">{new Date(msg.created_at).toLocaleString()}</span>
-                      </div>
-                      <p className="text-sm text-gray-900 mt-1">{msg.content.substring(0, 100)}...</p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1.5 rounded text-xs font-bold transition shrink-0"
+                filteredMessages.map((msg, idx) => {
+                  const sCol = pickField(msg, SENDER_CANDIDATES);
+                  const tCol = pickField(msg, TEXT_CANDIDATES);
+                  const dCol = pickField(msg, DATE_CANDIDATES);
+                  const author = sCol ? String(msg[sCol] || 'Membre') : 'Membre';
+                  const body = tCol ? String(msg[tCol] || '') : '';
+                  const dateVal = dCol && msg[dCol] ? String(msg[dCol]) : '';
+
+                  return (
+                    <div
+                      key={typeof msg.id === 'string' ? msg.id : String(idx)}
+                      className="py-3 flex items-start justify-between gap-4"
                     >
-                      🗑️ Supprimer
-                    </button>
-                  </div>
-                ))
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-[#0284c7]">
+                            [{String(msg.salon || 'general')}]
+                          </span>
+                          <span className="text-xs font-semibold text-gray-700">
+                            {author}
+                          </span>
+                          {dateVal && (
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(dateVal).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-900 mt-1 whitespace-pre-wrap break-words">
+                          {body}
+                        </p>
+                      </div>
+                      {typeof msg.id === 'string' && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteMessage(msg.id as string)}
+                          className="bg-red-100 text-red-600 hover:bg-red-200 px-3 py-1.5 rounded text-xs font-bold transition shrink-0 cursor-pointer"
+                        >
+                          🗑️ Supprimer
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
         )}
 
-        {/* ONGLET 2 : GESTION DES MEMBRES */}
         {activeTab === 'members' && (
-          <div className="bg-white rounded-xl shadow p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 border-b pb-3">👥 Gestion des membres de la famille</h2>
-            <p className="text-xs text-gray-500">Gérez les accès, bloquez ou réinitialisez les identifiants des utilisateurs.</p>
+          <div className="space-y-5">
+            <form
+              onSubmit={handleCreateMember}
+              className="bg-white rounded-xl shadow p-5 space-y-3"
+            >
+              <h2 className="text-base font-bold text-gray-800 border-b pb-2">
+                ➕ Ajouter un membre
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Nom complet"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs"
+                />
+                <input
+                  type="text"
+                  placeholder="Téléphone"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs"
+                />
+                <input
+                  type="text"
+                  placeholder="Mot de passe"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs"
+                />
+                <select
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-xs bg-white"
+                >
+                  <option value="actif">Actif</option>
+                  <option value="en_attente">En attente</option>
+                  <option value="suspendu">Suspendu</option>
+                </select>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {SALONS.map((s) => {
+                  const active = newAllowedSalons.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() =>
+                        setNewAllowedSalons((prev) =>
+                          active ? prev.filter((x) => x !== s.id) : [...prev, s.id]
+                        )
+                      }
+                      className={`px-2.5 py-1 rounded-full text-[11px] border cursor-pointer ${
+                        active
+                          ? 'bg-sky-100 border-[#0284c7] text-[#0284c7] font-semibold'
+                          : 'bg-gray-50 border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {s.icon} {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-[#0284c7] hover:bg-[#0369a1] text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer"
+              >
+                {loading ? 'Enregistrement...' : 'Ajouter le membre'}
+              </button>
+            </form>
 
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-100 text-gray-600 uppercase text-[11px]">
-                  <tr>
-                    <th className="p-3">Membre</th>
-                    <th className="p-3">Statut</th>
-                    <th className="p-3">Actions de sécurité</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 text-gray-800">
-                  <tr>
-                    <td className="p-3 font-semibold">Famille Principal</td>
-                    <td className="p-3"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Actif</span></td>
-                    <td className="p-3 space-x-2">
-                      <button 
-                        onClick={() => handleForcePasswordReset("Famille Principal")}
-                        className="bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-1 rounded text-xs font-bold transition"
-                      >
-                        🔑 Forcer réinitialisation mot de passe
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="bg-white rounded-xl shadow p-5 space-y-3">
+              <h2 className="text-base font-bold text-gray-800 border-b pb-2">
+                👥 Membres enregistrés ({users.length})
+              </h2>
+              <div className="space-y-3">
+                {users.map((u) => {
+                  const allowed = parseAllowedSalons(u);
+                  const isActive = (u.status || '').toLowerCase() === 'actif';
+                  return (
+                    <div
+                      key={u.id}
+                      className="border border-gray-200 rounded-xl p-3.5 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-sm text-gray-900">
+                            {u.full_name || 'Sans nom'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Tél : {u['téléphone'] || '—'} · Statut :{' '}
+                            <span
+                              className={
+                                isActive
+                                  ? 'text-emerald-600 font-semibold'
+                                  : 'text-amber-600 font-semibold'
+                              }
+                            >
+                              {u.status || 'non défini'}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleToggleMemberStatus(u)}
+                            className="px-2.5 py-1 rounded bg-gray-100 hover:bg-gray-200 text-xs font-semibold cursor-pointer"
+                          >
+                            {isActive ? 'Suspendre' : 'Activer'}
+                          </button>
+                          {!isAdminUser(u.full_name) && (
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteMember(u)}
+                              className="px-2.5 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Supprimer
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100">
+                        {SALONS.map((s) => {
+                          const has = allowed.includes(s.id);
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => handleToggleSalonForMember(u.id, s.id)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] border cursor-pointer ${
+                                has
+                                  ? 'bg-sky-50 border-[#0284c7] text-[#0284c7] font-medium'
+                                  : 'bg-gray-50 border-gray-200 text-gray-400'
+                              }`}
+                            >
+                              {s.icon} {s.name}
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveMemberSalons(u)}
+                          className="ml-auto bg-[#0284c7] text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer"
+                        >
+                          Sauvegarder salons
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ONGLET 3 : SALONS */}
         {activeTab === 'salons' && (
-          <div className="bg-white rounded-xl shadow p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 border-b pb-3">🏛️ Gestion des Salons de Discussion</h2>
-            <p className="text-xs text-gray-500">Aperçu des différents espaces de communication configurés dans NkeuyaTchat.</p>
-            
+          <div className="bg-white rounded-xl shadow p-5 space-y-4">
+            <h2 className="text-base font-bold text-gray-800 border-b pb-3">
+              🏛️ Salons de nkeuya-tchat
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {['general', 'femmes', 'hommes', 'filles', 'garcons', 'petits-fils-et-filles'].map((salonName) => (
-                <div key={salonName} className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col justify-between">
+              {SALONS.map((s) => (
+                <div
+                  key={s.id}
+                  className="border border-gray-200 rounded-lg p-4 bg-gray-50 flex flex-col justify-between"
+                >
                   <div>
-                    <h3 className="font-bold text-[#0284c7] capitalize">Salon : {salonName}</h3>
-                    <p className="text-xs text-gray-500 mt-1">Espace dédié aux échanges familiaux.</p>
+                    <h3 className="font-bold text-[#0284c7]">
+                      {s.icon} {s.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">Slug : {s.id}</p>
                   </div>
-                  <span className="mt-4 text-[11px] font-semibold text-green-600 bg-green-50 px-2 py-1 rounded w-fit">Statut : Ouvert</span>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/salon/${s.id}`)}
+                    className="mt-4 text-xs font-semibold text-[#0284c7] hover:underline text-left cursor-pointer"
+                  >
+                    Ouvrir le salon →
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ONGLET 4 : PARAMÈTRES & ANNONCES */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-xl shadow p-6 space-y-6">
-            <h2 className="text-lg font-bold text-gray-800 border-b pb-3">⚙️ Paramètres généraux & Annonces</h2>
-            
-            {/* Formulaire d'annonce globale */}
-            <form onSubmit={handleSendBroadcast} className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-bold text-gray-700">📢 Diffuser une annonce globale</h3>
-              <p className="text-xs text-gray-500">Ce message sera envoyé automatiquement dans tous les salons de l'application.</p>
+          <div className="bg-white rounded-xl shadow p-5 space-y-4">
+            <h2 className="text-base font-bold text-gray-800 border-b pb-3">
+              📢 Annonce globale dans tous les salons
+            </h2>
+            <form
+              onSubmit={handleSendBroadcast}
+              className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200"
+            >
               <textarea
                 value={announcement}
                 onChange={(e) => setAnnouncement(e.target.value)}
-                placeholder="Rédigez votre annonce officielle ici..."
+                placeholder="Écrire l'annonce à diffuser dans les 7 salons..."
                 rows={3}
                 className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#0284c7]"
               />
               <button
                 type="submit"
                 disabled={loading || !announcement.trim()}
-                className="bg-[#0284c7] hover:bg-[#0369a1] text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-50"
+                className="bg-[#0284c7] hover:bg-[#0369a1] text-white px-4 py-2 rounded-lg text-xs font-bold transition disabled:opacity-50 cursor-pointer"
               >
-                {loading ? "Diffusion en cours..." : "Publier l'annonce dans tous les salons"}
+                {loading ? 'Diffusion...' : 'Diffuser dans tous les salons'}
               </button>
             </form>
           </div>
         )}
-
       </main>
     </div>
   );
