@@ -66,7 +66,7 @@ export default function SalonPage() {
   const [dateCol, setDateCol] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [statusInfo, setStatusInfo] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -120,7 +120,7 @@ export default function SalonPage() {
         .eq('salon', targetSalonId);
 
       if (error) {
-        setStatusInfo(`Lecture impossible (${targetSalonId}) : ${error.message}`);
+        setErrorMsg(`Lecture impossible : ${error.message}`);
         return;
       }
 
@@ -152,7 +152,7 @@ export default function SalonPage() {
   );
 
   useEffect(() => {
-    setStatusInfo('');
+    setErrorMsg('');
     void loadMessages(currentSalon.id);
   }, [currentSalon.id, loadMessages]);
 
@@ -167,15 +167,11 @@ export default function SalonPage() {
 
   const sendMessageNow = async () => {
     const clean = text.trim();
-    if (!clean) {
-      setStatusInfo(`Écrivez un message dans ${currentSalon.name} avant d’envoyer.`);
-      return;
-    }
-    if (sending) return;
+    if (!clean || sending) return;
 
     const targetSalonId = currentSalon.id;
     setSending(true);
-    setStatusInfo(`Envoi vers ${currentSalon.name}...`);
+    setErrorMsg('');
 
     try {
       const sender =
@@ -226,7 +222,12 @@ export default function SalonPage() {
             break;
           }
         }
-        if (matchedTextCol || (lastErrorMsg && !lastErrorMsg.includes('schema cache') && !lastErrorMsg.includes('column'))) {
+        if (
+          matchedTextCol ||
+          (lastErrorMsg &&
+            !lastErrorMsg.includes('schema cache') &&
+            !lastErrorMsg.includes('column'))
+        ) {
           break;
         }
       }
@@ -235,12 +236,11 @@ export default function SalonPage() {
       if (matchedTextCol) setTextCol(matchedTextCol);
 
       if (lastErrorMsg) {
-        setStatusInfo(`Erreur Supabase (${targetSalonId}) : ${lastErrorMsg}`);
+        setErrorMsg(`Erreur : ${lastErrorMsg}`);
         return;
       }
 
       setText('');
-      setStatusInfo(`Message envoyé dans ${currentSalon.name}.`);
 
       if (insertedRow) {
         setRows((prev) => [...prev, insertedRow as GenericRow]);
@@ -249,7 +249,7 @@ export default function SalonPage() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur inconnue';
-      setStatusInfo(`Erreur (${targetSalonId}) : ${msg}`);
+      setErrorMsg(`Erreur : ${msg}`);
     } finally {
       setSending(false);
     }
@@ -323,9 +323,9 @@ export default function SalonPage() {
         </nav>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-text">
-          {statusInfo && (
-            <div className="bg-white/95 text-gray-800 text-xs p-2.5 rounded-xl border border-sky-200 font-medium">
-              {statusInfo}
+          {errorMsg && (
+            <div className="bg-red-50 text-red-700 text-xs p-2.5 rounded-xl border border-red-200 font-medium">
+              {errorMsg}
             </div>
           )}
           {rows.map((row, idx) => {
