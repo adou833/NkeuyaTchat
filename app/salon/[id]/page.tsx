@@ -15,12 +15,34 @@ const SALONS = [
   { id: 'petits-fils-et-filles', name: 'Petits-fils et filles', icon: '👶🏾' },
 ];
 
-interface MessageRow {
-  id: string;
-  salon: string | null;
-  expéditeur: string | null;
-  contenu: string | null;
-  créer_à?: string | null;
+type GenericRow = Record<string, unknown>;
+
+const TEXT_CANDIDATES = ['contenu', 'message', 'texte', 'content', 'body', 'text'];
+const SENDER_CANDIDATES = [
+  'expéditeur',
+  'expediteur',
+  'sender_name',
+  'sender',
+  'author',
+  'auteur',
+  'full_name',
+];
+const DATE_CANDIDATES = ['créer_à', 'cree_a', 'created_at', 'date'];
+
+function pickField(row: GenericRow | null, candidates: string[]): string | null {
+  if (!row) return null;
+  for (const key of candidates) {
+    if (key in row) return key;
+  }
+  const lowerMap = new Map<string, string>();
+  for (const k of Object.keys(row)) {
+    lowerMap.set(k.toLowerCase().trim(), k);
+  }
+  for (const cand of candidates) {
+    const found = lowerMap.get(cand.toLowerCase().trim());
+    if (found) return found;
+  }
+  return null;
 }
 
 function getSalonIdFromLocation(): string {
@@ -38,7 +60,10 @@ export default function SalonPage() {
 
   const [salonId, setSalonId] = useState<string>(() => getSalonIdFromLocation());
   const [currentUser, setCurrentUser] = useState<string>('');
-  const [messages, setMessages] = useState<MessageRow[]>([]);
+  const [rows, setRows] = useState<GenericRow[]>([]);
+  const [textCol, setTextCol] = useState<string>('contenu');
+  const [senderCol, setSenderCol] = useState<string>('expéditeur');
+  const [dateCol, setDateCol] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [statusInfo, setStatusInfo] = useState('');
@@ -68,26 +93,63 @@ export default function SalonPage() {
 
   const currentSalon = SALONS.find((s) => s.id === salonId) ?? SALONS[0];
 
-  const loadMessages = useCallback(async (targetSalonId: string) => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('salon', targetSalonId);
-
-    if (error) {
-      setStatusInfo(`Lecture impossible (${targetSalonId}) : ${error.message}`);
-      return;
+  const detectColumnsFromSample = useCallback(async () => {
+    const { data } = await supabase.from('messages').select('*').limit(1);
+    const sample = Array.isArray(data) && data.length > 0 ? (data[0] as GenericRow) : null;
+    if (sample) {
+      const detectedText = pickField(sample, TEXT_CANDIDATES);
+      const detectedSender = pickField(sample, SENDER_CANDIDATES);
+      const detectedDate = pickField(sample, DATE_CANDIDATES);
+      if (detectedText) setTextCol(detectedText);
+      if (detectedSender) setSenderCol(detectedSender);
+      if (detectedDate) setDateCol(detectedDate);
+      return {
+        textKey: detectedText ?? 'contenu',
+        senderKey: detectedSender ?? 'expéditeur',
+        dateKey: detectedDate,
+      };
     }
+    return { textKey: textCol, senderKey: senderCol, dateKey: dateCol };
+  }, [textCol, senderCol, dateCol]);
 
-    if (Array.isArray(data)) {
-      const rows = [...(data as MessageRow[])].sort((a, b) => {
-        const da = a['créer_à'] ? new Date(a['créer_à']).getTime() : 0;
-        const db = b['créer_à'] ? new Date(b['créer_à']).getTime() : 0;
-        return da - db;
-      });
-      setMessages(rows);
-    }
-  }, []);
+  const loadMessages = useCallback(
+    async (targetSalonId: string) => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('salon', targetSalonId);
+
+      if (error) {
+        setStatusInfo(`Lecture impossible (${targetSalonId}) : ${error.message}`);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        const list = data as GenericRow[];
+        let activeDateKey = dateCol;
+        if (list.length > 0) {
+          const foundText = pickField(list[0], TEXT_CANDIDATES);
+          const foundSender = pickField(list[0], SENDER_CANDIDATES);
+          const foundDate = pickField(list[0], DATE_CANDIDATES);
+          if (foundText) setTextCol(foundText);
+          if (foundSender) setSenderCol(foundSender);
+          if (foundDate) {
+            activeDateKey = foundDate;
+            setDateCol(foundDate);
+          }
+        }
+
+        const sorted = [...list].sort((a, b) => {
+          if (!activeDateKey) return 0;
+          const da = a[activeDateKey] ? new Date(String(a[activeDateKey])).getTime() : 0;
+          const db = b[activeDateKey] ? new Date(String(b[activeDateKey])).getTime() : 0;
+          return da - db;
+        });
+        setRows(sorted);
+      }
+    },
+    [dateCol]
+  );
 
   useEffect(() => {
     setStatusInfo('');
@@ -96,7 +158,7 @@ export default function SalonPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages.length, currentSalon.id]);
+  }, [rows.length, currentSalon.id]);
 
   const handleOpenSalon = (targetId: string) => {
     setSalonId(targetId);
@@ -121,27 +183,53 @@ export default function SalonPage() {
         (typeof window !== 'undefined' && window.localStorage.getItem('chat_user')) ||
         'Eric MABOM';
 
-      const { data, error } = await supabase
-        .from('messages')
-        .insert([
-          {
-            salon: targetSalonId,
-            expéditeur: sender,
-            contenu: clean,
-          },
-        ])
-        .select('*');
+      const detected = await detectColumnsFromSample();
+      const candidateTextCols = Array.from(
+        new Set([detected.textKey, textCol, ...TEXT_CANDIDATES])
+      );
 
-      if (error) {
-        setStatusInfo(`Erreur Supabase (${targetSalonId}) : ${error.message}`);
+      let insertedRow: GenericRow | null = null;
+      let lastErrorMsg = '';
+
+      for (const candidateCol of candidateTextCols) {
+        const payload: GenericRow = {
+          salon: targetSalonId,
+          [detected.senderKey]: sender,
+          [candidateCol]: clean,
+        };
+
+        const { data, error } = await supabase
+          .from('messages')
+          .insert([payload])
+          .select('*');
+
+        if (!error) {
+          setTextCol(candidateCol);
+          if (Array.isArray(data) && data.length > 0) {
+            insertedRow = data[0] as GenericRow;
+          }
+          lastErrorMsg = '';
+          break;
+        }
+
+        lastErrorMsg = error.message;
+        const isMissingCol =
+          error.message.includes('schema cache') || error.message.includes('column');
+        if (!isMissingCol) {
+          break;
+        }
+      }
+
+      if (lastErrorMsg) {
+        setStatusInfo(`Erreur Supabase (${targetSalonId}) : ${lastErrorMsg}`);
         return;
       }
 
       setText('');
       setStatusInfo(`Message envoyé dans ${currentSalon.name}.`);
 
-      if (Array.isArray(data) && data.length > 0) {
-        setMessages((prev) => [...prev, ...(data as MessageRow[])]);
+      if (insertedRow) {
+        setRows((prev) => [...prev, insertedRow as GenericRow]);
       } else {
         await loadMessages(targetSalonId);
       }
@@ -226,19 +314,26 @@ export default function SalonPage() {
               {statusInfo}
             </div>
           )}
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className="bg-white rounded-xl px-3.5 py-2.5 border border-gray-200/80 text-xs"
-            >
-              <p className="font-bold text-[#0284c7]">
-                {msg['expéditeur'] || 'Membre'}
-              </p>
-              <p className="text-gray-800 mt-0.5 whitespace-pre-wrap break-words">
-                {msg.contenu}
-              </p>
-            </div>
-          ))}
+          {rows.map((row, idx) => {
+            const rowKey = typeof row.id === 'string' && row.id ? row.id : String(idx);
+            const authorVal = row[senderCol];
+            const bodyVal = row[textCol];
+            const authorLabel =
+              typeof authorVal === 'string' && authorVal.trim() ? authorVal : 'Membre';
+            const bodyLabel = typeof bodyVal === 'string' ? bodyVal : '';
+
+            return (
+              <div
+                key={rowKey}
+                className="bg-white rounded-xl px-3.5 py-2.5 border border-gray-200/80 text-xs"
+              >
+                <p className="font-bold text-[#0284c7]">{authorLabel}</p>
+                <p className="text-gray-800 mt-0.5 whitespace-pre-wrap break-words">
+                  {bodyLabel}
+                </p>
+              </div>
+            );
+          })}
           <div ref={bottomRef} />
         </div>
 
