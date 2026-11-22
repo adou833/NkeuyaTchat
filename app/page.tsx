@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import {
   MessageCircle,
@@ -38,7 +37,6 @@ interface UserRow {
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
 
   const [lastName, setLastName] = useState('');
@@ -73,9 +71,12 @@ export default function HomePage() {
     const savedUser =
       typeof window !== 'undefined' ? window.localStorage.getItem('chat_user') : null;
     if (savedUser) {
-      router.replace('/salon/general');
+      setCurrentUser(savedUser);
+      if (savedUser.toLowerCase() === ADMIN_NAME.toLowerCase()) {
+        void fetchPendingUsers();
+      }
     }
-  }, [router]);
+  }, [fetchPendingUsers]);
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -163,7 +164,6 @@ export default function HomePage() {
       window.localStorage.setItem('chat_user', trimmedName);
       setCurrentUser(trimmedName);
       void fetchPendingUsers();
-      router.replace('/salon/general');
       return;
     }
 
@@ -218,7 +218,6 @@ export default function HomePage() {
 
       window.localStorage.setItem('chat_user', resolvedName);
       setCurrentUser(resolvedName);
-      router.replace('/salon/general');
     } catch {
       setError('Impossible de vérifier le compte pour le moment.');
     } finally {
