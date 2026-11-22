@@ -17,10 +17,10 @@ const SALONS = [
 
 interface MessageRow {
   id: string;
-  salon_id: string;
-  sender_name: string | null;
-  content: string | null;
-  created_at: string;
+  salon: string | null;
+  expéditeur: string | null;
+  contenu: string | null;
+  créer_à?: string | null;
 }
 
 function getSalonIdFromLocation(): string {
@@ -72,8 +72,7 @@ export default function SalonPage() {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .eq('salon_id', targetSalonId)
-      .order('created_at', { ascending: true });
+      .eq('salon', targetSalonId);
 
     if (error) {
       setStatusInfo(`Lecture impossible (${targetSalonId}) : ${error.message}`);
@@ -81,7 +80,12 @@ export default function SalonPage() {
     }
 
     if (Array.isArray(data)) {
-      setMessages(data as MessageRow[]);
+      const rows = [...(data as MessageRow[])].sort((a, b) => {
+        const da = a['créer_à'] ? new Date(a['créer_à']).getTime() : 0;
+        const db = b['créer_à'] ? new Date(b['créer_à']).getTime() : 0;
+        return da - db;
+      });
+      setMessages(rows);
     }
   }, []);
 
@@ -121,9 +125,9 @@ export default function SalonPage() {
         .from('messages')
         .insert([
           {
-            salon_id: targetSalonId,
-            sender_name: sender,
-            content: clean,
+            salon: targetSalonId,
+            expéditeur: sender,
+            contenu: clean,
           },
         ])
         .select('*');
@@ -228,10 +232,10 @@ export default function SalonPage() {
               className="bg-white rounded-xl px-3.5 py-2.5 border border-gray-200/80 text-xs"
             >
               <p className="font-bold text-[#0284c7]">
-                {msg.sender_name || 'Membre'}
+                {msg['expéditeur'] || 'Membre'}
               </p>
               <p className="text-gray-800 mt-0.5 whitespace-pre-wrap break-words">
-                {msg.content}
+                {msg.contenu}
               </p>
             </div>
           ))}
