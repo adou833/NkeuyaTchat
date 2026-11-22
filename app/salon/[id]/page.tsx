@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback, Suspense } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { ArrowLeft, Send, LogOut, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Send, LogOut } from 'lucide-react';
 
 const SALONS = [
   { id: 'general', name: 'Général', icon: '💬' },
@@ -23,44 +23,58 @@ interface MessageRow {
   created_at: string;
 }
 
-function SalonContent() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const routeSalonId = typeof params?.id === 'string' ? params.id : 'general';
+function getSalonIdFromLocation(): string {
+  if (typeof window === 'undefined') return 'general';
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const salonIndex = parts.indexOf('salon');
+  if (salonIndex !== -1 && parts[salonIndex + 1]) {
+    return parts[salonIndex + 1];
+  }
+  return 'general';
+}
 
-  const [activeSalonId, setActiveSalonId] = useState<string>(routeSalonId);
+export default function SalonPage() {
+  const router = useRouter();
+
+  const [salonId, setSalonId] = useState<string>(() => getSalonIdFromLocation());
   const [currentUser, setCurrentUser] = useState<string>('');
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const requestSeqRef = useRef<number>(0);
+
+  const syncSalonFromUrl = useCallback(() => {
+    setSalonId(getSalonIdFromLocation());
+  }, []);
 
   useEffect(() => {
-    setActiveSalonId(routeSalonId);
-  }, [routeSalonId]);
+    syncSalonFromUrl();
+    window.addEventListener('popstate', syncSalonFromUrl);
+    return () => {
+      window.removeEventListener('popstate', syncSalonFromUrl);
+    };
+  }, [syncSalonFromUrl]);
 
   useEffect(() => {
-    const saved =
-      typeof window !== 'undefined' ? window.localStorage.getItem('chat_user') : null;
-    if (saved) {
-      setCurrentUser(saved);
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('chat_user');
+      if (saved) {
+        setCurrentUser(saved);
+      }
     }
   }, []);
 
-  const currentSalon =
-    SALONS.find((s) => s.id === activeSalonId) ?? SALONS[0];
+  const currentSalon = SALONS.find((s) => s.id === salonId) ?? SALONS[0];
 
   const loadMessages = useCallback(async (targetSalonId: string) => {
-    const seq = ++requestSeqRef.current;
     const { data } = await supabase
       .from('messages')
       .select('*')
       .eq('salon_id', targetSalonId)
       .order('created_at', { ascending: true });
 
-    if (seq === requestSeqRef.current && Array.isArray(data)) {
+    if (Array.isArray(data)) {
       setMessages(data as MessageRow[]);
     }
   }, []);
@@ -74,11 +88,8 @@ function SalonContent() {
   }, [messages.length, currentSalon.id]);
 
   const handleOpenSalon = (targetId: string) => {
-    if (targetId === currentSalon.id) return;
-    setActiveSalonId(targetId);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `/salon/${targetId}`);
-    }
+    setSalonId(targetId);
+    router.push(`/salon/${targetId}`);
   };
 
   const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -206,27 +217,5 @@ function SalonContent() {
         </form>
       </div>
     </main>
-  );
-}
-
-function SalonFallback() {
-  return (
-    <main className="h-[100dvh] w-screen flex justify-center items-center bg-[#dadbd4] overflow-hidden">
-      <div className="w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl sm:shadow-2xl flex flex-col bg-[#efeae2] overflow-hidden border border-gray-300">
-        <header className="bg-[#0284c7] text-white px-4 py-3.5 flex items-center gap-2.5 shrink-0">
-          <MessageCircle className="w-5 h-5 text-white" />
-          <h1 className="font-bold text-base">NkeuyaTchat</h1>
-        </header>
-        <div className="flex-1 bg-[#efeae2]" />
-      </div>
-    </main>
-  );
-}
-
-export default function SalonPage() {
-  return (
-    <Suspense fallback={<SalonFallback />}>
-      <SalonContent />
-    </Suspense>
   );
 }
