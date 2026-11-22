@@ -1,21 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { 
-  MessageCircle, 
-  User, 
-  Phone, 
+import {
+  MessageCircle,
+  User,
+  Phone,
   Lock,
-  LogOut, 
-  ShieldCheck, 
-  Check, 
-  X, 
-  Clock 
+  LogOut,
+  ShieldCheck,
+  Check,
+  X,
+  Clock,
 } from 'lucide-react';
 
-const ADMIN_NAME = "Eric MABOM";
+const ADMIN_NAME = 'Eric MABOM';
 
 const SALONS = [
   { id: 'general', name: 'Général', desc: 'Discussions de toute la famille', icon: '💬' },
@@ -37,7 +37,7 @@ interface PendingUser {
 
 export default function HomePage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  
+
   // Champs pour la création de compte
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -56,10 +56,21 @@ export default function HomePage() {
 
   // Demandes en attente pour l'admin
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const router = useRouter();
+
+  const fetchPendingUsers = async () => {
+    const { data, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!fetchError && data) {
+      setPendingUsers(data);
+    }
+  };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('chat_user');
+    const savedUser = window.localStorage.getItem('chat_user');
     if (savedUser) {
       setCurrentUser(savedUser);
       if (savedUser.toLowerCase() === ADMIN_NAME.toLowerCase()) {
@@ -68,24 +79,18 @@ export default function HomePage() {
     }
   }, []);
 
-  const fetchPendingUsers = async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    
-    if (!error && data) {
-      setPendingUsers(data);
-    }
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
 
-    if (!lastName.trim() || !firstName.trim() || !phone.trim() || !registerPassword.trim() || !confirmPassword.trim()) {
+    if (
+      !lastName.trim() ||
+      !firstName.trim() ||
+      !phone.trim() ||
+      !registerPassword.trim() ||
+      !confirmPassword.trim()
+    ) {
       setError('Veuillez remplir tous les champs.');
       return;
     }
@@ -103,6 +108,7 @@ export default function HomePage() {
         .from('users')
         .select('*')
         .or(`full_name.ilike.${fullName},phone.eq.${phone.trim()}`)
+        .limit(1)
         .maybeSingle();
 
       if (existing) {
@@ -118,13 +124,15 @@ export default function HomePage() {
           password: registerPassword.trim(),
           status: 'pending',
           allowed_salons: SALONS.map((s) => s.id),
-        }
+        },
       ]);
 
       if (insertError) {
         setError("Erreur lors de l'enregistrement : " + insertError.message);
       } else {
-        setSuccessMsg("Votre compte a été créé ! Votre demande d'accès a été envoyée à l'administrateur pour validation.");
+        setSuccessMsg(
+          "Votre compte a été créé ! Votre demande d'accès a été envoyée à l'administrateur pour validation."
+        );
         setLastName('');
         setFirstName('');
         setPhone('');
@@ -132,7 +140,7 @@ export default function HomePage() {
         setConfirmPassword('');
       }
     } catch (err: any) {
-      setError("Une erreur est survenue : " + err.message);
+      setError('Une erreur est survenue : ' + (err?.message || 'Erreur inconnue'));
     } finally {
       setLoading(false);
     }
@@ -152,34 +160,40 @@ export default function HomePage() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error: loginError } = await supabase
         .from('users')
         .select('*')
         .ilike('full_name', trimmedName)
+        .limit(1)
         .maybeSingle();
 
       if (trimmedName.toLowerCase() === ADMIN_NAME.toLowerCase() && !data) {
-        localStorage.setItem('chat_user', ADMIN_NAME);
+        window.localStorage.setItem('chat_user', ADMIN_NAME);
         setCurrentUser(ADMIN_NAME);
         fetchPendingUsers();
         setLoading(false);
         return;
       }
 
-      if (error || !data) {
+      if (loginError || !data) {
         setError("Aucun compte trouvé à ce nom. Veuillez d'abord créer votre compte.");
         setLoading(false);
         return;
       }
 
       if (data.password && data.password !== loginPassword.trim()) {
-        setError("Mot de passe incorrect.");
+        setError('Mot de passe incorrect.');
         setLoading(false);
         return;
       }
 
-      if (data.status === 'pending' && trimmedName.toLowerCase() !== ADMIN_NAME.toLowerCase()) {
-        setError("Votre demande d'accès est toujours en attente de validation par l'administrateur.");
+      if (
+        data.status === 'pending' &&
+        trimmedName.toLowerCase() !== ADMIN_NAME.toLowerCase()
+      ) {
+        setError(
+          "Votre demande d'accès est toujours en attente de validation par l'administrateur."
+        );
         setLoading(false);
         return;
       }
@@ -190,45 +204,45 @@ export default function HomePage() {
         return;
       }
 
-      localStorage.setItem('chat_user', data.full_name);
+      window.localStorage.setItem('chat_user', data.full_name);
       setCurrentUser(data.full_name);
 
       if (data.full_name.toLowerCase() === ADMIN_NAME.toLowerCase()) {
         fetchPendingUsers();
       }
     } catch {
-      setError("Impossible de vérifier le compte pour le moment.");
+      setError('Impossible de vérifier le compte pour le moment.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleApproveUser = async (userId: string) => {
-    const { error } = await supabase
+    const { error: approveError } = await supabase
       .from('users')
       .update({ status: 'approved' })
       .eq('id', userId);
 
-    if (!error) {
+    if (!approveError) {
       fetchPendingUsers();
     } else {
-      alert("Erreur lors de la validation : " + error.message);
+      alert('Erreur lors de la validation : ' + approveError.message);
     }
   };
 
   const handleRejectUser = async (userId: string) => {
-    const { error } = await supabase
+    const { error: rejectError } = await supabase
       .from('users')
       .delete()
       .eq('id', userId);
 
-    if (!error) {
+    if (!rejectError) {
       fetchPendingUsers();
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('chat_user');
+    window.localStorage.removeItem('chat_user');
     setCurrentUser(null);
     setLoginName('');
     setLoginPassword('');
@@ -239,7 +253,6 @@ export default function HomePage() {
   return (
     <main className="h-[100dvh] w-screen flex justify-center items-center bg-[#dadbd4] overflow-hidden">
       <div className="w-full h-full sm:max-w-md sm:h-[92vh] sm:rounded-3xl sm:shadow-2xl flex flex-col bg-[#efeae2] overflow-hidden border border-gray-300">
-        
         {/* En-tête (Bandeau bleu clair) */}
         <header className="bg-[#0284c7] text-white px-5 py-4 flex items-center justify-between shadow-md shrink-0 z-10">
           <div className="flex items-center space-x-3">
@@ -254,6 +267,7 @@ export default function HomePage() {
 
           {currentUser && (
             <button
+              type="button"
               onClick={handleLogout}
               className="p-2 rounded-full bg-sky-700/60 hover:bg-sky-800 transition cursor-pointer flex items-center gap-1 text-xs"
               title="Se déconnecter"
@@ -263,13 +277,13 @@ export default function HomePage() {
           )}
         </header>
 
-        {/* Barre horizontale des salons sous le bandeau (style WhatsApp sans barre de défilement) */}
+        {/* Barre horizontale des salons sous le bandeau */}
         {currentUser && (
           <div className="bg-[#f0f2f5] border-b border-gray-300 py-3 px-3 shrink-0 overflow-x-auto flex space-x-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {SALONS.map((salon) => (
-              <button
+              <Link
                 key={salon.id}
-                onClick={() => router.push(`/salon/${salon.id}`)}
+                href={`/salon/${salon.id}`}
                 className="flex flex-col items-center shrink-0 group cursor-pointer w-16"
               >
                 <div className="w-12 h-12 rounded-full bg-white shadow-xs border border-gray-200 flex items-center justify-center text-xl group-hover:border-[#0284c7] group-hover:scale-105 transition">
@@ -278,7 +292,7 @@ export default function HomePage() {
                 <span className="text-[10px] text-gray-700 font-medium text-center mt-1 truncate w-full group-hover:text-[#0284c7]">
                   {salon.name}
                 </span>
-              </button>
+              </Link>
             ))}
           </div>
         )}
@@ -287,23 +301,34 @@ export default function HomePage() {
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col justify-center">
           {!currentUser ? (
             <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-md space-y-4 my-auto">
-              
               {/* Boutons de bascule Connexion / Créer son compte */}
               <div className="flex bg-gray-100 p-1 rounded-xl">
                 <button
                   type="button"
-                  onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                  onClick={() => {
+                    setMode('login');
+                    setError('');
+                    setSuccessMsg('');
+                  }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    mode === 'login' ? 'bg-white text-[#0284c7] shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                    mode === 'login'
+                      ? 'bg-white text-[#0284c7] shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
                   }`}
                 >
                   Connexion
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
+                  onClick={() => {
+                    setMode('register');
+                    setError('');
+                    setSuccessMsg('');
+                  }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    mode === 'register' ? 'bg-white text-[#0284c7] shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                    mode === 'register'
+                      ? 'bg-white text-[#0284c7] shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
                   }`}
                 >
                   Créer son compte
@@ -323,7 +348,6 @@ export default function HomePage() {
               )}
 
               {mode === 'register' ? (
-                /* INTERFACE : CRÉER SON COMPTE */
                 <form onSubmit={handleRegister} className="space-y-3">
                   <div className="text-center pb-0.5">
                     <h2 className="text-base font-extrabold text-[#0284c7] uppercase tracking-wider">
@@ -428,7 +452,6 @@ export default function HomePage() {
                   </button>
                 </form>
               ) : (
-                /* INTERFACE : CONNEXION */
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="text-center pb-1">
                     <h2 className="text-base font-bold text-gray-800">
@@ -489,12 +512,15 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            /* ÉCRAN CONNECTÉ : VALIDATION ADMIN + INFOS MEMBRE */
-            <div className="space-y-4 h-full flex flex-col justify-center">
+            <div className="space-y-4 h-full flex flex-col justify-start">
               <div className="bg-white/90 px-5 py-4 rounded-2xl shadow-xs flex items-center justify-between border border-gray-200/60">
                 <div>
-                  <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Membre connecté</p>
-                  <p className="text-sm font-bold text-gray-800">{currentUser} {isAdmin && '👑'}</p>
+                  <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">
+                    Membre connecté
+                  </p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {currentUser} {isAdmin && '👑'}
+                  </p>
                 </div>
                 <span className="text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-3 py-1 rounded-full flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -502,7 +528,6 @@ export default function HomePage() {
                 </span>
               </div>
 
-              {/* Panneau de validation Admin pour Eric MABOM */}
               {isAdmin && pendingUsers.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between">
@@ -514,13 +539,19 @@ export default function HomePage() {
 
                   <div className="space-y-2 max-h-44 overflow-y-auto">
                     {pendingUsers.map((u) => (
-                      <div key={u.id} className="bg-white p-3 rounded-xl shadow-xs flex items-center justify-between border border-amber-100">
+                      <div
+                        key={u.id}
+                        className="bg-white p-3 rounded-xl shadow-xs flex items-center justify-between border border-amber-100"
+                      >
                         <div>
                           <p className="text-xs font-bold text-gray-800">{u.full_name}</p>
-                          {u.phone && <p className="text-[11px] text-gray-500">{u.phone}</p>}
+                          {u.phone && (
+                            <p className="text-[11px] text-gray-500">{u.phone}</p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-1.5">
                           <button
+                            type="button"
                             onClick={() => handleApproveUser(u.id)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-lg shadow cursor-pointer transition"
                             title="Valider l'accès"
@@ -528,6 +559,7 @@ export default function HomePage() {
                             <Check className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleRejectUser(u.id)}
                             className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-lg shadow cursor-pointer transition"
                             title="Refuser"
@@ -541,12 +573,34 @@ export default function HomePage() {
                 </div>
               )}
 
-              <div className="text-center py-6 space-y-2 bg-white/60 rounded-2xl border border-gray-200/50 p-6">
-                <span className="text-3xl">👆</span>
-                <h3 className="text-sm font-bold text-gray-800">Choisissez un salon ci-dessus</h3>
-                <p className="text-xs text-gray-500">
-                  Faites glisser les icônes des salons en haut pour commencer à discuter en famille.
-                </p>
+              <div className="bg-white/90 rounded-2xl border border-gray-200/70 p-3 space-y-2">
+                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider px-1">
+                  Salons de discussion
+                </h3>
+                <div className="space-y-1.5">
+                  {SALONS.map((salon) => (
+                    <Link
+                      key={salon.id}
+                      href={`/salon/${salon.id}`}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 hover:bg-sky-50 border border-gray-200/70 hover:border-[#0284c7] transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xl shrink-0">{salon.icon}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-800 truncate">
+                            {salon.name}
+                          </p>
+                          <p className="text-[11px] text-gray-500 truncate">
+                            {salon.desc}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-[#0284c7] shrink-0 ml-2">
+                        Ouvrir →
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
           )}
