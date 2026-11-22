@@ -15,6 +15,8 @@ const SALONS = [
   { id: 'petits-fils-et-filles', name: 'Petits-fils et filles', icon: '👶🏾' },
 ];
 
+const DEFAULT_SALONS = ['general', 'photos-familiales'];
+
 type GenericRow = Record<string, unknown>;
 
 const TEXT_CANDIDATES = ['contenu', 'message', 'texte', 'content', 'body', 'text'];
@@ -25,9 +27,10 @@ const SENDER_CANDIDATES = [
   'sender',
   'author',
   'auteur',
+  'nom_complet',
   'full_name',
 ];
-const DATE_CANDIDATES = ['créer_à', 'cree_a', 'created_at', 'date'];
+const DATE_CANDIDATES = ['créer_à', 'cree_a', 'créé_à', 'created_at', 'date'];
 
 function pickField(row: GenericRow | null, candidates: string[]): string | null {
   if (!row) return null;
@@ -61,7 +64,7 @@ function checkIsAdmin(rawUser: string | null | undefined): boolean {
   if (candidate.startsWith('{')) {
     try {
       const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      const nameVal = parsed.full_name ?? parsed.name ?? parsed.user ?? '';
+      const nameVal = parsed.nom_complet ?? parsed.full_name ?? parsed.name ?? parsed.user ?? '';
       candidate = String(nameVal).trim();
     } catch {
       // garder candidate tel quel
@@ -70,12 +73,38 @@ function checkIsAdmin(rawUser: string | null | undefined): boolean {
   return candidate.toLowerCase().replace(/\s+/g, ' ') === 'eric mabom';
 }
 
+function parseSalonIds(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map(String).map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown[];
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((s) => s.trim()).filter(Boolean);
+        }
+      } catch {
+        // repli sur séparation virgule
+      }
+    }
+    return trimmed
+      .replace(/^\{|\}$/g, '')
+      .split(',')
+      .map((s) => s.replace(/^"+|"+$/g, '').trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
 export default function SalonPage() {
   const router = useRouter();
 
   const [salonId, setSalonId] = useState<string>(() => getSalonIdFromLocation());
   const [currentUser, setCurrentUser] = useState<string>('');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [allowedSalonIds, setAllowedSalonIds] = useState<string[] | null>(null);
   const [rows, setRows] = useState<GenericRow[]>([]);
   const [textCol, setTextCol] = useState<string>('contenu');
   const [senderCol, setSenderCol] = useState<string>('expediteur');
@@ -116,7 +145,48 @@ export default function SalonPage() {
     };
   }, []);
 
-  const currentSalon = SALONS.find((s) => s.id === salonId) ?? SALONS[0];
+  useEffect(() => {
+    const loadAllowedSalons = async () => {
+      if (!currentUser) {
+        setAllowedSalonIds(null);
+        return;
+      }
+      if (checkIsAdmin(currentUser)) {
+        setAllowedSalonIds(SALONS.map((s) => s.id));
+        return;
+      }
+
+      const { data } = await supabase.from('users').select('*');
+      const list = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const targetName = currentUser.trim().toLowerCase();
+
+      const matched = list.find((row) => {
+        const frName = String(row.nom_complet ?? '').trim().toLowerCase();
+        const enName = String(row.full_name ?? '').trim().toLowerCase();
+        return frName === targetName || enName === targetName;
+      });
+
+      const extraList = matched
+        ? parseSalonIds(matched['salons_autorisés'] ?? matched.allowed_salons ?? matched.salons)
+        : [];
+
+      const merged = Array.from(new Set([...DEFAULT_SALONS, ...extraList]));
+      setAllowedSalonIds(merged);
+    };
+
+    void loadAllowedSalons();
+  }, [currentUser]);
+
+  const visibleSalons =
+    allowedSalonIds === null
+      ? []
+      : SALONS.filter((s) => allowedSalonIds.includes(s.id));
+
+  const currentSalon =
+    visibleSalons.find((s) => s.id === salonId) ??
+    visibleSalons[0] ??
+    SALONS.find((s) => s.id === salonId) ??
+    SALONS[0];
 
   const detectColumnsFromSample = useCallback(async () => {
     const { data } = await supabase.from('messages').select('*').limit(1);
@@ -338,7 +408,7 @@ export default function SalonPage() {
         </header>
 
         <nav className="bg-[#f0f2f5] border-b border-gray-300 py-2.5 px-3 shrink-0 overflow-x-auto flex gap-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          {SALONS.map((salon) => {
+          {visibleSalons.map((salon) => {
             const active = salon.id === currentSalon.id;
             return (
               <button

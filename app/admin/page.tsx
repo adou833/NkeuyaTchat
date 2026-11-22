@@ -14,16 +14,25 @@ const SALONS = [
   { id: 'petits-fils-et-filles', name: 'Petits-fils et filles', icon: '👶🏾' },
 ];
 
+const DEFAULT_SALONS = ['general', 'photos-familiales'];
+const EXTRA_SALONS = SALONS.filter((s) => !DEFAULT_SALONS.includes(s.id));
+
 type GenericRow = Record<string, unknown>;
 
 interface UserRow {
   id: string;
-  full_name: string | null;
+  nom_complet?: string | null;
+  full_name?: string | null;
+  'mot de passe'?: string | null;
   password?: string | null;
-  status: string | null;
+  statut?: string | null;
+  status?: string | null;
   salons?: string | null;
-  allowed_salons?: string[] | null;
+  salons_autorisés?: string[] | string | null;
+  allowed_salons?: string[] | string | null;
   téléphone?: string | null;
+  phone?: string | null;
+  créé_à?: string | null;
   created_at?: string | null;
 }
 
@@ -35,9 +44,10 @@ const SENDER_CANDIDATES = [
   'sender',
   'author',
   'auteur',
+  'nom_complet',
   'full_name',
 ];
-const DATE_CANDIDATES = ['créer_à', 'cree_a', 'created_at', 'date'];
+const DATE_CANDIDATES = ['créer_à', 'cree_a', 'créé_à', 'created_at', 'date'];
 
 function isAdminUser(name: string | null | undefined): boolean {
   if (!name) return false;
@@ -60,17 +70,48 @@ function pickField(row: GenericRow | null, candidates: string[]): string | null 
   return null;
 }
 
-function parseAllowedSalons(user: UserRow): string[] {
-  if (Array.isArray(user.allowed_salons)) {
-    return user.allowed_salons.map(String);
+function parseRawSalonList(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map(String).map((s) => s.trim()).filter(Boolean);
   }
-  if (typeof user.salons === 'string' && user.salons.trim()) {
-    return user.salons
+  if (typeof raw === 'string' && raw.trim()) {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown[];
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((s) => s.trim()).filter(Boolean);
+        }
+      } catch {
+        // repli sur séparation virgule
+      }
+    }
+    return trimmed
+      .replace(/^\{|\}$/g, '')
       .split(',')
-      .map((s) => s.trim())
+      .map((s) => s.replace(/^"+|"+$/g, '').trim())
       .filter(Boolean);
   }
-  return ['general'];
+  return [];
+}
+
+function getExtraAllowedSalons(user: UserRow): string[] {
+  const raw = user['salons_autorisés'] ?? user.allowed_salons ?? user.salons;
+  const list = parseRawSalonList(raw);
+  return Array.from(new Set(list.filter((id) => !DEFAULT_SALONS.includes(id))));
+}
+
+function getUserName(user: UserRow): string {
+  return (user.nom_complet ?? user.full_name ?? 'Sans nom').trim() || 'Sans nom';
+}
+
+function getUserStatus(user: UserRow): string {
+  return (user.statut ?? user.status ?? 'non défini').trim() || 'non défini';
+}
+
+function getUserPhoneDisplay(user: UserRow): string {
+  const val = user['téléphone'] ?? user.phone;
+  return typeof val === 'string' && val.trim() ? val.trim() : '—';
 }
 
 export default function AdminDashboard() {
@@ -86,7 +127,7 @@ export default function AdminDashboard() {
   const [newPhone, setNewPhone] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newStatus, setNewStatus] = useState('actif');
-  const [newAllowedSalons, setNewAllowedSalons] = useState<string[]>(['general']);
+  const [newExtraSalons, setNewExtraSalons] = useState<string[]>([]);
 
   const [announcement, setAnnouncement] = useState('');
   const [loading, setLoading] = useState(false);
@@ -115,16 +156,20 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchAllUsers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('users').select('*');
     if (error) {
       setStatusNotice(`Erreur chargement membres : ${error.message}`);
       return;
     }
     if (Array.isArray(data)) {
-      setUsers(data as UserRow[]);
+      const list = [...(data as UserRow[])].sort((a, b) => {
+        const da = a['créé_à'] ?? a.created_at;
+        const db = b['créé_à'] ?? b.created_at;
+        const ta = da ? new Date(String(da)).getTime() : 0;
+        const tb = db ? new Date(String(db)).getTime() : 0;
+        return tb - ta;
+      });
+      setUsers(list);
     }
   }, []);
 
@@ -158,16 +203,35 @@ export default function AdminDashboard() {
     setLoading(true);
     setStatusNotice('');
 
-    const { error } = await supabase.from('users').insert([
-      {
-        full_name: cleanName,
-        téléphone: newPhone.trim() || null,
-        password: newPassword.trim() || '1234',
-        status: newStatus,
-        salons: newAllowedSalons.join(','),
-        allowed_salons: newAllowedSalons,
-      },
-    ]);
+    const extraList = Array.from(
+      new Set(newExtraSalons.filter((id) => !DEFAULT_SALONS.includes(id)))
+    );
+    const cleanPhone = newPhone.trim() || null;
+    const cleanPass = newPassword.trim() || '1234';
+
+    const payloadFr: Record<string, unknown> = {
+      nom_complet: cleanName,
+      téléphone: cleanPhone,
+      'mot de passe': cleanPass,
+      statut: newStatus,
+      salons_autorisés: extraList,
+    };
+
+    let { error } = await supabase.from('users').insert([payloadFr]);
+
+    if (
+      error &&
+      (error.message.includes('schema cache') || error.message.includes('column'))
+    ) {
+      const payloadFallback: Record<string, unknown> = {
+        nom_complet: cleanName,
+        'mot de passe': cleanPass,
+        statut: newStatus,
+        salons_autorisés: extraList,
+      };
+      const retry = await supabase.from('users').insert([payloadFallback]);
+      error = retry.error;
+    }
 
     setLoading(false);
 
@@ -180,51 +244,50 @@ export default function AdminDashboard() {
     setNewPhone('');
     setNewPassword('');
     setNewStatus('actif');
-    setNewAllowedSalons(['general']);
+    setNewExtraSalons([]);
     setStatusNotice(`Membre "${cleanName}" ajouté.`);
     await fetchAllUsers();
   };
 
   const handleToggleMemberStatus = async (user: UserRow) => {
-    const current = (user.status || '').toLowerCase();
+    const current = getUserStatus(user).toLowerCase();
     const nextStatus = current === 'actif' ? 'suspendu' : 'actif';
     const { error } = await supabase
       .from('users')
-      .update({ status: nextStatus })
+      .update({ statut: nextStatus })
       .eq('id', user.id);
 
     if (error) {
       setStatusNotice(`Erreur statut : ${error.message}`);
       return;
     }
-    setStatusNotice(`Statut de ${user.full_name || 'Membre'} : ${nextStatus}.`);
+    setStatusNotice(`Statut de ${getUserName(user)} : ${nextStatus}.`);
     await fetchAllUsers();
   };
 
-  const handleToggleSalonForMember = (userId: string, salonId: string) => {
+  const handleToggleExtraSalonForMember = (userId: string, salonId: string) => {
+    if (DEFAULT_SALONS.includes(salonId)) return;
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id !== userId) return u;
-        const list = parseAllowedSalons(u);
-        const updated = list.includes(salonId)
-          ? list.filter((s) => s !== salonId)
-          : [...list, salonId];
+        const currentExtra = getExtraAllowedSalons(u);
+        const updatedExtra = currentExtra.includes(salonId)
+          ? currentExtra.filter((s) => s !== salonId)
+          : [...currentExtra, salonId];
         return {
           ...u,
-          allowed_salons: updated,
-          salons: updated.join(','),
+          salons_autorisés: updatedExtra,
         };
       })
     );
   };
 
   const handleSaveMemberSalons = async (user: UserRow) => {
-    const list = parseAllowedSalons(user);
+    const extraList = getExtraAllowedSalons(user);
     const { error } = await supabase
       .from('users')
       .update({
-        allowed_salons: list,
-        salons: list.join(','),
+        salons_autorisés: extraList,
       })
       .eq('id', user.id);
 
@@ -232,11 +295,13 @@ export default function AdminDashboard() {
       setStatusNotice(`Erreur mise à jour salons : ${error.message}`);
       return;
     }
-    setStatusNotice(`Salons enregistrés pour ${user.full_name || 'Membre'}.`);
+    setStatusNotice(`Salons validés pour ${getUserName(user)}.`);
+    await fetchAllUsers();
   };
 
   const handleDeleteMember = async (user: UserRow) => {
-    if (isAdminUser(user.full_name)) {
+    const uName = getUserName(user);
+    if (isAdminUser(uName)) {
       setStatusNotice("Impossible de supprimer le compte d'Eric MABOM.");
       return;
     }
@@ -245,7 +310,7 @@ export default function AdminDashboard() {
       setStatusNotice(`Erreur suppression membre : ${error.message}`);
       return;
     }
-    setStatusNotice(`Membre "${user.full_name || ''}" supprimé.`);
+    setStatusNotice(`Membre "${uName}" supprimé.`);
     await fetchAllUsers();
   };
 
@@ -442,6 +507,9 @@ export default function AdminDashboard() {
               <h2 className="text-base font-bold text-gray-800 border-b pb-2">
                 ➕ Ajouter un membre
               </h2>
+              <p className="text-[11px] text-gray-500">
+                Par défaut : 💬 Général et 📸 Photos familiales. Ajoutez ici les salons supplémentaires :
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
@@ -475,14 +543,14 @@ export default function AdminDashboard() {
                 </select>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {SALONS.map((s) => {
-                  const active = newAllowedSalons.includes(s.id);
+                {EXTRA_SALONS.map((s) => {
+                  const active = newExtraSalons.includes(s.id);
                   return (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() =>
-                        setNewAllowedSalons((prev) =>
+                        setNewExtraSalons((prev) =>
                           active ? prev.filter((x) => x !== s.id) : [...prev, s.id]
                         )
                       }
@@ -512,8 +580,10 @@ export default function AdminDashboard() {
               </h2>
               <div className="space-y-3">
                 {users.map((u) => {
-                  const allowed = parseAllowedSalons(u);
-                  const isActive = (u.status || '').toLowerCase() === 'actif';
+                  const extraAllowed = getExtraAllowedSalons(u);
+                  const currentStatut = getUserStatus(u);
+                  const isActive = currentStatut.toLowerCase() === 'actif';
+                  const uName = getUserName(u);
                   return (
                     <div
                       key={u.id}
@@ -521,11 +591,9 @@ export default function AdminDashboard() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="font-bold text-sm text-gray-900">
-                            {u.full_name || 'Sans nom'}
-                          </p>
+                          <p className="font-bold text-sm text-gray-900">{uName}</p>
                           <p className="text-xs text-gray-500">
-                            Tél : {u['téléphone'] || '—'} · Statut :{' '}
+                            Tél : {getUserPhoneDisplay(u)} · Statut :{' '}
                             <span
                               className={
                                 isActive
@@ -533,7 +601,7 @@ export default function AdminDashboard() {
                                   : 'text-amber-600 font-semibold'
                               }
                             >
-                              {u.status || 'non défini'}
+                              {currentStatut}
                             </span>
                           </p>
                         </div>
@@ -545,7 +613,7 @@ export default function AdminDashboard() {
                           >
                             {isActive ? 'Suspendre' : 'Activer'}
                           </button>
-                          {!isAdminUser(u.full_name) && (
+                          {!isAdminUser(uName) && (
                             <button
                               type="button"
                               onClick={() => void handleDeleteMember(u)}
@@ -558,13 +626,16 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-100">
-                        {SALONS.map((s) => {
-                          const has = allowed.includes(s.id);
+                        <span className="text-[10px] text-gray-500 font-medium mr-1">
+                          Par défaut : 💬 Général, 📸 Photos familiales +
+                        </span>
+                        {EXTRA_SALONS.map((s) => {
+                          const has = extraAllowed.includes(s.id);
                           return (
                             <button
                               key={s.id}
                               type="button"
-                              onClick={() => handleToggleSalonForMember(u.id, s.id)}
+                              onClick={() => handleToggleExtraSalonForMember(u.id, s.id)}
                               className={`px-2 py-0.5 rounded-full text-[10px] border cursor-pointer ${
                                 has
                                   ? 'bg-sky-50 border-[#0284c7] text-[#0284c7] font-medium'
@@ -580,7 +651,7 @@ export default function AdminDashboard() {
                           onClick={() => void handleSaveMemberSalons(u)}
                           className="ml-auto bg-[#0284c7] text-white text-[10px] px-2.5 py-1 rounded font-semibold cursor-pointer"
                         >
-                          Sauvegarder salons
+                          Valider les salons
                         </button>
                       </div>
                     </div>
