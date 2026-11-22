@@ -41,7 +41,7 @@ export default function SalonPage() {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [sendError, setSendError] = useState('');
+  const [statusInfo, setStatusInfo] = useState('');
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -75,13 +75,18 @@ export default function SalonPage() {
       .eq('salon_id', targetSalonId)
       .order('created_at', { ascending: true });
 
-    if (!error && Array.isArray(data)) {
+    if (error) {
+      setStatusInfo(`Lecture impossible : ${error.message}`);
+      return;
+    }
+
+    if (Array.isArray(data)) {
       setMessages(data as MessageRow[]);
     }
   }, []);
 
   useEffect(() => {
-    setSendError('');
+    setStatusInfo('');
     void loadMessages(currentSalon.id);
   }, [currentSalon.id, loadMessages]);
 
@@ -94,13 +99,17 @@ export default function SalonPage() {
     router.push(`/salon/${targetId}`);
   };
 
-  const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const sendMessageNow = async () => {
     const clean = text.trim();
-    if (!clean || sending) return;
+    if (!clean) {
+      setStatusInfo('Écrivez un message avant d’envoyer.');
+      return;
+    }
+    if (sending) return;
 
     setSending(true);
-    setSendError('');
+    setStatusInfo('Envoi en cours...');
+
     try {
       const sender =
         currentUser ||
@@ -119,22 +128,29 @@ export default function SalonPage() {
         .select('*');
 
       if (error) {
-        setSendError(`Échec de l'envoi : ${error.message}`);
+        setStatusInfo(`Erreur Supabase : ${error.message}`);
         return;
       }
 
       setText('');
+      setStatusInfo('Message envoyé.');
+
       if (Array.isArray(data) && data.length > 0) {
         setMessages((prev) => [...prev, ...(data as MessageRow[])]);
       } else {
         await loadMessages(currentSalon.id);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erreur réseau';
-      setSendError(`Erreur d'envoi : ${msg}`);
+      const msg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setStatusInfo(`Erreur : ${msg}`);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await sendMessageNow();
   };
 
   const handleQuit = () => {
@@ -200,9 +216,9 @@ export default function SalonPage() {
         </nav>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 select-text">
-          {sendError && (
-            <div className="bg-red-50 text-red-700 text-xs p-2.5 rounded-xl border border-red-200 font-medium">
-              {sendError}
+          {statusInfo && (
+            <div className="bg-white/95 text-gray-800 text-xs p-2.5 rounded-xl border border-sky-200 font-medium">
+              {statusInfo}
             </div>
           )}
           {messages.map((msg) => (
@@ -229,11 +245,18 @@ export default function SalonPage() {
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void sendMessageNow();
+              }
+            }}
             placeholder="Écrire un message..."
             className="flex-1 bg-white border border-gray-300 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-[#0284c7]"
           />
           <button
-            type="submit"
+            type="button"
+            onClick={() => void sendMessageNow()}
             disabled={sending}
             className="bg-[#0284c7] hover:bg-sky-700 text-white p-2.5 rounded-full cursor-pointer shrink-0"
             title="Envoyer"
